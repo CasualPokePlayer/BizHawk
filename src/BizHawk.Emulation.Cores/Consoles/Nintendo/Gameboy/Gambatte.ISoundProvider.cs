@@ -33,7 +33,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 			throw new InvalidOperationException("Async mode is not supported.");
 		}
 
-		internal bool Muted => _settings.Muted;
+		internal bool Muted => _settings.Muted	;
 
 		// sample pairs before resampling
 		private readonly short[] _soundbuff = new short[(35112 + 2064) * 2];

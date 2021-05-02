@@ -9,7 +9,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 		{
 			get
 			{
-				if (LibGambatte.gambatte_savesavedatalength(GambatteState, DeterministicEmulation) == 0)
+				if (LibGambatte.gambatte_getsavedatalength(GambatteState, DeterministicEmulation) == 0)
 				{
 					return false;
 				}
@@ -20,7 +20,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 
 		public byte[] CloneSaveRam()
 		{
-			int length = LibGambatte.gambatte_savesavedatalength(GambatteState, DeterministicEmulation);
+			int length = LibGambatte.gambatte_getsavedatalength(GambatteState, DeterministicEmulation);
 
 			if (length > 0)
 			{
@@ -34,7 +34,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 
 		public void StoreSaveRam(byte[] data)
 		{
-			int expected = LibGambatte.gambatte_savesavedatalength(GambatteState, DeterministicEmulation);
+			int expected = LibGambatte.gambatte_getsavedatalength(GambatteState, DeterministicEmulation);
 			switch (data.Length - expected)
 			{
 				case 0:

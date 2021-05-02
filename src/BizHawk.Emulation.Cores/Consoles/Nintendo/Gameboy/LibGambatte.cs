@@ -295,7 +295,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 		/// Get persistant cart memory.
 		/// </summary>
 		/// <param name="core">opaque state pointer</param>
-		/// <param name="dest">byte buffer to write into.  gambatte_savesavedatalength() bytes will be written</param>
+		/// <param name="dest">byte buffer to write into.  gambatte_getsavedatalength() bytes will be written</param>
 		/// <param name="isDeterministic">determinism bool. RTC data is ignored if set </param>
 		[DllImport("libgambatte.dll", CallingConvention = CallingConvention.Cdecl)]
 		public static extern void gambatte_savesavedata(IntPtr core, byte[] dest, bool isDeterministic);
@@ -304,7 +304,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 		/// restore persistant cart memory.
 		/// </summary>
 		/// <param name="core">opaque state pointer</param>
-		/// <param name="data">byte buffer to read from.  gambatte_savesavedatalength() bytes will be read</param>
+		/// <param name="data">byte buffer to read from.  gambatte_getsavedatalength() bytes will be read</param>
 		/// <param name="isDeterministic">determinism bool. RTC data is ignored if set </param>
 		[DllImport("libgambatte.dll", CallingConvention = CallingConvention.Cdecl)]
 		public static extern void gambatte_loadsavedata(IntPtr core, byte[] data, bool isDeterministic);
@@ -316,7 +316,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 		/// <param name="isDeterministic">determinism bool. RTC data is ignored if set </param>
 		/// <returns>length in bytes.  0 means no internal persistant cart memory</returns>
 		[DllImport("libgambatte.dll", CallingConvention = CallingConvention.Cdecl)]
-		public static extern int gambatte_savesavedatalength(IntPtr core, bool isDeterministic);
+		public static extern int gambatte_getsavedatalength(IntPtr core, bool isDeterministic);
 
 		/// <summary>
 		/// new savestate method
