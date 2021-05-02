@@ -537,5 +537,22 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 			int[] lut = GBColors.GetLut(type);
 			LibGambatte.gambatte_setcgbpalette(GambatteState, lut);
 		}
+		public void SetSpeedupFlags(bool noSound, bool noPPUCall, bool noVideo)
+		{
+			int speedupFlags = 0;
+			if (noSound)
+			{
+				speedupFlags |= (int)LibGambatte.SpeedupFlagIndicies.NO_SOUND;
+			}
+			if (noPPUCall)
+			{
+				speedupFlags |= (int)LibGambatte.SpeedupFlagIndicies.NO_PPU_CALL;
+			}
+			if (noVideo)
+			{
+				speedupFlags |= (int)LibGambatte.SpeedupFlagIndicies.NO_VIDEO;
+			}
+			LibGambatte.gambatte_setspeedupflags(GambatteState, speedupFlags);
+		}
 	}
 }

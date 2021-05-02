@@ -27,6 +27,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 			{
 				ChangeDMGColors(_settings.GBPalette);
 			}
+			SetSpeedupFlags(_settings.DisableSound, _settings.DisablePPUCalls, _settings.DisableVideo);
 
 			return PutSettingsDirtyBits.None;
 		}
@@ -76,12 +77,30 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 			/// true to use rgbds syntax
 			/// </summary>
 			public bool RgbdsSyntax;
+			
+			/// <summary>
+			/// true to use disable sound emulation
+			/// </summary>
+			public bool DisableSound;
+			
+			/// <summary>
+			/// true to use disable ppu calls
+			/// </summary>
+			public bool DisablePPUCalls;
+			
+			/// <summary>
+			/// true to use disable video emulation
+			/// </summary>
+			public bool DisableVideo;
 
 			public GambatteSettings()
 			{
 				GBPalette = (int[])DefaultPalette.Clone();
 				CGBColors = GBColors.ColorType.gambatte;
 				RgbdsSyntax = true;
+				DisableSound = false;
+				DisablePPUCalls = false;
+				DisableVideo = false;
 			}
 
 

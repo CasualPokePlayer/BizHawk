@@ -440,5 +440,25 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 		{
 			Dh, Dl, H, M, S, C, Dh_L, Dl_L, H_L, M_L, S_L
 		}
+
+		/// <summary>
+		/// return a value in range 0-3FFF representing current "position" of internal divider
+		/// </summary>
+		/// <param name="core">opaque state pointer</param>
+		[DllImport("libgambatte.dll", CallingConvention = CallingConvention.Cdecl)]
+		public static extern int gambatte_getdivstate(IntPtr core);
+
+		/// <summary>
+		/// sets flags to control non-critical processes for CPU-concerned emulation
+		/// </summary>
+		/// <param name="core">opaque state pointer</param>
+		/// <param name="flags">speedup flags to set</param>
+		[DllImport("libgambatte.dll", CallingConvention = CallingConvention.Cdecl)]
+		public static extern void gambatte_setspeedupflags(IntPtr core, int flags);
+
+		public enum SpeedupFlagIndicies : int
+		{
+			NO_SOUND = 1, NO_PPU_CALL = 2, NO_VIDEO = 4
+		}
 	}
 }

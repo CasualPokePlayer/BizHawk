@@ -19,8 +19,8 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 			{
 				Disassembly =
 					LR35902.Disassemble(
-						(ushort) s[1],
-						addr => LibGambatte.gambatte_cpuread(GambatteState, addr),
+						(ushort)s[1],
+						addr => (addr == (ushort)s[1]) ? (byte)((s[12] >> 16) & 0xFF) : ((addr == (ushort)++s[1]) ? (byte)((s[12] >> 8) & 0xFF) : (byte)(s[12] & 0xFF)),
 						_settings.RgbdsSyntax,
 						out _).PadRight(36),
 				RegisterInfo =
@@ -38,7 +38,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 					s[9] & 0xff,
 					s[10] & 0xff,
 					s[11] != 0 ? "skip" : "",
-					s[12] & 0xff,
+					s[12] & 0xffffff,
 					s[13] & 0xff)
 			});
 		}

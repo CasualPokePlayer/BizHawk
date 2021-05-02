@@ -43,6 +43,9 @@ namespace BizHawk.Client.EmuHawk
 			propertyGrid1.Enabled = movieSession.Movie.NotActive();
 			checkBoxMuted.Checked = _s.Muted;
 			cbRgbdsSyntax.Checked = _s.RgbdsSyntax;
+			cbDisableSound.Checked = _s.DisableSound;
+			cbDisablePPUCalls.Checked = _s.DisablePPUCalls;
+			cbDisableVideo.Checked = _s.DisableVideo;
 		}
 
 		public void GetSettings(out Gameboy.GambatteSettings s, out Gameboy.GambatteSyncSettings ss)
@@ -85,6 +88,18 @@ namespace BizHawk.Client.EmuHawk
 		private void CbRgbdsSyntax_CheckedChanged(object sender, EventArgs e)
 		{
 			_s.RgbdsSyntax = ((CheckBox)sender).Checked;
+		}
+		private void CbDisableSound_CheckedChanged(object sender, EventArgs e)
+		{
+			_s.DisableSound = ((CheckBox)sender).Checked;
+		}
+		private void CbDisablePPUCalls_CheckedChanged(object sender, EventArgs e)
+		{
+			_s.DisablePPUCalls = ((CheckBox)sender).Checked;
+		}
+		private void CbDisableVideo_CheckedChanged(object sender, EventArgs e)
+		{
+			_s.DisableVideo = ((CheckBox)sender).Checked;
 		}
 	}
 }

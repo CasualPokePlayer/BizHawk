@@ -241,6 +241,9 @@ namespace BizHawk.Client.Common
 						Bind("GB", "GB Toggle BG"),
 						Bind("GB", "GB Toggle Obj"),
 						Bind("GB", "GB Toggle Window"),
+						Bind("GB", "GB Disable Sound"),
+						Bind("GB", "GB Disable PPU Calls"),
+						Bind("GB", "GB Disable Video"),
 
 						Bind("Analog", "Y Up Small", toolTip: "For Virtual Pad"),
 						Bind("Analog", "Y Up Large", toolTip: "For Virtual Pad"),

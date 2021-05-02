@@ -746,6 +746,38 @@ namespace BizHawk.Client.EmuHawk
 
 					break;
 
+				// GB Speedup Flags
+				case "GB Disable Sound":
+					if (Emulator is Gameboy gb4)
+					{
+						var s = gb4.GetSettings();
+						s.DisableSound ^= true;
+						gb4.PutSettings(s);
+						AddOnScreenMessage($"Sound toggled {(s.DisableSound ? "off" : "on")}");
+					}
+
+					break;
+				case "GB Disable PPU Calls":
+					if (Emulator is Gameboy gb5)
+					{
+						var s = gb5.GetSettings();
+						s.DisablePPUCalls ^= true;
+						gb5.PutSettings(s);
+						AddOnScreenMessage($"PPU Calls toggled {(s.DisablePPUCalls ? "off" : "on")}");
+					}
+
+					break;
+				case "GB Disable Video":
+					if (Emulator is Gameboy gb6)
+					{
+						var s = gb6.GetSettings();
+						s.DisableVideo ^= true;
+						gb6.PutSettings(s);
+						AddOnScreenMessage($"Video toggled {(s.DisableVideo ? "off" : "on")}");
+					}
+
+					break;
+
 				// Analog
 				case "Y Up Small":
 					Tools.VirtualPad.BumpAnalogValue(null, Config.AnalogSmallChange);
