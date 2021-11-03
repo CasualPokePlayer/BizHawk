@@ -242,7 +242,7 @@ namespace BizHawk.Emulation.Cores.Consoles.Nintendo.NDS
 				Keys = GetButtons(controller),
 				TouchX = (byte)controller.AxisValue("Touch X"),
 				TouchY = (byte)controller.AxisValue("Touch Y"),
-				MicInput = (short)controller.AxisValue("Mic Input"),
+				MicVolume = (byte)controller.AxisValue("Mic Volume"),
 				GBALightSensor = (byte)controller.AxisValue("GBA Light Sensor"),
 			};
 		}
