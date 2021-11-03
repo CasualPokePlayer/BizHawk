@@ -14,6 +14,7 @@
 #include "../emulibc/emulibc.h"
 #include "../emulibc/waterboxcore.h"
 
+#include <cmath>
 #include <algorithm>
 #include <time.h>
 
