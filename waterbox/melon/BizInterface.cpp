@@ -361,3 +361,9 @@ EXPORT void SetTraceCallback(void (*callback)(u32 cpu, u32* regs, u32 opcode, s6
 {
 	TraceCallback = callback;
 }
+
+EXPORT void DoNothing()
+{}
+
+EXPORT void PrintSomething()
+{printf("hi\n");}
