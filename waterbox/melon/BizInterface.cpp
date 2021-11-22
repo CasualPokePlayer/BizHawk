@@ -327,17 +327,23 @@ EXPORT void FrameAdvance(MyFrameInfo* f)
 
 	biz_time = f->Time;
 	NDS::RunFrame();
+	printf("ran frame\n");
+	fflush(stdout);
 	for (int i = 0; i < (256 * 192); i++)
 	{
 		f->VideoBuffer[i] = GPU::Framebuffer[GPU::FrontBuffer][0][i];
 		f->VideoBuffer[(256 * 192) + i] = GPU::Framebuffer[GPU::FrontBuffer][1][i];
 	}
+	printf("copied video buffer over\n");
+	fflush(stdout);
 	f->Width = 256;
 	f->Height = 384;
 	f->Samples = SPU::GetOutputSize() / 2;
 	SPU::ReadOutput(f->SoundBuffer, f->Samples);
 	f->Cycles = NDS::GetSysClockCycles(2);
 	f->Lagged = NDS::LagFrameFlag;
+	printf("other crap done, returning...\n");
+	fflush(stdout);
 }
 
 void (*InputCallback)();
