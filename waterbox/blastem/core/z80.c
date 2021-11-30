@@ -1,7 +1,7 @@
 #include "z80.h"
 #include "util.h"
 #include <stdlib.h>
-#include "z80_util.c"
+#include "z80_util.h"
 
 static void unimplemented(z80_context *context, uint32_t target_cycle)
 {

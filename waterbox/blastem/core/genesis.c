@@ -233,7 +233,9 @@ void genesis_deserialize(deserialize_buffer *buf, genesis_context *gen)
 	buf->handlers = NULL;
 }
 
+#ifndef NEW_CORE
 #include "m68k_internal.h" //needed for get_native_address_trans, should be eliminated once handling of PC is cleaned up
+#endif
 static void deserialize(system_header *sys, uint8_t *data, size_t size)
 {
 	genesis_context *gen = (genesis_context *)sys;

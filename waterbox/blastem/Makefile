@@ -1,7 +1,7 @@
-CCFLAGS := -Icore -Icore/musashi -Wall -Wextra
+CCFLAGS := -DNEW_CORE -DDISABLE_ZLIB -DM68030 -DDISABLE_NUKLEAR -DDISABLE_OPENGL -DIS_LIB \
+	-Icore -Icore/musashi -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter \
 	-Werror=pointer-to-int-cast -Werror=int-to-pointer-cast -Werror=implicit-function-declaration \
-	-std=c99 -fomit-frame-pointer \
-	-DNEW_CORE -DDISABLE_ZLIB -DM68030 -DDISABLE_NUKLEAR -DDISABLE_OPENGL -DIS_LIB
+	-std=gnu11 -fomit-frame-pointer
 
 TARGET := blastem.wbx
 
