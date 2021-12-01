@@ -10,6 +10,8 @@
 #include "romdb.h"
 #include "serialize.h"
 
+time_t (*RtcCallback)();
+
 enum {
 	IO_NONE,
 	IO_GAMEPAD2,

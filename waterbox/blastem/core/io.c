@@ -814,7 +814,7 @@ void hbpt_write_byte(io_port *port)
 		case HBPT_READ_RTC: {
 			uint8_t *rtc = port->device.heartbeat_trainer.rtc_base;
 			start_reply(port, 5, rtc);
-			uint64_t now = time(NULL);
+			uint64_t now = RtcCallback();
 			uint64_t delta = (now - port->device.heartbeat_trainer.rtc_base_timestamp + 30) / 60;
 			rtc[4] += delta % 60;
 			if (rtc[4] > 59) {
@@ -850,7 +850,7 @@ void hbpt_write_byte(io_port *port)
 			break;
 		}
 		case HBPT_SET_RTC:
-			port->device.heartbeat_trainer.rtc_base_timestamp = time(NULL);
+			port->device.heartbeat_trainer.rtc_base_timestamp = RtcCallback();
 			expect_payload(port, 5, port->device.heartbeat_trainer.rtc_base);
 			break;
 		case HBPT_GET_STATUS:

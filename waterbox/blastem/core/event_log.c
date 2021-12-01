@@ -34,7 +34,7 @@ static uint32_t last;
 
 static void event_log_common_init(void)
 {
-	init_serialize(&buffer);
+/*	init_serialize(&buffer);
 	compressed_storage = 128*1024;
 	compressed = malloc(compressed_storage);
 	deflateInit(&output_stream, 9);
@@ -43,20 +43,20 @@ static void event_log_common_init(void)
 	output_stream.avail_in = 0;
 	output_stream.next_in = buffer.data;
 	last = 0;
-	active = 1;
+	active = 1;*/
 }
 
 static uint8_t multi_count;
 static size_t multi_start;
 static void finish_multi(void)
 {
-	buffer.data[multi_start] |= multi_count - 2;
-	multi_count = 0;
+/*	buffer.data[multi_start] |= multi_count - 2;
+	multi_count = 0;*/
 }
 
 static void file_finish(void)
 {
-	fwrite(compressed, 1, output_stream.next_out - compressed, event_file);
+/*	fwrite(compressed, 1, output_stream.next_out - compressed, event_file);
 	output_stream.next_out = compressed;
 	output_stream.avail_out = compressed_storage;
 	int result = deflate(&output_stream, Z_FINISH);
@@ -64,13 +64,13 @@ static void file_finish(void)
 		fatal_error("Final deflate call returned %d\n", result);
 	}
 	fwrite(compressed, 1, output_stream.next_out - compressed, event_file);
-	fclose(event_file);
+	fclose(event_file);*/
 }
 
 static const char el_ident[] = "BLSTEL\x02\x00";
 void event_log_file(char *fname)
 {
-	event_file = fopen(fname, "wb");
+/*	event_file = fopen(fname, "wb");
 	if (!event_file) {
 		warning("Failed to open event file %s for writing\n", fname);
 		return;
@@ -78,7 +78,7 @@ void event_log_file(char *fname)
 	fwrite(el_ident, 1, sizeof(el_ident) - 1, event_file);
 	event_log_common_init();
 	fully_active = 1;
-	atexit(file_finish);
+	atexit(file_finish);*/
 }
 
 typedef struct {
@@ -95,7 +95,7 @@ static uint8_t available_players[7] = {2,3,4,5,6,7,8};
 static int num_available_players = 7;
 void event_log_tcp(char *address, char *port)
 {
-	struct addrinfo request, *result;
+/*	struct addrinfo request, *result;
 	socket_init();
 	memset(&request, 0, sizeof(request));
 	request.ai_family = AF_INET;
@@ -123,14 +123,14 @@ void event_log_tcp(char *address, char *port)
 	socket_blocking(listen_sock, 0);
 	event_log_common_init();
 cleanup_address:
-	freeaddrinfo(result);
+	freeaddrinfo(result);*/
 }
 
 static uint8_t *system_start;
 static size_t system_start_size;
 void event_system_start(system_type stype, vid_std video_std, char *name)
 {
-	if (!active) {
+/*	if (!active) {
 		return;
 	}
 	save_int8(&buffer, stype);
@@ -149,7 +149,7 @@ void event_system_start(system_type stype, vid_std video_std, char *name)
 		//system start header is never compressed, so write to file immediately
 		fwrite(buffer.data, 1, buffer.size, event_file);
 	}
-	buffer.size = 0;
+	buffer.size = 0;*/
 }
 
 //header formats
@@ -162,7 +162,7 @@ static uint8_t last_event_type = 0xFF;
 static uint32_t last_delta;
 static void event_header(uint8_t type, uint32_t cycle)
 {
-	uint32_t delta = cycle - last;
+/*	uint32_t delta = cycle - last;
 	if (multi_count) {
 		if (type != last_event_type || delta != last_delta) {
 			finish_multi();
@@ -196,22 +196,22 @@ static void event_header(uint8_t type, uint32_t cycle)
 	} else {
 		save_int8(&buffer, FORMAT_3BYTE | type);
 		save_int16(&buffer, delta);
-	}
+	}*/
 }
 
 void event_cycle_adjust(uint32_t cycle, uint32_t deduction)
 {
-	if (!fully_active) {
+/*	if (!fully_active) {
 		return;
 	}
 	event_header(EVENT_ADJUST, cycle);
 	last = cycle - deduction;
-	save_int32(&buffer, deduction);
+	save_int32(&buffer, deduction);*/
 }
 
 static uint8_t next_available_player(void)
 {
-	uint8_t lowest = 0xFF;
+/*	uint8_t lowest = 0xFF;
 	int lowest_index = -1;
 	for (int i = 0; i < num_available_players; i++)
 	{
@@ -224,12 +224,13 @@ static uint8_t next_available_player(void)
 		available_players[lowest_index] = available_players[num_available_players - 1];
 		--num_available_players;
 	}
-	return lowest;
+	return lowest;*/
+	return 0xFF;
 }
 
 static void flush_socket(void)
 {
-	int remote_sock = accept(listen_sock, NULL, NULL);
+/*	int remote_sock = accept(listen_sock, NULL, NULL);
 	if (remote_sock != -1) {
 		if (num_remotes == 7) {
 			socket_close(remote_sock);
@@ -318,13 +319,13 @@ static void flush_socket(void)
 				remotes[i].send_progress = compressed;
 			}
 		}
-	}
+	}*/
 }
 
 uint8_t wrote_since_last_flush;
 void event_log(uint8_t type, uint32_t cycle, uint8_t size, uint8_t *payload)
 {
-	if (!fully_active) {
+/*	if (!fully_active) {
 		return;
 	}
 	event_header(type, cycle);
@@ -351,13 +352,13 @@ void event_log(uint8_t type, uint32_t cycle, uint8_t size, uint8_t *payload)
 			buffer.size = 0;
 			output_stream.next_in = buffer.data;
 		}
-	}
+	}*/
 }
 
 static uint32_t last_word_address;
 void event_vram_word(uint32_t cycle, uint32_t address, uint16_t value)
 {
-	uint32_t delta = address - last_word_address;
+/*	uint32_t delta = address - last_word_address;
 	if (delta < 256) {
 		uint8_t buffer[3] = {delta, value >> 8, value};
 		event_log(EVENT_VRAM_WORD_DELTA, cycle, sizeof(buffer), buffer);
@@ -365,13 +366,13 @@ void event_vram_word(uint32_t cycle, uint32_t address, uint16_t value)
 		uint8_t buffer[5] = {address >> 16, address >> 8, address, value >> 8, value};
 		event_log(EVENT_VRAM_WORD, cycle, sizeof(buffer), buffer);
 	}
-	last_word_address = address;
+	last_word_address = address;*/
 }
 
 static uint32_t last_byte_address;
 void event_vram_byte(uint32_t cycle, uint16_t address, uint8_t byte, uint8_t auto_inc)
 {
-	uint32_t delta = address - last_byte_address;
+/*	uint32_t delta = address - last_byte_address;
 	if (delta == 1) {
 		event_log(EVENT_VRAM_BYTE_ONE, cycle, sizeof(byte), &byte);
 	} else if (delta == auto_inc) {
@@ -383,12 +384,12 @@ void event_vram_byte(uint32_t cycle, uint16_t address, uint8_t byte, uint8_t aut
 		uint8_t buffer[3] = {address >> 8, address, byte};
 		event_log(EVENT_VRAM_BYTE, cycle, sizeof(buffer), buffer);
 	}
-	last_byte_address = address;
+	last_byte_address = address;*/
 }
 
 static size_t send_all(int sock, uint8_t *data, size_t size, int flags)
 {
-	size_t total = 0, sent = 1;
+/*	size_t total = 0, sent = 1;
 	while(sent > 0 && total < size)
 	{
 		sent = send(sock, data + total, size - total, flags);
@@ -396,12 +397,13 @@ static size_t send_all(int sock, uint8_t *data, size_t size, int flags)
 			total += sent;
 		}
 	}
-	return total;
+	return total;*/
+	return 0;
 }
 
 void deflate_flush(uint8_t full)
 {
-	output_stream.avail_in = buffer.size - (output_stream.next_in - buffer.data);
+/*	output_stream.avail_in = buffer.size - (output_stream.next_in - buffer.data);
 	uint8_t force = full;
 	while (output_stream.avail_in || force)
 	{
@@ -431,12 +433,12 @@ void deflate_flush(uint8_t full)
 		force = 0;
 	}
 	output_stream.next_in = buffer.data;
-	buffer.size = 0;
+	buffer.size = 0;*/
 }
 
 void event_state(uint32_t cycle, serialize_buffer *state)
 {
-	if (!fully_active) {
+/*	if (!fully_active) {
 		last = cycle;
 	}
 	uint8_t header[] = {
@@ -490,12 +492,12 @@ void event_state(uint32_t cycle, serialize_buffer *state)
 		}
 		output_stream.next_out = compressed + old_compressed_size;
 		output_stream.avail_out = compressed_storage - old_compressed_size;
-	}
+	}*/
 }
 
 void event_flush(uint32_t cycle)
 {
-	if (!active) {
+/*	if (!active) {
 		return;
 	}
 	if (fully_active) {
@@ -512,35 +514,35 @@ void event_flush(uint32_t cycle)
 	} else if (listen_sock) {
 		flush_socket();
 		wrote_since_last_flush = 0;
-	}
+	}*/
 }
 
 void event_soft_flush(uint32_t cycle)
 {
-	if (!fully_active || wrote_since_last_flush || event_file) {
+/*	if (!fully_active || wrote_since_last_flush || event_file) {
 		return;
 	}
 	event_header(EVENT_FLUSH, cycle);
 	last = cycle;
 	
 	deflate_flush(0);
-	flush_socket();
+	flush_socket();*/
 }
 
 static void init_event_reader_common(event_reader *reader)
 {
-	reader->last_cycle = 0;
+/*	reader->last_cycle = 0;
 	reader->repeat_event = 0xFF;
 	reader->storage = 512 * 1024;
 	init_deserialize(&reader->buffer, malloc(reader->storage), reader->storage);
 	reader->buffer.size = 0;
-	memset(&reader->input_stream, 0, sizeof(reader->input_stream));
+	memset(&reader->input_stream, 0, sizeof(reader->input_stream));*/
 	
 }
 
 void init_event_reader(event_reader *reader, uint8_t *data, size_t size)
 {
-	reader->socket = 0;
+/*	reader->socket = 0;
 	reader->last_cycle = 0;
 	reader->repeat_event = 0xFF;
 	init_event_reader_common(reader);
@@ -560,12 +562,12 @@ void init_event_reader(event_reader *reader, uint8_t *data, size_t size)
 	if (Z_OK != result && Z_STREAM_END != result) {
 		fatal_error("inflate returned %d\n", result);
 	}
-	reader->buffer.size = reader->input_stream.next_out - reader->buffer.data;
+	reader->buffer.size = reader->input_stream.next_out - reader->buffer.data;*/
 }
 
 void init_event_reader_tcp(event_reader *reader, char *address, char *port)
 {
-	struct addrinfo request, *result;
+/*	struct addrinfo request, *result;
 	socket_init();
 	memset(&request, 0, sizeof(request));
 	request.ai_family = AF_INET;
@@ -609,12 +611,12 @@ void init_event_reader_tcp(event_reader *reader, char *address, char *port)
 		fatal_error("inflate returned %d in init_event_reader_tcp\n", res);
 	}
 	int flag = 1;
-	setsockopt(reader->socket, IPPROTO_TCP, TCP_NODELAY, (const char *)&flag, sizeof(flag));
+	setsockopt(reader->socket, IPPROTO_TCP, TCP_NODELAY, (const char *)&flag, sizeof(flag));*/
 }
 
 static void read_from_socket(event_reader *reader)
 {
-	if (reader->socket_buffer_size - reader->input_stream.avail_in < 128 * 1024) {
+/*	if (reader->socket_buffer_size - reader->input_stream.avail_in < 128 * 1024) {
 		reader->socket_buffer_size *= 2;
 		uint8_t *new_buf = malloc(reader->socket_buffer_size);
 		memcpy(new_buf, reader->input_stream.next_in, reader->input_stream.avail_in);
@@ -635,12 +637,12 @@ static void read_from_socket(event_reader *reader)
 		reader->input_stream.avail_in += bytes;
 	} else if (!socket_error_is_wouldblock()) {
 		fatal_error("Connection closed, error = %X\n", socket_last_error());
-	}
+	}*/
 }
 
 static void inflate_flush(event_reader *reader)
 {
-	if (reader->buffer.cur_pos > reader->storage / 2) {
+/*	if (reader->buffer.cur_pos > reader->storage / 2) {
 		memmove(reader->buffer.data, reader->buffer.data + reader->buffer.cur_pos, reader->buffer.size - reader->buffer.cur_pos);
 		reader->buffer.size -= reader->buffer.cur_pos;
 		reader->buffer.cur_pos = 0;
@@ -658,12 +660,12 @@ static void inflate_flush(event_reader *reader)
 			inflate_flush(reader);
 		}
 	}
-	
+	*/
 }
 
 void reader_ensure_data(event_reader *reader, size_t bytes)
 {
-	if (reader->buffer.size - reader->buffer.cur_pos < bytes) {
+	/*if (reader->buffer.size - reader->buffer.cur_pos < bytes) {
 		if (reader->input_stream.avail_in) {
 			inflate_flush(reader);
 		}
@@ -673,12 +675,12 @@ void reader_ensure_data(event_reader *reader, size_t bytes)
 				inflate_flush(reader);
 			}
 		}
-	}
+	}*/
 }
 
 uint8_t reader_next_event(event_reader *reader, uint32_t *cycle_out)
 {
-	if (reader->repeat_remaining) {
+/*	if (reader->repeat_remaining) {
 		reader->repeat_remaining--;
 		*cycle_out = reader->last_cycle + reader->repeat_delta;
 		reader->last_cycle = *cycle_out;
@@ -731,18 +733,20 @@ uint8_t reader_next_event(event_reader *reader, uint32_t *cycle_out)
 		reader->last_word_address |= load_int16(&reader->buffer);
 		reader->last_byte_address = load_int16(&reader->buffer);
 	}
-	return ret;
+	return ret;*/
+	return 0;
 }
 
 uint8_t reader_system_type(event_reader *reader)
 {
-	return load_int8(&reader->buffer);
+	return 0;
+//	return load_int8(&reader->buffer);
 }
 
 void reader_send_gamepad_event(event_reader *reader, uint8_t pad, uint8_t button, uint8_t down)
 {
-	uint8_t buffer[] = {down ? CMD_GAMEPAD_DOWN : CMD_GAMEPAD_UP, pad << 5 | button};
+/*	uint8_t buffer[] = {down ? CMD_GAMEPAD_DOWN : CMD_GAMEPAD_UP, pad << 5 | button};
 	//TODO: Deal with the fact that we're not in blocking mode so this may not actually send all
 	//if the buffer is full
-	send_all(reader->socket, buffer, sizeof(buffer), 0);
+	send_all(reader->socket, buffer, sizeof(buffer), 0);*/
 }
