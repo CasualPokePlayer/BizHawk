@@ -49,8 +49,7 @@ static s32 overscan_top, overscan_bot, overscan_left, overscan_right;
 
 EXPORT bool Init(u8* rom, size_t sz)
 {
-	srand(time(NULL));
-	//render_audio_initialized(RENDER_AUDIO_S16, 53693175 / (7 * 6 * 4), 2, 4, sizeof(s16));
+	render_audio_initialized(RENDER_AUDIO_S16, 53693175 / (7 * 6 * 4), 2, 4, sizeof(s16));
 	biz_time = 0;
 	media.buffer = alloc_sealed(sz);
 	memcpy(media.buffer, rom, sz);
