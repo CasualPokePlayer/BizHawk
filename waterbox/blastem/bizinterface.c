@@ -39,7 +39,7 @@ const char* save_filename = "save.ram";
 tern_node* config;
 const u8 use_native_states = 1;
 
-system_header *current_system;
+system_header* current_system;
 system_media media;
 system_type stype;
 
@@ -50,7 +50,7 @@ static s32 overscan_top, overscan_bot, overscan_left, overscan_right;
 EXPORT bool Init(u8* rom, size_t sz)
 {
 	srand(time(NULL));
-	//render_audio_initialized(RENDER_AUDIO_S16, 53693175 / (7 * 6 * 4), 2, 4, sizeof(int16_t));
+	//render_audio_initialized(RENDER_AUDIO_S16, 53693175 / (7 * 6 * 4), 2, 4, sizeof(s16));
 	biz_time = 0;
 	media.buffer = alloc_sealed(sz);
 	memcpy(media.buffer, rom, sz);
@@ -61,7 +61,7 @@ EXPORT bool Init(u8* rom, size_t sz)
 	return !current_system;
 }
 
-EXPORT void GetMemoryAreas(MemoryArea *m)
+EXPORT void GetMemoryAreas(MemoryArea* m)
 {
 }
 
@@ -150,23 +150,23 @@ EXPORT void SetInputCallback(void (*callback)())
 	InputCallback = callback;
 }
 
-uint32_t render_map_color(uint8_t r, uint8_t g, uint8_t b)
+u32 render_map_color(u8 r, u8 g, u8 b)
 {
 	return (0xFF << 24) | (r << 16) | (g << 8) | b;
 }
 
-uint8_t render_create_window(char *caption, uint32_t width, uint32_t height, window_close_handler close_handler)
+u8 render_create_window(char* caption, u32 width, u32 height, window_close_handler close_handler)
 {
 	return 0;
 }
 
-void render_destroy_window(uint8_t which)
+void render_destroy_window(u8 which)
 {
 }
 
-uint32_t *render_get_framebuffer(uint8_t which, int *pitch)
+u32* render_get_framebuffer(u8 which, s32* pitch)
 {
-	*pitch = LINEBUF_SIZE * sizeof(uint32_t);
+	*pitch = LINEBUF_SIZE * sizeof(u32);
 	if (which != last_fb) {
 		*pitch = *pitch * 2;
 	}
@@ -228,27 +228,27 @@ void process_events()
 		InputCallback();
 }
 
-void render_errorbox(char *title, char *message)
+void render_errorbox(char* title, char* message)
 {
 }
-void render_warnbox(char *title, char *message)
+void render_warnbox(char* title, char* message)
 {
 }
-void render_infobox(char *title, char *message)
+void render_infobox(char* title, char* message)
 {
 }
 
-uint8_t render_is_audio_sync(void)
+u8 render_is_audio_sync(void)
 {
 	return 1;
 }
 
-uint8_t render_should_release_on_exit(void)
+u8 render_should_release_on_exit(void)
 {
 	return 0;
 }
 
-void render_buffer_consumed(audio_source *src)
+void render_buffer_consumed(audio_source* src)
 {
 }
 
@@ -257,7 +257,7 @@ void *render_new_audio_opaque(void)
 	return NULL;
 }
 
-void render_free_audio_opaque(void *opaque)
+void render_free_audio_opaque(void* opaque)
 {
 }
 
@@ -269,48 +269,48 @@ void render_unlock_audio()
 {
 }
 
-uint32_t render_min_buffered(void)
+u32 render_min_buffered(void)
 {
 	return 4;
 }
 
-uint32_t render_audio_syncs_per_sec(void)
+u32 render_audio_syncs_per_sec(void)
 {
 	return 0;
 }
 
-void render_audio_created(audio_source *src)
+void render_audio_created(audio_source* src)
 {
 }
 
-void render_do_audio_ready(audio_source *src)
+void render_do_audio_ready(audio_source* src)
 {
-	/*int16_t *tmp = src->front;
+	/*s16* tmp = src->front;
 	src->front = src->back;
 	src->back = tmp;
 	src->front_populated = 1;
 	src->buffer_pos = 0;
 	if (all_sources_ready()) {
-		int16_t buffer[8];
-		int min_remaining_out;
-		mix_and_convert((uint8_t *)buffer, sizeof(buffer), &min_remaining_out);
+		s16 buffer[8];
+		s32 min_remaining_out;
+		mix_and_convert((u8*)buffer, sizeof(buffer), &min_remaining_out);
 		retro_audio_sample_batch(buffer, sizeof(buffer)/(2*sizeof(*buffer)));
 	}*/
 }
 
-void render_source_paused(audio_source *src, uint8_t remaining_sources)
+void render_source_paused(audio_source* src, u8 remaining_sources)
 {
 }
 
-void render_source_resumed(audio_source *src)
+void render_source_resumed(audio_source* src)
 {
 }
 
-void render_set_external_sync(uint8_t ext_sync_on)
+void render_set_external_sync(u8 ext_sync_on)
 {
 }
 
-void bindings_set_mouse_mode(uint8_t mode)
+void bindings_set_mouse_mode(u8 mode)
 {
 }
 
@@ -322,7 +322,18 @@ void bindings_reacquire_capture(void)
 {
 }
 
-char *read_bundled_file(char *name, uint32_t *sizeret)
+char* read_bundled_file(char* name, u32* sizeret)
 {
+	if (!strcmp(name, "rom.db"))
+	{
+		FILE* f = fopen(name, "r");
+		fseek(f, 0, SEEK_END);
+		*sizeret = (u32)ftell(f);
+		char* ret = malloc(*sizeret);
+		fseek(f, 0, SEEK_SET);
+		fread(ret, 1, *sizeret, f);
+		fclose(f);
+		return ret;
+	}
 	return NULL;
 }
