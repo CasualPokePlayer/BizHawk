@@ -57,6 +57,9 @@ EXPORT bool Init(u8* rom, size_t sz)
 	stype = detect_system_type(&media);
 	current_system = alloc_config_system(stype, &media, 0, 0);
 	RtcCallback = BizRtcCallback;
+	if (current_system)
+		current_system->start_context(current_system, NULL);
+
 	return !current_system;
 }
 
@@ -65,7 +68,6 @@ EXPORT void GetMemoryAreas(MemoryArea* m)
 }
 
 static bool biz_lag;
-static bool biz_started;
 static bool biz_overscan;
 
 typedef struct
@@ -124,15 +126,7 @@ EXPORT void FrameAdvance(MyFrameInfo* f)
 
 	fb = f->b.VideoBuffer;
 
-	if (biz_started)
-	{
-		current_system->resume_context(current_system);
-	}
-	else
-	{
-		current_system->start_context(current_system, NULL);
-		biz_started = true;
-	}
+	current_system->resume_context(current_system);
 
 	f->b.Width = last_width;
 	f->b.Height = last_height;
@@ -166,15 +160,13 @@ void render_destroy_window(u8 which)
 u32* render_get_framebuffer(u8 which, s32* pitch)
 {
 	*pitch = LINEBUF_SIZE * sizeof(u32);
-	if (which != last_fb) {
+	if (which != last_fb)
 		*pitch = *pitch * 2;
-	}
 
-	if (which) {
+	if (which)
 		return fb + LINEBUF_SIZE;
-	} else {
+	else
 		return fb;
-	}
 }
 
 void render_framebuffer_updated(u8 which, s32 width)
