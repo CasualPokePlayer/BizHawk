@@ -286,11 +286,11 @@ void render_audio_created(audio_source* src)
 void render_do_audio_ready(audio_source* src)
 {
 	puts("got to audio ready");
-	/*s16* tmp = src->front;
+	s16* tmp = src->front;
 	src->front = src->back;
 	src->back = tmp;
 	src->front_populated = 1;
-	src->buffer_pos = 0;
+	src->buffer_pos = 0;/*
 	if (all_sources_ready()) {
 		s16 buffer[8];
 		s32 min_remaining_out;
