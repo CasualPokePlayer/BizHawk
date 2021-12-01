@@ -84,6 +84,7 @@ static u8 last_fb;
 
 EXPORT void FrameAdvance(MyFrameInfo* f)
 {
+	puts("got here 1");
 	if (!f->Overscan)
 	{
 		overscan_top = overscan_bot = overscan_left = overscan_right = 0;
@@ -106,8 +107,10 @@ EXPORT void FrameAdvance(MyFrameInfo* f)
 		}
 	}
 
+	puts("got here 2");
 	if (f->Reset) current_system->soft_reset(current_system);
 
+	puts("got here 3");
 	for (u32 p = 0; p < 2;)
 	{
 		u32 keys = p++ ? f->P1Keys : f->P2Keys;
@@ -119,6 +122,7 @@ EXPORT void FrameAdvance(MyFrameInfo* f)
 				current_system->gamepad_up(current_system, p, i);
 		}
 	}
+	puts("got here 4");
 
 	biz_lag = true;
 	biz_time = f->Time;
@@ -131,7 +135,9 @@ EXPORT void FrameAdvance(MyFrameInfo* f)
 	}
 	else
 	{
+		puts("got here 5");
 		current_system->start_context(current_system, NULL);
+		puts("got here 6");
 		biz_started = true;
 	}
 
