@@ -193,7 +193,6 @@ void render_framebuffer_updated(u8 which, s32 width)
 		last_width = width;
 		last_height = height;
 	}
-	puts("got to exit request");
 	system_request_exit(current_system, 0);
 }
 
@@ -224,6 +223,7 @@ u32 render_overscan_bot()
 
 void process_events()
 {
+	puts("got to process events");
 	biz_lag = false;
 	if (InputCallback)
 		InputCallback();
@@ -286,6 +286,7 @@ void render_audio_created(audio_source* src)
 
 void render_do_audio_ready(audio_source* src)
 {
+	puts("got to audio ready");
 	/*s16* tmp = src->front;
 	src->front = src->back;
 	src->back = tmp;
