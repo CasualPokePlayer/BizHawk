@@ -1,6 +1,9 @@
 ﻿using System;
+using System.IO;
 
+using BizHawk.Common;
 using BizHawk.Emulation.Common;
+using BizHawk.Emulation.Cores.Properties;
 using BizHawk.Emulation.Cores.Waterbox;
 
 namespace BizHawk.Emulation.Cores.Consoles.Sega.BlastEm
@@ -17,8 +20,8 @@ namespace BizHawk.Emulation.Cores.Consoles.Sega.BlastEm
 				MaxSamples = 2048,
 				DefaultWidth = 320,
 				DefaultHeight = 224,
-				MaxWidth = 320,
-				MaxHeight = 480,
+				MaxWidth = 347,
+				MaxHeight = 294 * 2,
 				SystemId = VSystemID.Raw.GEN,
 			})
 		{
@@ -35,12 +38,21 @@ namespace BizHawk.Emulation.Cores.Consoles.Sega.BlastEm
 				SkipMemoryConsistencyCheck = comm.CorePreferences.HasFlag(CoreComm.CorePreferencesFlags.WaterboxMemoryConsistencyCheck),
 			});
 
+			var db = Util.DecompressGzipFile(new MemoryStream(Resources.BLASTEM_ROM_DB.Value));
+			_exe.AddReadonlyFile(db, "rom.db");
+
 			if (_core.Init(rom, rom.Length))
 			{
 				throw new InvalidOperationException("Core rejected the file!");
 			}
 
-			PostInit();
+			_exe.RemoveReadonlyFile("rom.db");
+
+			using (_exe.EnterExit())
+			{
+				_exe.Seal();
+			}
+			//PostInit();
 			ControllerDefinition = PicoDriveController;
 			DeterministicEmulation = true;
 
