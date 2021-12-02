@@ -133,6 +133,8 @@ EXPORT void FrameAdvance(MyFrameInfo* f)
 		biz_started = true;
 	}
 
+	memcpy(f->b.VideoBuffer, fb, sizeof fb);
+
 	f->b.Width = last_width;
 	f->b.Height = last_height;
 	f->b.Samples = 0;
