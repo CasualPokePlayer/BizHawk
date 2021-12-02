@@ -13,7 +13,7 @@ namespace BizHawk.Emulation.Cores.Consoles.Sega.BlastEm
 			public long Time;
 			public int P1Keys;
 			public int P2Keys;
-			public int Reset;
+			public bool Reset;
 			public int Overscan;
 		}
 

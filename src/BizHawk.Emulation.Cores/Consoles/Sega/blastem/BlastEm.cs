@@ -75,7 +75,6 @@ namespace BizHawk.Emulation.Cores.Consoles.Sega.BlastEm
 		{
 			"P1 Up", "P1 Down", "P1 Left", "P1 Right", "P1 B", "P1 C", "P1 A", "P1 Start", "P1 Z", "P1 Y", "P1 X", "P1 Mode",
 			"P2 Up", "P2 Down", "P2 Left", "P2 Right", "P2 B", "P2 C", "P2 A", "P2 Start", "P2 Z", "P2 Y", "P2 X", "P2 Mode",
-			"Power", "Reset"
 		};
 
 		protected override LibWaterboxCore.FrameInfo FrameAdvancePrep(IController controller, bool render, bool rendersound)
@@ -92,9 +91,9 @@ namespace BizHawk.Emulation.Cores.Consoles.Sega.BlastEm
 			return new LibBlastEm.FrameInfo
 			{
 				Time = 0,
-				P1Keys = b & 0xFFF,
-				P2Keys = (b >> 12) & 0xFFF,
-				Reset = (b >> 24) & 3,
+				P1Keys = (b >> 12) & 0xFFF,
+				P2Keys = b & 0xFFF,
+				Reset = controller.IsPressed("Reset"),
 				Overscan = 0,
 			};
 		}
