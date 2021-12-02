@@ -25,6 +25,7 @@ typedef uint16_t u16;
 typedef uint32_t u32;
 typedef uint64_t u64;
 
+static bool biz_started;
 static time_t biz_time;
 
 static time_t BizRtcCallback()
@@ -50,6 +51,7 @@ static s32 overscan_top, overscan_bot, overscan_left, overscan_right;
 EXPORT bool Init(u8* rom, size_t sz)
 {
 	render_audio_initialized(RENDER_AUDIO_S16, 53693175 / (7 * 6 * 4), 2, 4, sizeof(s16));
+	biz_started = false;
 	biz_time = 0;
 	media.buffer = alloc_sealed(sz);
 	memcpy(media.buffer, rom, sz);
@@ -57,9 +59,6 @@ EXPORT bool Init(u8* rom, size_t sz)
 	stype = detect_system_type(&media);
 	current_system = alloc_config_system(stype, &media, 0, 0);
 	RtcCallback = BizRtcCallback;
-	if (current_system)
-		current_system->start_context(current_system, NULL);
-
 	return !current_system;
 }
 
@@ -126,7 +125,15 @@ EXPORT void FrameAdvance(MyFrameInfo* f)
 
 	fb = f->b.VideoBuffer;
 
-	current_system->resume_context(current_system);
+	if (biz_started)
+	{
+		current_system->resume_context(current_system);
+	}
+	else
+	{
+		current_system->start_context(current_system, NULL);
+		biz_started = true;
+	}
 
 	f->b.Width = last_width;
 	f->b.Height = last_height;
