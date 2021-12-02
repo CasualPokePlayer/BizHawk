@@ -79,7 +79,7 @@ typedef struct
 	u32 Overscan;
 } MyFrameInfo;
 
-static u32* fb;
+static u32 fb[LINEBUF_SIZE * 294 * 2];
 static u8 last_fb;
 
 EXPORT void FrameAdvance(MyFrameInfo* f)
@@ -122,8 +122,6 @@ EXPORT void FrameAdvance(MyFrameInfo* f)
 
 	biz_lag = true;
 	biz_time = f->Time;
-
-	fb = f->b.VideoBuffer;
 
 	if (biz_started)
 	{
@@ -284,7 +282,6 @@ void render_audio_created(audio_source* src)
 
 void render_do_audio_ready(audio_source* src)
 {
-	puts("got to audio ready");
 	s16* tmp = src->front;
 	src->front = src->back;
 	src->back = tmp;
