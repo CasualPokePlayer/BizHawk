@@ -221,7 +221,6 @@ u32 render_overscan_bot()
 
 void process_events()
 {
-	puts("got to process events");
 	biz_lag = false;
 	if (InputCallback)
 		InputCallback();
@@ -230,9 +229,11 @@ void process_events()
 void render_errorbox(char* title, char* message)
 {
 }
+
 void render_warnbox(char* title, char* message)
 {
 }
+
 void render_infobox(char* title, char* message)
 {
 }
