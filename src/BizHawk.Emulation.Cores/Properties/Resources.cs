@@ -7,6 +7,7 @@ namespace BizHawk.Emulation.Cores.Properties {
 		/// <param name="embedPath">Dir separator is '<c>.</c>'. Path is relative to <c>&lt;NS></c>.</param>
 		private static byte[] ReadEmbeddedByteArray(string embedPath) => Emulation.Cores.ReflectionCache.EmbeddedResourceStream($"Resources.{embedPath}").ReadAllBytes();
 
+		internal static readonly Lazy<byte[]> BLASTEM_ROM_DB = new Lazy<byte[]>(() => ReadEmbeddedByteArray("blastem_rom.db.gz"));
 		internal static readonly Lazy<byte[]> CPC_AMSDOS_0_5_ROM = new Lazy<byte[]>(() => ReadEmbeddedByteArray("CPC_AMSDOS_0.5.ROM.gz"));
 		internal static readonly Lazy<byte[]> CPC_BASIC_1_0_ROM = new Lazy<byte[]>(() => ReadEmbeddedByteArray("CPC_BASIC_1.0.ROM.gz"));
 		internal static readonly Lazy<byte[]> CPC_BASIC_1_1_ROM = new Lazy<byte[]>(() => ReadEmbeddedByteArray("CPC_BASIC_1.1.ROM.gz"));
