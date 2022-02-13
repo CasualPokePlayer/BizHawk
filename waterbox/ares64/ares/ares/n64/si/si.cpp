@@ -55,6 +55,9 @@ auto SI::dataCRC(array_view<u8> data) const -> n8 {
 
 auto SI::run() -> void {
   auto flags = pi.ram.read<Byte>(0x3f);
+  if (flags & 0x41) {
+      printf("game polled controller and cleared pif ram at once, flags %02X\n", flags); 
+  }
 
   //controller polling
   if(flags & 0x01) {
