@@ -107,15 +107,17 @@ auto VI::refresh() -> void {
   /*u32 pitch  = vi.io.width;
   u32 width  = vi.io.width;  //vi.io.xscale <= 0x300 ? 320 : 640;
   u32 height = vi.io.yscale <= 0x400 ? 239 : 478;*/
-  u32 pitch = 640;
-  u32 width = 640;
-  u32 height = (Region::NTSC() ? 480 : 576) >> !io.serrate;
-  screen->setViewport(0, 0, width, 480);
-
-  if(vi.io.colorDepth == 0 || io.dramAddress == 0 || (signed)(vi.io.hend - vi.io.hstart) <= 0 || vi.io.hstart >= 640) {
-    //blank screen
-    memory::fill<u32>(screen->pixels(1).data(), 640 * 576);
-    return;
+  s32 hres = vi.io.hend - vi.io.hstart;
+  s32 vres = (vi.io.vend - vi.io.vstart) >> 1;
+  s32 pitch = vi.io.xscale * hres / 1024;
+  s32 width = min(vi.io.xscale * hres / 1024, 640);
+  s32 height = min(vi.io.yscale * vres / 1024, Region::NTSC() ? 480 : 576);
+  if (width > 0 && height > 0 && vi.io.colorDepth != 0 && io.dramAddress != 0 && hres > 0 && vi.io.hstart < 640)
+      screen->setViewport(0, 0, width, height);
+  else {
+      screen->setViewport(0, 0, 640, Region::NTSC() ? 480 : 576);
+      memory::fill<u32>(screen->pixels(1).data(), 640 * 576);
+      return;
   }
 
   if(vi.io.colorDepth == 2) {
