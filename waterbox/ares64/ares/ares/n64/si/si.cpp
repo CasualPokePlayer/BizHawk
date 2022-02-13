@@ -59,7 +59,7 @@ auto SI::run() -> void {
   //controller polling
   if(flags & 0x01) {
   //todo: this flag is supposed to be cleared, but doing so breaks inputs
-  //flags &= ~0x01;
+    flags &= ~0x01;
     scan();
   }
 
@@ -135,8 +135,6 @@ auto SI::scan() -> void {
     if(recv == 0xfe) break;     //end of packets
 
     //clear flags from lengths
-    if (send & 0xC0) printf("send err %02X\n", (int)send);
-    if (recv & 0xC0) printf("recv err %02X\n", (int)recv);
     send &= 0x3f;
     recv &= 0x3f;
 
