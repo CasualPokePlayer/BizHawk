@@ -1,4 +1,5 @@
 auto SI::dmaRead() -> void {
+  puts("si dma read");
   run();
   for(u32 offset = 0; offset < 64; offset += 2) {
     u16 data = bus.read<Half>(io.readAddress + offset);
@@ -10,6 +11,7 @@ auto SI::dmaRead() -> void {
 }
 
 auto SI::dmaWrite() -> void {
+  puts("si dma write");
   for(u32 offset = 0; offset < 64; offset += 2) {
     u16 data = bus.read<Half>(io.dramAddress + offset);
     bus.write<Half>(io.writeAddress + offset, data);

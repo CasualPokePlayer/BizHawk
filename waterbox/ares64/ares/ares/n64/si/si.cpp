@@ -182,7 +182,6 @@ auto SI::scan() -> void {
     //read controller state
     if(input[0] == 0x01) {
       if(channel < 4 && controllers[channel]->device) {
-        printf("offset %d\n", (int)offset);
         u32 data = controllers[channel]->device->read();
         output[0] = data >> 24;
         output[1] = data >> 16;
