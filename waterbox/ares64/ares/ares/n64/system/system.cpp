@@ -42,7 +42,7 @@ auto System::game() -> string {
 auto System::run() -> void {
   while(!vi.refreshed) cpu.main();
   vi.refreshed = false;
-  if (!pi.io.romLockout) si.run();
+  si.run();
 }
 
 auto System::load(Node::System& root, string name) -> bool {
