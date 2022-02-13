@@ -59,7 +59,7 @@ auto SI::run() -> void {
   //controller polling
   if(flags & 0x01) {
   //todo: this flag is supposed to be cleared, but doing so breaks inputs
-    flags &= ~0x01;
+  //flags &= ~0x01;
     scan();
   }
 
