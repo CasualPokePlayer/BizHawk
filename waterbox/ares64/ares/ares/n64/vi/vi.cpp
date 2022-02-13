@@ -104,10 +104,13 @@ auto VI::refresh() -> void {
   }
   #endif
 
-  u32 pitch  = vi.io.width;
+  /*u32 pitch  = vi.io.width;
   u32 width  = vi.io.width;  //vi.io.xscale <= 0x300 ? 320 : 640;
-  u32 height = vi.io.yscale <= 0x400 ? 239 : 478;
-  screen->setViewport(0, 0, width, height);
+  u32 height = vi.io.yscale <= 0x400 ? 239 : 478;*/
+  u32 pitch = 640;
+  u32 width = 640;
+  u32 height = (Region::NTSC() ? 480 : 576) >> !io.serrate;
+  screen->setViewport(0, 0, width, 480);
 
   if(vi.io.colorDepth == 0 || io.dramAddress == 0 || (signed)(vi.io.hend - vi.io.hstart) <= 0 || vi.io.hstart >= 640) {
     //blank screen
