@@ -47,17 +47,10 @@ static const vector<string> commandNames = {
 auto RDP::render() -> void {
   #if defined(VULKAN)
   if(vulkan.enable && vulkan.render()) return;
-  #endif
-
-  #if defined(MAME_RDP)
-  auto rdp = state->rdp();
-  rdp->set_current(command.current);
-  rdp->set_end(command.end);
-  rdp->set_status(command.source ? DP_STATUS_XBUS_DMA : 0);
-  rdp->process_command_list();
-  command.current = rdp->get_current();
-  return;
+  #elif defined(ANGRYLION_RDP)
+  angrylion::ProcessRDPList(); return;
   #else
+
   auto& memory = !command.source ? rdram.ram : rsp.dmem;
 
   auto fetch = [&]() -> u64 {

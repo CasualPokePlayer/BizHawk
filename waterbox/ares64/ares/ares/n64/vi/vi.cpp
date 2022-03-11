@@ -1,5 +1,9 @@
 #include <n64/n64.hpp>
 
+#if defined(ANGRYLION_RDP)
+#include "Gfx #1.3.h"
+#endif
+
 namespace ares::Nintendo64 {
 
 VI vi;
@@ -78,6 +82,16 @@ auto VI::main() -> void {
       }
       #endif
 
+      #if defined(ANGRYLION_RDP)
+      #if defined(VULKAN)
+      if (!vulkan.enable) {
+      #endif
+        angrylion::UpdateScreen();
+      #if defined(VULKAN)
+      }
+      #endif
+	  #endif
+
       refreshed = true;
       screen->frame();
     }
@@ -113,6 +127,16 @@ auto VI::refresh() -> void {
     vulkan.unmapScanoutRead();
     vulkan.endScanout();
     return;
+  }
+  #elif defined(ANGRYLION_RDP)
+  {
+      u32 width = 640;
+      u32 height = Region::PAL() ? 576 : 480;
+      screen->setViewport(0, 0, width, height);
+      u32* src = angrylion::FinalizeFrame(0);
+      u32* dst = screen->pixels(1).data();
+      memcpy(dst, src, width * height * sizeof(u32));
+      return;
   }
   #endif
 
