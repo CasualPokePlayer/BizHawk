@@ -32,7 +32,7 @@ auto RDP::load(Node::Object parent) -> void {
   // special setters because of course
   gfx.DPC_START_REG_SET = [](u32 val) { ares::Nintendo64::rdp.writeWord(0, val); };
   // 1 doesn't need to be set
-  gfx.DPC_CURRENT_REG_SET = [](u32 val) { ares::Nintendo64::rdp.writeWord(2, val); };
+  gfx.DPC_CURRENT_REG_SET = [](u32 val) { ares::Nintendo64::rdp.command.current = val; }; // HACK
   gfx.DPC_STATUS_REG_SET = [](u32 val) { ares::Nintendo64::rdp.writeWord(3, val); };
 
   gfx.VI_STATUS_REG = []() { return ares::Nintendo64::vi.readWord(0); };
