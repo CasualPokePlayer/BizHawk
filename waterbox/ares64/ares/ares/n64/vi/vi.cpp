@@ -128,8 +128,14 @@ auto VI::refresh() -> void {
     vulkan.endScanout();
     return;
   }
-  #elif defined(ANGRYLION_RDP)
+  #endif
+
+  #if defined(ANGRYLION_RDP)
+  #if defined(VULKAN)
+  if(!vulkan.enable) {
+  #else
   {
+  #endif
       u32 width = 640;
       u32 height = Region::PAL() ? 576 : 480;
       screen->setViewport(0, 0, width, height);

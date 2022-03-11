@@ -47,9 +47,13 @@ static const vector<string> commandNames = {
 auto RDP::render() -> void {
   #if defined(VULKAN)
   if(vulkan.enable && vulkan.render()) return;
-  #elif defined(ANGRYLION_RDP)
+  #endif
+
+  #if defined(ANGRYLION_RDP)
   angrylion::ProcessRDPList(); return;
-  #else
+  #endif
+  
+  #if !defined(VULKAN) && !defined(ANGRYLION_RDP)
 
   auto& memory = !command.source ? rdram.ram : rsp.dmem;
 
