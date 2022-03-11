@@ -50,10 +50,11 @@ auto RDP::render() -> void {
   #endif
 
   #if defined(ANGRYLION_RDP)
-  angrylion::ProcessRDPList(); return;
+  if (angrylion::ProcessRDPList()) {
+    command.start = command.current = command.end;
+  }
+  return;
   #endif
-  
-  #if !defined(VULKAN) && !defined(ANGRYLION_RDP)
 
   auto& memory = !command.source ? rdram.ram : rsp.dmem;
 
@@ -550,7 +551,6 @@ auto RDP::render() -> void {
 
     }
   }
-#endif
 }
 
 //0x00

@@ -18,21 +18,15 @@ auto RDP::load(Node::Object parent) -> void {
 
   #if defined(ANGRYLION_RDP)
   angrylion::GFX_INFO gfx;
+
   gfx.RDRAM = rdram.ram.data;
   gfx.DMEM = rsp.dmem.data;
-  gfx.IMEM = rsp.imem.data;
 
   gfx.DPC_START_REG = []() { return ares::Nintendo64::rdp.readWord(0 << 2); };
   gfx.DPC_END_REG = []() { return ares::Nintendo64::rdp.readWord(1 << 2); };
   gfx.DPC_CURRENT_REG = []() { return ares::Nintendo64::rdp.readWord(2 << 2); };
   gfx.DPC_STATUS_REG = []() { return ares::Nintendo64::rdp.readWord(3 << 2); };
   // rest are unused
-
-  // special setters because of course
-  gfx.DPC_START_REG_SET = [](u32 val) { ares::Nintendo64::rdp.command.start = val; }; // HACK
-  // 1 doesn't need to be set
-  gfx.DPC_CURRENT_REG_SET = [](u32 val) { ares::Nintendo64::rdp.command.current = val; }; // HACK
-  // 3 doesn't need to be set
 
   gfx.VI_STATUS_REG = []() { return ares::Nintendo64::vi.readWord(0 << 2); };
   gfx.VI_ORIGIN_REG = []() { return ares::Nintendo64::vi.readWord(1 << 2); };
