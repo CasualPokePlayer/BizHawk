@@ -18,15 +18,14 @@ auto RDP::load(Node::Object parent) -> void {
 
   #if defined(ANGRYLION_RDP)
   angrylion::GFX_INFO gfx;
-
   gfx.RDRAM = rdram.ram.data;
   gfx.DMEM = rsp.dmem.data;
   gfx.IMEM = rsp.imem.data;
 
-  gfx.DPC_START_REG = []() { return ares::Nintendo64::rdp.readWord(0); };
-  gfx.DPC_END_REG = []() { return ares::Nintendo64::rdp.readWord(1); };
-  gfx.DPC_CURRENT_REG = []() { return ares::Nintendo64::rdp.readWord(2); };
-  gfx.DPC_STATUS_REG = []() { return ares::Nintendo64::rdp.readWord(3); };
+  gfx.DPC_START_REG = []() { return ares::Nintendo64::rdp.readWord(0 << 2); };
+  gfx.DPC_END_REG = []() { return ares::Nintendo64::rdp.readWord(1 << 2); };
+  gfx.DPC_CURRENT_REG = []() { return ares::Nintendo64::rdp.readWord(2 << 2); };
+  gfx.DPC_STATUS_REG = []() { return ares::Nintendo64::rdp.readWord(3 << 2); };
   // rest are unused
 
   // special setters because of course
@@ -35,20 +34,20 @@ auto RDP::load(Node::Object parent) -> void {
   gfx.DPC_CURRENT_REG_SET = [](u32 val) { ares::Nintendo64::rdp.command.current = val; }; // HACK
   // 3 doesn't need to be set
 
-  gfx.VI_STATUS_REG = []() { return ares::Nintendo64::vi.readWord(0); };
-  gfx.VI_ORIGIN_REG = []() { return ares::Nintendo64::vi.readWord(1); };
-  gfx.VI_WIDTH_REG = []() { return ares::Nintendo64::vi.readWord(2); };
-  gfx.VI_INTR_REG = []() { return ares::Nintendo64::vi.readWord(3); };
-  gfx.VI_V_CURRENT_LINE_REG = []() { return ares::Nintendo64::vi.readWord(4); };
-  gfx.VI_TIMING_REG = []() { return ares::Nintendo64::vi.readWord(5); };
-  gfx.VI_V_SYNC_REG = []() { return ares::Nintendo64::vi.readWord(6); };
-  gfx.VI_H_SYNC_REG = []() { return ares::Nintendo64::vi.readWord(7); };
+  gfx.VI_STATUS_REG = []() { return ares::Nintendo64::vi.readWord(0 << 2); };
+  gfx.VI_ORIGIN_REG = []() { return ares::Nintendo64::vi.readWord(1 << 2); };
+  gfx.VI_WIDTH_REG = []() { return ares::Nintendo64::vi.readWord(2 << 2); };
+  gfx.VI_INTR_REG = []() { return ares::Nintendo64::vi.readWord(3 << 2); };
+  gfx.VI_V_CURRENT_LINE_REG = []() { return ares::Nintendo64::vi.readWord(4 << 2); };
+  gfx.VI_TIMING_REG = []() { return ares::Nintendo64::vi.readWord(5 << 2); };
+  gfx.VI_V_SYNC_REG = []() { return ares::Nintendo64::vi.readWord(6 << 2); };
+  gfx.VI_H_SYNC_REG = []() { return ares::Nintendo64::vi.readWord(7 << 2); };
   // 8 is unused
-  gfx.VI_H_START_REG = []() { return ares::Nintendo64::vi.readWord(9); };
-  gfx.VI_V_START_REG = []() { return ares::Nintendo64::vi.readWord(10); };
+  gfx.VI_H_START_REG = []() { return ares::Nintendo64::vi.readWord(9 << 2); };
+  gfx.VI_V_START_REG = []() { return ares::Nintendo64::vi.readWord(10 << 2); };
   // 11 is unused
-  gfx.VI_X_SCALE_REG = []() { return ares::Nintendo64::vi.readWord(12); };
-  gfx.VI_Y_SCALE_REG = []() { return ares::Nintendo64::vi.readWord(13); };
+  gfx.VI_X_SCALE_REG = []() { return ares::Nintendo64::vi.readWord(12 << 2); };
+  gfx.VI_Y_SCALE_REG = []() { return ares::Nintendo64::vi.readWord(13 << 2); };
   gfx.CheckInterrupts = []() { ares::Nintendo64::rdp.syncFull(); };
   angrylion::InitiateGFX(gfx);
   puts("starting RDP video");
