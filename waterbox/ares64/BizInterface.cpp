@@ -314,7 +314,7 @@ static inline SaveType DetectSaveType(u8* rom)
 	return ret;
 }
 
-namespace ares::Nintendo64 { extern bool RestrictAnalogRange; }
+namespace ares::Nintendo64 { extern bool RestrictAnalogRange; extern bool BobDeinterlace; }
 
 typedef struct
 {
@@ -436,6 +436,7 @@ EXPORT bool Init(LoadData* loadData, ControllerType* controllers, LoadFlags load
 	}
 
 	ares::Nintendo64::RestrictAnalogRange = loadFlags & RESTRICT_ANALOG_RANGE;
+	ares::Nintendo64::BobDeinterlace = loadFlags & BOB_DEINTERLACE;
 
 	root->power(false);
 	HackeryDoo();

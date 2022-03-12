@@ -105,6 +105,8 @@ auto VI::step(u32 clocks) -> void {
   Thread::clock += clocks;
 }
 
+bool BobDeinterlace = 0;
+
 auto VI::refresh() -> void {
   #if defined(VULKAN)
   if(vulkan.enable && gpuOutputValid) {
@@ -139,7 +141,7 @@ auto VI::refresh() -> void {
       u32 width = 640;
       u32 height = Region::PAL() ? 576 : 480;
       screen->setViewport(0, 0, width, height);
-      u32* src = angrylion::FinalizeFrame(0);
+      u32* src = angrylion::FinalizeFrame(BobDeinterlace);
       u32* dst = screen->pixels(1).data();
       memcpy(dst, src, width * height * sizeof(u32));
       return;
