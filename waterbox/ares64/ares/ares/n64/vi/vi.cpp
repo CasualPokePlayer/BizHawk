@@ -129,7 +129,7 @@ auto VI::refresh() -> void {
     return;
   }
   #endif
-/*
+
   #if defined(ANGRYLION_RDP)
   #if defined(VULKAN)
   if(!vulkan.enable) {
@@ -145,7 +145,7 @@ auto VI::refresh() -> void {
       return;
   }
   #endif
-*/
+
   u32 pitch  = vi.io.width;
   u32 width  = vi.io.width;  //vi.io.xscale <= 0x300 ? 320 : 640;
   u32 height = vi.io.yscale <= 0x400 ? 239 : 478;

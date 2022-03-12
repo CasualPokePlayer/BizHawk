@@ -1,0 +1,334 @@
+cxx ares/ares/component/processor/sm5k/sm5k.cpp
+In file included from ./ares/nall/string.hpp:366,
+                 from ./ares/nall/chrono.hpp:4,
+                 from ./ares/ares/ares/ares.hpp:17,
+                 from ares/ares/component/processor/sm5k/sm5k.cpp:1:
+./ares/nall/string/markup/bml.hpp: In function ‘nall::Markup::Node nall::BML::unserialize(const nall::string&, nall::string_view)’:
+./ares/nall/string/markup/bml.hpp:153:31: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+  153 |   return (Markup::SharedNode&)node;
+      |                               ^~~~
+In file included from ./ares/ares/ares/ares.hpp:84,
+                 from ares/ares/component/processor/sm5k/sm5k.cpp:1:
+./ares/ares/ares/random.hpp: In member function ‘void ares::Random::serialize(nall::serializer&)’:
+./ares/ares/ares/random.hpp:77:13: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   77 |     s((u32&)_entropy);
+      |             ^~~~~~~~
+cxx ares/ares/ares/ares.cpp
+In file included from ./ares/nall/string.hpp:366,
+                 from ./ares/nall/chrono.hpp:4,
+                 from ./ares/ares/ares/ares.hpp:17,
+                 from ares/ares/ares/ares.cpp:1:
+./ares/nall/string/markup/bml.hpp: In function ‘nall::Markup::Node nall::BML::unserialize(const nall::string&, nall::string_view)’:
+./ares/nall/string/markup/bml.hpp:153:31: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+  153 |   return (Markup::SharedNode&)node;
+      |                               ^~~~
+In file included from ./ares/ares/ares/ares.hpp:84,
+                 from ares/ares/ares/ares.cpp:1:
+./ares/ares/ares/random.hpp: In member function ‘void ares::Random::serialize(nall::serializer&)’:
+./ares/ares/ares/random.hpp:77:13: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   77 |     s((u32&)_entropy);
+      |             ^~~~~~~~
+cxx ares/ares/ares/memory/fixed-allocator.cpp
+In file included from ./ares/nall/string.hpp:366,
+                 from ./ares/nall/chrono.hpp:4,
+                 from ./ares/ares/ares/ares.hpp:17,
+                 from ares/ares/ares/memory/fixed-allocator.cpp:1:
+./ares/nall/string/markup/bml.hpp: In function ‘nall::Markup::Node nall::BML::unserialize(const nall::string&, nall::string_view)’:
+./ares/nall/string/markup/bml.hpp:153:31: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+  153 |   return (Markup::SharedNode&)node;
+      |                               ^~~~
+In file included from ./ares/ares/ares/ares.hpp:84,
+                 from ares/ares/ares/memory/fixed-allocator.cpp:1:
+./ares/ares/ares/random.hpp: In member function ‘void ares::Random::serialize(nall::serializer&)’:
+./ares/ares/ares/random.hpp:77:13: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   77 |     s((u32&)_entropy);
+      |             ^~~~~~~~
+cxx ares/ares/n64/memory/memory.cpp
+In file included from ./ares/nall/string.hpp:366,
+                 from ./ares/nall/chrono.hpp:4,
+                 from ./ares/ares/ares/ares.hpp:17,
+                 from ./ares/ares/n64/n64.hpp:4,
+                 from ares/ares/n64/memory/memory.cpp:1:
+./ares/nall/string/markup/bml.hpp: In function ‘nall::Markup::Node nall::BML::unserialize(const nall::string&, nall::string_view)’:
+./ares/nall/string/markup/bml.hpp:153:31: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+  153 |   return (Markup::SharedNode&)node;
+      |                               ^~~~
+In file included from ./ares/ares/ares/ares.hpp:84,
+                 from ./ares/ares/n64/n64.hpp:4,
+                 from ares/ares/n64/memory/memory.cpp:1:
+./ares/ares/ares/random.hpp: In member function ‘void ares::Random::serialize(nall::serializer&)’:
+./ares/ares/ares/random.hpp:77:13: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   77 |     s((u32&)_entropy);
+      |             ^~~~~~~~
+cxx ares/ares/n64/system/system.cpp
+In file included from ./ares/nall/string.hpp:366,
+                 from ./ares/nall/chrono.hpp:4,
+                 from ./ares/ares/ares/ares.hpp:17,
+                 from ./ares/ares/n64/n64.hpp:4,
+                 from ares/ares/n64/system/system.cpp:1:
+./ares/nall/string/markup/bml.hpp: In function ‘nall::Markup::Node nall::BML::unserialize(const nall::string&, nall::string_view)’:
+./ares/nall/string/markup/bml.hpp:153:31: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+  153 |   return (Markup::SharedNode&)node;
+      |                               ^~~~
+In file included from ./ares/ares/ares/ares.hpp:84,
+                 from ./ares/ares/n64/n64.hpp:4,
+                 from ares/ares/n64/system/system.cpp:1:
+./ares/ares/ares/random.hpp: In member function ‘void ares::Random::serialize(nall::serializer&)’:
+./ares/ares/ares/random.hpp:77:13: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   77 |     s((u32&)_entropy);
+      |             ^~~~~~~~
+cxx ares/ares/n64/cartridge/cartridge.cpp
+In file included from ./ares/nall/string.hpp:366,
+                 from ./ares/nall/chrono.hpp:4,
+                 from ./ares/ares/ares/ares.hpp:17,
+                 from ./ares/ares/n64/n64.hpp:4,
+                 from ares/ares/n64/cartridge/cartridge.cpp:1:
+./ares/nall/string/markup/bml.hpp: In function ‘nall::Markup::Node nall::BML::unserialize(const nall::string&, nall::string_view)’:
+./ares/nall/string/markup/bml.hpp:153:31: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+  153 |   return (Markup::SharedNode&)node;
+      |                               ^~~~
+In file included from ./ares/ares/ares/ares.hpp:84,
+                 from ./ares/ares/n64/n64.hpp:4,
+                 from ares/ares/n64/cartridge/cartridge.cpp:1:
+./ares/ares/ares/random.hpp: In member function ‘void ares::Random::serialize(nall::serializer&)’:
+./ares/ares/ares/random.hpp:77:13: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   77 |     s((u32&)_entropy);
+      |             ^~~~~~~~
+cxx ares/ares/n64/controller/controller.cpp
+In file included from ./ares/nall/string.hpp:366,
+                 from ./ares/nall/chrono.hpp:4,
+                 from ./ares/ares/ares/ares.hpp:17,
+                 from ./ares/ares/n64/n64.hpp:4,
+                 from ares/ares/n64/controller/controller.cpp:1:
+./ares/nall/string/markup/bml.hpp: In function ‘nall::Markup::Node nall::BML::unserialize(const nall::string&, nall::string_view)’:
+./ares/nall/string/markup/bml.hpp:153:31: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+  153 |   return (Markup::SharedNode&)node;
+      |                               ^~~~
+In file included from ./ares/ares/ares/ares.hpp:84,
+                 from ./ares/ares/n64/n64.hpp:4,
+                 from ares/ares/n64/controller/controller.cpp:1:
+./ares/ares/ares/random.hpp: In member function ‘void ares::Random::serialize(nall::serializer&)’:
+./ares/ares/ares/random.hpp:77:13: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   77 |     s((u32&)_entropy);
+      |             ^~~~~~~~
+cxx ares/ares/n64/dd/dd.cpp
+In file included from ./ares/nall/string.hpp:366,
+                 from ./ares/nall/chrono.hpp:4,
+                 from ./ares/ares/ares/ares.hpp:17,
+                 from ./ares/ares/n64/n64.hpp:4,
+                 from ares/ares/n64/dd/dd.cpp:1:
+./ares/nall/string/markup/bml.hpp: In function ‘nall::Markup::Node nall::BML::unserialize(const nall::string&, nall::string_view)’:
+./ares/nall/string/markup/bml.hpp:153:31: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+  153 |   return (Markup::SharedNode&)node;
+      |                               ^~~~
+In file included from ./ares/ares/ares/ares.hpp:84,
+                 from ./ares/ares/n64/n64.hpp:4,
+                 from ares/ares/n64/dd/dd.cpp:1:
+./ares/ares/ares/random.hpp: In member function ‘void ares::Random::serialize(nall::serializer&)’:
+./ares/ares/ares/random.hpp:77:13: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   77 |     s((u32&)_entropy);
+      |             ^~~~~~~~
+cxx ares/ares/n64/mi/mi.cpp
+In file included from ./ares/nall/string.hpp:366,
+                 from ./ares/nall/chrono.hpp:4,
+                 from ./ares/ares/ares/ares.hpp:17,
+                 from ./ares/ares/n64/n64.hpp:4,
+                 from ares/ares/n64/mi/mi.cpp:1:
+./ares/nall/string/markup/bml.hpp: In function ‘nall::Markup::Node nall::BML::unserialize(const nall::string&, nall::string_view)’:
+./ares/nall/string/markup/bml.hpp:153:31: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+  153 |   return (Markup::SharedNode&)node;
+      |                               ^~~~
+In file included from ./ares/ares/ares/ares.hpp:84,
+                 from ./ares/ares/n64/n64.hpp:4,
+                 from ares/ares/n64/mi/mi.cpp:1:
+./ares/ares/ares/random.hpp: In member function ‘void ares::Random::serialize(nall::serializer&)’:
+./ares/ares/ares/random.hpp:77:13: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   77 |     s((u32&)_entropy);
+      |             ^~~~~~~~
+cxx ares/ares/n64/vi/vi.cpp
+In file included from ./ares/nall/string.hpp:366,
+                 from ./ares/nall/chrono.hpp:4,
+                 from ./ares/ares/ares/ares.hpp:17,
+                 from ./ares/ares/n64/n64.hpp:4,
+                 from ares/ares/n64/vi/vi.cpp:1:
+./ares/nall/string/markup/bml.hpp: In function ‘nall::Markup::Node nall::BML::unserialize(const nall::string&, nall::string_view)’:
+./ares/nall/string/markup/bml.hpp:153:31: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+  153 |   return (Markup::SharedNode&)node;
+      |                               ^~~~
+In file included from ./ares/ares/ares/ares.hpp:84,
+                 from ./ares/ares/n64/n64.hpp:4,
+                 from ares/ares/n64/vi/vi.cpp:1:
+./ares/ares/ares/random.hpp: In member function ‘void ares::Random::serialize(nall::serializer&)’:
+./ares/ares/ares/random.hpp:77:13: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   77 |     s((u32&)_entropy);
+      |             ^~~~~~~~
+cxx ares/ares/n64/ai/ai.cpp
+In file included from ./ares/nall/string.hpp:366,
+                 from ./ares/nall/chrono.hpp:4,
+                 from ./ares/ares/ares/ares.hpp:17,
+                 from ./ares/ares/n64/n64.hpp:4,
+                 from ares/ares/n64/ai/ai.cpp:1:
+./ares/nall/string/markup/bml.hpp: In function ‘nall::Markup::Node nall::BML::unserialize(const nall::string&, nall::string_view)’:
+./ares/nall/string/markup/bml.hpp:153:31: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+  153 |   return (Markup::SharedNode&)node;
+      |                               ^~~~
+In file included from ./ares/ares/ares/ares.hpp:84,
+                 from ./ares/ares/n64/n64.hpp:4,
+                 from ares/ares/n64/ai/ai.cpp:1:
+./ares/ares/ares/random.hpp: In member function ‘void ares::Random::serialize(nall::serializer&)’:
+./ares/ares/ares/random.hpp:77:13: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   77 |     s((u32&)_entropy);
+      |             ^~~~~~~~
+cxx ares/ares/n64/pi/pi.cpp
+In file included from ./ares/nall/string.hpp:366,
+                 from ./ares/nall/chrono.hpp:4,
+                 from ./ares/ares/ares/ares.hpp:17,
+                 from ./ares/ares/n64/n64.hpp:4,
+                 from ares/ares/n64/pi/pi.cpp:1:
+./ares/nall/string/markup/bml.hpp: In function ‘nall::Markup::Node nall::BML::unserialize(const nall::string&, nall::string_view)’:
+./ares/nall/string/markup/bml.hpp:153:31: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+  153 |   return (Markup::SharedNode&)node;
+      |                               ^~~~
+In file included from ./ares/ares/ares/ares.hpp:84,
+                 from ./ares/ares/n64/n64.hpp:4,
+                 from ares/ares/n64/pi/pi.cpp:1:
+./ares/ares/ares/random.hpp: In member function ‘void ares::Random::serialize(nall::serializer&)’:
+./ares/ares/ares/random.hpp:77:13: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   77 |     s((u32&)_entropy);
+      |             ^~~~~~~~
+cxx ares/ares/n64/ri/ri.cpp
+In file included from ./ares/nall/string.hpp:366,
+                 from ./ares/nall/chrono.hpp:4,
+                 from ./ares/ares/ares/ares.hpp:17,
+                 from ./ares/ares/n64/n64.hpp:4,
+                 from ares/ares/n64/ri/ri.cpp:1:
+./ares/nall/string/markup/bml.hpp: In function ‘nall::Markup::Node nall::BML::unserialize(const nall::string&, nall::string_view)’:
+./ares/nall/string/markup/bml.hpp:153:31: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+  153 |   return (Markup::SharedNode&)node;
+      |                               ^~~~
+In file included from ./ares/ares/ares/ares.hpp:84,
+                 from ./ares/ares/n64/n64.hpp:4,
+                 from ares/ares/n64/ri/ri.cpp:1:
+./ares/ares/ares/random.hpp: In member function ‘void ares::Random::serialize(nall::serializer&)’:
+./ares/ares/ares/random.hpp:77:13: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   77 |     s((u32&)_entropy);
+      |             ^~~~~~~~
+cxx ares/ares/n64/si/si.cpp
+In file included from ./ares/nall/string.hpp:366,
+                 from ./ares/nall/chrono.hpp:4,
+                 from ./ares/ares/ares/ares.hpp:17,
+                 from ./ares/ares/n64/n64.hpp:4,
+                 from ares/ares/n64/si/si.cpp:1:
+./ares/nall/string/markup/bml.hpp: In function ‘nall::Markup::Node nall::BML::unserialize(const nall::string&, nall::string_view)’:
+./ares/nall/string/markup/bml.hpp:153:31: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+  153 |   return (Markup::SharedNode&)node;
+      |                               ^~~~
+In file included from ./ares/ares/ares/ares.hpp:84,
+                 from ./ares/ares/n64/n64.hpp:4,
+                 from ares/ares/n64/si/si.cpp:1:
+./ares/ares/ares/random.hpp: In member function ‘void ares::Random::serialize(nall::serializer&)’:
+./ares/ares/ares/random.hpp:77:13: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   77 |     s((u32&)_entropy);
+      |             ^~~~~~~~
+cxx ares/ares/n64/rdram/rdram.cpp
+In file included from ./ares/nall/string.hpp:366,
+                 from ./ares/nall/chrono.hpp:4,
+                 from ./ares/ares/ares/ares.hpp:17,
+                 from ./ares/ares/n64/n64.hpp:4,
+                 from ares/ares/n64/rdram/rdram.cpp:1:
+./ares/nall/string/markup/bml.hpp: In function ‘nall::Markup::Node nall::BML::unserialize(const nall::string&, nall::string_view)’:
+./ares/nall/string/markup/bml.hpp:153:31: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+  153 |   return (Markup::SharedNode&)node;
+      |                               ^~~~
+In file included from ./ares/ares/ares/ares.hpp:84,
+                 from ./ares/ares/n64/n64.hpp:4,
+                 from ares/ares/n64/rdram/rdram.cpp:1:
+./ares/ares/ares/random.hpp: In member function ‘void ares::Random::serialize(nall::serializer&)’:
+./ares/ares/ares/random.hpp:77:13: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   77 |     s((u32&)_entropy);
+      |             ^~~~~~~~
+cxx ares/ares/n64/cpu/cpu.cpp
+In file included from ./ares/nall/string.hpp:366,
+                 from ./ares/nall/chrono.hpp:4,
+                 from ./ares/ares/ares/ares.hpp:17,
+                 from ./ares/ares/n64/n64.hpp:4,
+                 from ares/ares/n64/cpu/cpu.cpp:1:
+./ares/nall/string/markup/bml.hpp: In function ‘nall::Markup::Node nall::BML::unserialize(const nall::string&, nall::string_view)’:
+./ares/nall/string/markup/bml.hpp:153:31: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+  153 |   return (Markup::SharedNode&)node;
+      |                               ^~~~
+In file included from ./ares/ares/ares/ares.hpp:84,
+                 from ./ares/ares/n64/n64.hpp:4,
+                 from ares/ares/n64/cpu/cpu.cpp:1:
+./ares/ares/ares/random.hpp: In member function ‘void ares::Random::serialize(nall::serializer&)’:
+./ares/ares/ares/random.hpp:77:13: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   77 |     s((u32&)_entropy);
+      |             ^~~~~~~~
+cxx ares/ares/n64/rdp/rdp.cpp
+In file included from ./ares/nall/string.hpp:366,
+                 from ./ares/nall/chrono.hpp:4,
+                 from ./ares/ares/ares/ares.hpp:17,
+                 from ./ares/ares/n64/n64.hpp:4,
+                 from ares/ares/n64/rdp/rdp.cpp:1:
+./ares/nall/string/markup/bml.hpp: In function ‘nall::Markup::Node nall::BML::unserialize(const nall::string&, nall::string_view)’:
+./ares/nall/string/markup/bml.hpp:153:31: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+  153 |   return (Markup::SharedNode&)node;
+      |                               ^~~~
+In file included from ./ares/ares/ares/ares.hpp:84,
+                 from ./ares/ares/n64/n64.hpp:4,
+                 from ares/ares/n64/rdp/rdp.cpp:1:
+./ares/ares/ares/random.hpp: In member function ‘void ares::Random::serialize(nall::serializer&)’:
+./ares/ares/ares/random.hpp:77:13: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   77 |     s((u32&)_entropy);
+      |             ^~~~~~~~
+cxx ares/ares/n64/rsp/rsp.cpp
+In file included from ./ares/nall/string.hpp:366,
+                 from ./ares/nall/chrono.hpp:4,
+                 from ./ares/ares/ares/ares.hpp:17,
+                 from ./ares/ares/n64/n64.hpp:4,
+                 from ares/ares/n64/rsp/rsp.cpp:1:
+./ares/nall/string/markup/bml.hpp: In function ‘nall::Markup::Node nall::BML::unserialize(const nall::string&, nall::string_view)’:
+./ares/nall/string/markup/bml.hpp:153:31: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+  153 |   return (Markup::SharedNode&)node;
+      |                               ^~~~
+In file included from ./ares/ares/ares/ares.hpp:84,
+                 from ./ares/ares/n64/n64.hpp:4,
+                 from ares/ares/n64/rsp/rsp.cpp:1:
+./ares/ares/ares/random.hpp: In member function ‘void ares::Random::serialize(nall::serializer&)’:
+./ares/ares/ares/random.hpp:77:13: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   77 |     s((u32&)_entropy);
+      |             ^~~~~~~~
+In file included from ares/ares/n64/rsp/rsp.cpp:14:
+ares/ares/n64/rsp/serialization.cpp: In member function ‘void ares::Nintendo64::RSP::DMA::Request::serialize(nall::serializer&)’:
+ares/ares/n64/rsp/serialization.cpp:53:11: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   53 |   s((u32&)type);
+      |           ^~~~
+cxx ares/thirdparty/angrylion-rdp/mylittle-nocomment/main.cpp
+cxx ares/thirdparty/angrylion-rdp/mylittle-nocomment/n64video.cpp
+ares/thirdparty/angrylion-rdp/mylittle-nocomment/n64video.cpp: In function ‘void angrylion::fatalerror(const char*, ...)’:
+ares/thirdparty/angrylion-rdp/mylittle-nocomment/n64video.cpp:30:9: warning: format not a string literal and no format arguments [-Wformat-security]
+   30 |  printf(VsprintfBuffer);
+      |         ^~~~~~~~~~~~~~
+ares/thirdparty/angrylion-rdp/mylittle-nocomment/n64video.cpp: In function ‘void angrylion::popmessage(const char*, ...)’:
+ares/thirdparty/angrylion-rdp/mylittle-nocomment/n64video.cpp:41:9: warning: format not a string literal and no format arguments [-Wformat-security]
+   41 |  printf(VsprintfBuffer);
+      |         ^~~~~~~~~~~~~~
+cxx BizInterface.cpp
+In file included from ./ares/nall/string.hpp:366,
+                 from ./ares/nall/chrono.hpp:4,
+                 from ./ares/ares/ares/ares.hpp:17,
+                 from ./ares/ares/n64/n64.hpp:4,
+                 from BizInterface.cpp:1:
+./ares/nall/string/markup/bml.hpp: In function ‘nall::Markup::Node nall::BML::unserialize(const nall::string&, nall::string_view)’:
+./ares/nall/string/markup/bml.hpp:153:31: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+  153 |   return (Markup::SharedNode&)node;
+      |                               ^~~~
+In file included from ./ares/ares/ares/ares.hpp:84,
+                 from ./ares/ares/n64/n64.hpp:4,
+                 from BizInterface.cpp:1:
+./ares/ares/ares/random.hpp: In member function ‘void ares::Random::serialize(nall::serializer&)’:
+./ares/ares/ares/random.hpp:77:13: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+   77 |     s((u32&)_entropy);
+      |             ^~~~~~~~
+ld /home/wesley/Desktop/nymashock/waterbox/ares64/obj/release/ares64.wbx
+Release build of ares64.wbx installed.

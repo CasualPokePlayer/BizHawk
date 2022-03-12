@@ -8,7 +8,7 @@ CXXFLAGS := -std=c++17 -msse4.2 \
 	-Werror=int-to-pointer-cast -Wno-unused-but-set-variable -Wno-delete-non-virtual-dtor \
 	-Wno-parentheses -Wno-reorder -Wno-unused-variable \
 	-Wno-sign-compare -Wno-switch -Wno-unused-local-typedefs \
-	-fno-strict-aliasing -fwrapv -fno-operator-names \
+	-fno-operator-names \
 	-I.$(ANGRYLION_PATH) -DANGRYLION_RDP -DWATERBOXED
 
 TARGET = ares64.wbx
