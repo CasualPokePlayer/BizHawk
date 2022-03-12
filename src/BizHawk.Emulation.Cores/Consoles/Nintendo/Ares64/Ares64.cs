@@ -15,7 +15,7 @@ namespace BizHawk.Emulation.Cores.Consoles.Nintendo.Ares64
 		private readonly LibAres64 _core;
 
 		[CoreConstructor(VSystemID.Raw.N64)]
-		public Ares64(CoreLoadParameters<object, Ares64SyncSettings> lp)
+		public Ares64(CoreLoadParameters<Ares64Settings, Ares64SyncSettings> lp)
 			: base(lp.Comm, new Configuration
 			{
 				DefaultWidth = 640,
@@ -28,6 +28,7 @@ namespace BizHawk.Emulation.Cores.Consoles.Nintendo.Ares64
 				SystemId = VSystemID.Raw.N64,
 			})
 		{
+			_settings = lp.Settings ?? new();
 			_syncSettings = lp.SyncSettings ?? new();
 
 			ControllerSettings = new[]
