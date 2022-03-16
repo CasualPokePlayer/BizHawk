@@ -200,25 +200,28 @@ void Semaphore_Free(Semaphore* sema)
 
 void Semaphore_Reset(Semaphore* sema)
 {
-	__atomic_store_n((int*)sema, 0, __ATOMIC_RELAXED);
+    volatile int* s = (int*)sema;
+	__atomic_store_n(s, 0, __ATOMIC_RELAXED);
 }
 
 void Semaphore_Wait(Semaphore* sema)
 {
 	int res;
+    volatile int* s = (int*)sema;
 loop:
-	res = __atomic_load_n((int*)sema, __ATOMIC_RELAXED);
+	res = __atomic_load_n(s, __ATOMIC_RELAXED);
 	if (!res) goto loop;
-	__atomic_sub_fetch((int*)sema, 1, __ATOMIC_RELAXED);
-	if (__atomic_load_n((int*)sema, __ATOMIC_RELAXED) < 0)
+	__atomic_sub_fetch(s, 1, __ATOMIC_RELAXED);
+	if (__atomic_load_n(s, __ATOMIC_RELAXED) < 0)
 	{
-		__atomic_store_n((int*)sema, 0, __ATOMIC_RELAXED);
+		__atomic_store_n(s, 0, __ATOMIC_RELAXED);
 	}
 }
 
 void Semaphore_Post(Semaphore* sema, int count)
 {
-	__atomic_add_fetch((int*)sema, (int)count, __ATOMIC_RELAXED);
+    volatile int* s = (int*)sema;
+	__atomic_add_fetch(s, count, __ATOMIC_RELAXED);
 }
 
 Mutex* Mutex_Create()
