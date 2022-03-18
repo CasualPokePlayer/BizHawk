@@ -74,7 +74,7 @@ auto VI::main() -> void {
   if(++io.vcounter >= (Region::NTSC() ? 262 : 312) + io.field) {
     io.vcounter = 0;
     io.field = io.field + 1 & io.serrate;
-    if(!io.field) {
+    if(!io.field | 1) { // wtf ares?
       #if defined(VULKAN)
       if (vulkan.enable) {
         gpuOutputValid = vulkan.scanoutAsync(io.field);
@@ -90,7 +90,7 @@ auto VI::main() -> void {
       #if defined(VULKAN)
       }
       #endif
-	  #endif
+      #endif
 
       refreshed = true;
       screen->frame();
