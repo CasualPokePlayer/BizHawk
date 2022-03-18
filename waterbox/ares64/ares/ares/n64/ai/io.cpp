@@ -52,6 +52,7 @@ auto AI::writeWord(u32 address, u32 data_) -> void {
 
   if(address == 4) {
     //AI_DACRATE
+    printf("AI_DACRATE write, val = %d", data_);
     auto frequency = dac.frequency;
     io.dacRate = data.bit(0,13);
     dac.frequency = max(1, system.frequency() / 4 / (io.dacRate + 1)) * 1.037;
@@ -59,8 +60,8 @@ auto AI::writeWord(u32 address, u32 data_) -> void {
     if(frequency != dac.frequency) {
       stream->setFrequency(dac.frequency);
       printf("freq change %d", dac.frequency);
-      fflush(stdout);
     }
+    fflush(stdout);
   }
 
   if(address == 5) {
