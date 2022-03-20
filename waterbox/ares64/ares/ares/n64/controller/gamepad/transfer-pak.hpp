@@ -33,7 +33,7 @@ struct TransferPak {
       mbc = new Mbc(rom, ram);
       return;
     }
-    rom.allocate(min(32_KiB, romFp->size()));
+    rom.allocate(max(32_KiB, romFp->size()));
     rom.load(romFp);
     u8 cartType = rom.read<Byte>(0x147);
     u8 ramBanks;
