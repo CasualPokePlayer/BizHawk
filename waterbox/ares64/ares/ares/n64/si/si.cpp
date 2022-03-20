@@ -231,12 +231,10 @@ auto SI::scan() -> void {
 
           //transfer pak
           if(auto& transferPak = gamepad->transferPak) {
-            //puts("attempting transfer pak read");
             u32 address = (input[1] << 8 | input[2] << 0) & ~31;
             if(addressCRC(address) == (n5)input[2]) {
               for(u32 index : range(recv - 1)) {
                 output[index] = transferPak.read(address++);
-                //printf("%04X, %02X\n", address - 1, (u32)output[index]);
               }
               output[recv - 1] = dataCRC({&output[0], recv - 1});
               valid = 1;
@@ -274,12 +272,10 @@ auto SI::scan() -> void {
 
           //transfer pak
           if(auto& transferPak = gamepad->transferPak) {
-            //puts("attempting transfer pak write");
             u32 address = (input[1] << 8 | input[2] << 0) & ~31;
             if(addressCRC(address) == (n5)input[2]) {
               for(u32 index : range(send - 3)) {
                 transferPak.write(address++, input[3 + index]);
-                //printf("%04X, %02X\n", address - 1, (u32)input[3 + index]);
               }
               output[0] = dataCRC({&input[3], send - 3});
               valid = 1;

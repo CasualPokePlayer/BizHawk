@@ -91,12 +91,9 @@ struct TransferPak {
       status.bit(4,5) = 0;
       status.bit(6)   = !(bool)rom;
       status.bit(7)   = pakEnable;
-      if (resetState == 3 && cartEnable) resetState.bit(0) = 0;
-      else if (resetState && cartEnable) resetState.bit(1) = 0;
-      else if (resetState == 2 && !cartEnable) resetState = 1;
-      else if (resetState == 1 && !cartEnable) resetState = 0;
-      return cartEnable ? 0x89 : 0x80;
-      // hack, pokemon stadium seems to expect this???
+      if (cartEnable && resetState == 3) resetState = 2;
+      else if (!cartEnable && resetState == 2) resetState = 1;
+      else if (!cartEnable && resetState == 1) resetState = 0;
       return status;
     }
     if (!cartEnable) return unmapped;
@@ -108,8 +105,14 @@ struct TransferPak {
     n8 data = data_;
 
     if(address <= 0x1fff) {
+      bool wasEnabled = pakEnable;
       if(data == 0x84) pakEnable = 1;
       if(data == 0xfe) pakEnable = 0;
+      if (!wasEnabled && pakEnable) {
+        addressBank = 3;
+        cartEnable = 0;
+        resetState = 0;
+      }
       return;
     }
     if (!pakEnable) return;
@@ -125,17 +128,15 @@ struct TransferPak {
         resetState = 3;
         mbc->reset();
       }
-      if (wasEnabled && !cartEnable) {
-        resetState = 2;
-      }
       return;
     }
+    if (!cartEnable) return;
     return mbc->write(0x4000 * addressBank + address - 0x4000, data_);
   }
 
 private:
-  n2 addressBank = 3;
-  n1 cartEnable = 0;
-  n2 resetState = 0;
+  n2 addressBank;
+  n1 cartEnable;
+  n2 resetState;
   n1 pakEnable = 0;
 };
