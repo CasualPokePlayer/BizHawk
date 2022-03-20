@@ -13,6 +13,8 @@ typedef enum
 	Standard,
 	Mempak,
 	Rumblepak,
+    Transferpak,
+    Mouse,
 } ControllerType;
 
 typedef enum
@@ -91,6 +93,7 @@ static BizPlatform* platform = nullptr;
 static array_view<u8>* pifData = nullptr;
 static array_view<u8>* romData = nullptr;
 static array_view<u8>* saveData = nullptr;
+static array_view<u8>* gbRomData = nullptr;
 
 static inline void HackeryDoo()
 {
@@ -322,6 +325,8 @@ typedef struct
 	u32 PifLen;
 	u8* RomData;
 	u32 RomLen;
+	u8* GbRomData; // todo: we can have 4 of these
+	u32 GbRomLen;
 } LoadData;
 
 typedef enum
@@ -386,6 +391,15 @@ EXPORT bool Init(LoadData* loadData, ControllerType* controllers, LoadFlags load
 		platform->bizpak->append(name, *saveData);
 	}
 
+	if (loadData->GbRomData) {
+		name = "gbrom.pak";
+		len = loadData->GbRomLen;
+		data = new u8[len];
+		memcpy(data, loadData->GbRomData, len);
+		gbRomData = new array_view<u8>(data, len);
+		platform->bizpak->append(name, *gbRomData);
+	}
+
 	ares::platform = platform;
 
 	if (!ares::Nintendo64::load(root, {"[Nintendo] Nintendo 64 (", region, ")"}))
@@ -416,6 +430,7 @@ EXPORT bool Init(LoadData* loadData, ControllerType* controllers, LoadFlags load
 			{
 				case Mempak: name = "Controller Pak"; break;
 				case Rumblepak: name = "Rumble Pak"; break;
+				case Transferpak: name = "Transfer Pak"; break;
 				default: continue;
 			}
 
