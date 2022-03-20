@@ -91,13 +91,13 @@ struct TransferPak {
       status.bit(4,5) = 0;
       status.bit(6)   = !(bool)rom;
       status.bit(7)   = pakEnable;
-      if (cartEnable && resetState == 3) resetState = 2; hackCooldown = 0xff;
+      if (cartEnable && resetState == 3) { resetState = 2; hackCooldown = 0x200; }
       else if (!cartEnable && resetState == 2) resetState = 1;
       else if (!cartEnable && resetState == 1) resetState = 0;
       return status;
     }
     if (!cartEnable) return unmapped;
-    if (hackCooldown && --hackCooldown && resetState == 2) resetState = 0;
+    if (hackCooldown && --hackCooldown && resetState == 2) resetState = 3;
     return mbc->read(0x4000 * addressBank + address - 0x4000);
   }
 
@@ -140,5 +140,5 @@ private:
   n1 cartEnable;
   n2 resetState;
   n1 pakEnable = 0;
-  n8 hackCooldown = 0;
+  n16 hackCooldown = 0;
 };
