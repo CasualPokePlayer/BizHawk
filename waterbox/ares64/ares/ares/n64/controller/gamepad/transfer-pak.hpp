@@ -89,8 +89,10 @@ struct TransferPak {
       status.bit(1)   = 0;
       status.bit(2,3) = resetState;
       status.bit(4,5) = 0;
-      status.bit(6)   = !rom;
+      status.bit(6)   = !(bool)rom;
       status.bit(7)   = pakEnable;
+      if (resetState == 3) resetState.bit(0) = 0;
+      else if (resetState) resetState.bit(1) = 0;
       return status;
     }
     if (!cartEnable) return unmapped;
@@ -112,16 +114,20 @@ struct TransferPak {
       return;
     }
     if(address <= 0x3fff) {
+      bool wasDisabled = !cartEnable;
       cartEnable = data.bit(0);
-      resetState = data.bit(2,3);
+      if (wasDisabled && cartEnable) {
+        resetState = 3;
+        mbc->reset();
+      }
       return;
     }
     return mbc->write(0x4000 * addressBank + address - 0x4000, data_);
   }
 
 private:
-  n2 addressBank;
-  n1 cartEnable;
-  n2 resetState;
-  n1 pakEnable;
+  n2 addressBank = 3;
+  n1 cartEnable = 0;
+  n2 resetState = 0;
+  n1 pakEnable = 0;
 };

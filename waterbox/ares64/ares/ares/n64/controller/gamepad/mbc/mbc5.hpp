@@ -1,5 +1,11 @@
 struct Mbc5 : Mbc {
-  explicit Mbc5(Memory::Readable& rom_, Memory::Writable& ram_) : Mbc(rom_, ram_) {}
+  explicit Mbc5(Memory::Readable& rom_, Memory::Writable& ram_) : Mbc(rom_, ram_) { reset(); }
+
+  auto reset() -> void override {
+    romBank = 1;
+    ramBank = 0;
+    ramEnable = 0;
+  }
 
   auto read(u16 address) -> u8 override {
     static constexpr u8 unmapped = 0xff;
@@ -38,7 +44,7 @@ struct Mbc5 : Mbc {
   }
 
 private:
-  n9 romBank = 1;
-  n4 ramBank = 0;
-  n1 ramEnable = 0;
+  n9 romBank;
+  n4 ramBank;
+  n1 ramEnable;
 };

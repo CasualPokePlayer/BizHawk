@@ -1,5 +1,5 @@
 struct Mbc3 : Mbc {
-  explicit Mbc3(Memory::Readable& rom_, Memory::Writable& ram_, bool rtc) : Mbc(rom_, ram_), hasRtc(rtc) {}
+  explicit Mbc3(Memory::Readable& rom_, Memory::Writable& ram_, bool rtc) : Mbc(rom_, ram_), hasRtc(rtc) { reset(); }
 
   inline auto rtcUpdate() -> void {
     u64 diff = rtcCallback() - lastTime;
@@ -84,6 +84,12 @@ struct Mbc3 : Mbc {
     }
   }
 
+  auto reset() -> void override {
+    romBank = 1;
+    ramBank = 0;
+    ramEnable = 0;
+  }
+
   auto read(u16 address) -> u8 override {
     static constexpr u8 unmapped = 0xff;
     switch(address) {
@@ -126,9 +132,9 @@ struct Mbc3 : Mbc {
   }
 
 private:
-  n7 romBank = 1;
-  n4 ramBank = 0;
-  n1 ramEnable = 0;
+  n7 romBank;
+  n4 ramBank;
+  n1 ramEnable;
   b1 hasRtc;
 
   n1 rtcOverflow = 0;

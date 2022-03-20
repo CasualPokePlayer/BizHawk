@@ -1,11 +1,20 @@
 struct Mbc1 : Mbc {
-  explicit Mbc1(Memory::Readable& rom_, Memory::Writable& ram_) : Mbc(rom_, ram_) {}
+  explicit Mbc1(Memory::Readable& rom_, Memory::Writable& ram_) : Mbc(rom_, ram_) { reset(); }
 
   inline auto updateBanks() -> void {
     romBank[0].bit(5,6) = bankReg2 * bankMode;
     romBank[1].bit(0,4) = bankReg1;
     romBank[1].bit(5,6) = bankReg2;
     ramBank = bankReg2 * bankMode;
+  }
+
+  auto reset() -> void override {
+    bankReg1 = 1;
+    bankReg1 = 1;
+    bankMode = 0;
+    ramBank = 0;
+    ramEnable = 0;
+    updateBanks();
   }
 
   auto read(u16 address) -> u8 override {
@@ -49,7 +58,7 @@ private:
   n5 bankReg1 = 1;
   n3 bankReg2 = 0;
   n1 bankMode = 0;
-  n7 romBank[2] = { 0, 1 };
+  n7 romBank[2];
   n3 ramBank = 0;
   n1 ramEnable = 0;
 };
