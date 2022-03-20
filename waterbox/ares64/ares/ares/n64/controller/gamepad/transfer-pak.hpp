@@ -91,12 +91,14 @@ struct TransferPak {
       status.bit(4,5) = 0;
       status.bit(6)   = !(bool)rom;
       status.bit(7)   = pakEnable;
-      if (resetState == 3) resetState.bit(0) = 0;
-      else if (resetState) resetState.bit(1) = 0;
+      if (resetState == 3 && cartEnable) resetState.bit(0) = 0;
+      else if (resetState && cartEnable) resetState.bit(1) = 0;
+      else if (resetState == 2 && !cartEnable) resetState = 1;
+      else if (resetState == 1 && !cartEnable) resetState = 0;
       return status;
     }
     if (!cartEnable) return unmapped;
-    return mbc->read((0x4000 * addressBank + address - 0x4000) ^ 3);
+    return mbc->read(0x4000 * addressBank + address - 0x4000);
   }
 
   auto write(u16 address, u8 data_) -> void {
@@ -114,15 +116,18 @@ struct TransferPak {
       return;
     }
     if(address <= 0x3fff) {
-      bool wasDisabled = !cartEnable;
+      bool wasEnabled = cartEnable;
       cartEnable = data.bit(0);
-      if (wasDisabled && cartEnable) {
+      if (!wasEnabled && cartEnable) {
         resetState = 3;
         mbc->reset();
       }
+      if (wasEnabled && !cartEnable) {
+        resetState = 2;
+      }
       return;
     }
-    return mbc->write((0x4000 * addressBank + address - 0x4000) ^ 3, data_);
+    return mbc->write(0x4000 * addressBank + address - 0x4000, data_);
   }
 
 private:
