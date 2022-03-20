@@ -91,9 +91,11 @@ struct TransferPak {
       status.bit(4,5) = 0;
       status.bit(6)   = !(bool)rom;
       status.bit(7)   = pakEnable;
-      if (cartEnable && resetState == 3) resetState = 2;
-      else if (!cartEnable && resetState == 2) resetState = 1;
-      else if (!cartEnable && resetState == 1) resetState = 0;
+      if (!(address & 0x1f)) {
+        if (cartEnable && resetState == 3) resetState = 2;
+        else if (!cartEnable && resetState == 2) resetState = 1;
+        else if (!cartEnable && resetState == 1) resetState = 0;
+      }
       return status;
     }
     if (!cartEnable) return unmapped;
