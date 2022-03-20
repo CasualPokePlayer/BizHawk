@@ -490,6 +490,23 @@ EXPORT bool GetRumbleStatus(u32 num)
 	} \
 } while (0) \
 
+#define ADD_GB_DOMAINS(num) do { \
+	if (auto c = (ares::Nintendo64::Gamepad*)ares::Nintendo64::controllerPort##num.device.data()) \
+	{ \
+		m[i].Data = c->transferPak.rom.data; \
+		m[i].Name = "GB ROM " #num; \
+		m[i].Size = c->transferPak.rom.size; \
+		m[i].Flags = MEMORYAREA_FLAGS_YUGEENDIAN | MEMORYAREA_FLAGS_SWAPPED | MEMORYAREA_FLAGS_WORDSIZE4 | MEMORYAREA_FLAGS_WRITABLE; \
+		i++; \
+\
+		m[i].Data = c->transferPak.ram.data; \
+		m[i].Name = "GB SRAM " #num; \
+		m[i].Size = c->transferPak.ram.size; \
+		m[i].Flags = MEMORYAREA_FLAGS_ONEFILLED | MEMORYAREA_FLAGS_SAVERAMMABLE | MEMORYAREA_FLAGS_YUGEENDIAN | MEMORYAREA_FLAGS_SWAPPED | MEMORYAREA_FLAGS_WORDSIZE4 | MEMORYAREA_FLAGS_WRITABLE; \
+		i++; \
+	} \
+} while (0) \
+
 EXPORT void GetMemoryAreas(MemoryArea *m)
 {
 	int i = 0;
@@ -506,6 +523,10 @@ EXPORT void GetMemoryAreas(MemoryArea *m)
 	ADD_MEMPAK_DOMAIN(2);
 	ADD_MEMPAK_DOMAIN(3);
 	ADD_MEMPAK_DOMAIN(4);
+	ADD_GB_DOMAINS(1);
+	ADD_GB_DOMAINS(2);
+	ADD_GB_DOMAINS(3);
+	ADD_GB_DOMAINS(4);
 }
 
 struct MyFrameInfo : public FrameInfo
