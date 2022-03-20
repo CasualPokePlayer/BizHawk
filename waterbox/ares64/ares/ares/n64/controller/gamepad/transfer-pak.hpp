@@ -95,6 +95,7 @@ struct TransferPak {
       else if (resetState && cartEnable) resetState.bit(1) = 0;
       else if (resetState == 2 && !cartEnable) resetState = 1;
       else if (resetState == 1 && !cartEnable) resetState = 0;
+      resetState = 2; // hack
       return status;
     }
     if (!cartEnable) return unmapped;
