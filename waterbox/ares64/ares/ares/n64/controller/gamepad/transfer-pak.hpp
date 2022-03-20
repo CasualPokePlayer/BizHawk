@@ -97,6 +97,7 @@ struct TransferPak {
       return status;
     }
     if (!cartEnable) return unmapped;
+    if (resetState == 2) resetState = 1;
     return mbc->read(0x4000 * addressBank + address - 0x4000);
   }
 
