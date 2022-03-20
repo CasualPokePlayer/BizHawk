@@ -96,7 +96,7 @@ struct TransferPak {
       return status;
     }
     if (!cartEnable) return unmapped;
-    return mbc->read(0x4000 * addressBank + address - 0x4000);
+    return mbc->read((0x4000 * addressBank + address - 0x4000) ^ 3);
   }
 
   auto write(u16 address, u8 data_) -> void {
@@ -122,7 +122,7 @@ struct TransferPak {
       }
       return;
     }
-    return mbc->write(0x4000 * addressBank + address - 0x4000, data_);
+    return mbc->write((0x4000 * addressBank + address - 0x4000) ^ 3, data_);
   }
 
 private:
