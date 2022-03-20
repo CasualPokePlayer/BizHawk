@@ -231,7 +231,7 @@ auto SI::scan() -> void {
 
           //transfer pak
           if(auto& transferPak = gamepad->transferPak) {
-            puts("attempting transfer pak read");
+            //puts("attempting transfer pak read");
             u32 address = (input[1] << 8 | input[2] << 0) & ~31;
             if(addressCRC(address) == (n5)input[2]) {
               for(u32 index : range(recv - 1)) {
@@ -274,7 +274,7 @@ auto SI::scan() -> void {
 
           //transfer pak
           if(auto& transferPak = gamepad->transferPak) {
-            puts("attempting transfer pak write");
+            //puts("attempting transfer pak write");
             u32 address = (input[1] << 8 | input[2] << 0) & ~31;
             if(addressCRC(address) == (n5)input[2]) {
               for(u32 index : range(send - 3)) {
