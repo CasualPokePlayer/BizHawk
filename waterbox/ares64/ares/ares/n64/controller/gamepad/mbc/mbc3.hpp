@@ -96,11 +96,7 @@ struct Mbc3 : Mbc {
       case 0x0000 ... 0x3fff:
         return rom.read<Byte>(address);
       case 0x4000 ... 0x7fff:
-      {
-        u8 ret = rom.read<Byte>(romBank * 0x4000 + address - 0x4000);
-        printf("read from banked rom, bank = %02X, address = %04X, ret = %02X\n", (u32)romBank, (u32)address, (u32)ret);
-        return ret;
-      }
+        return rom.read<Byte>(romBank * 0x4000 + address - 0x4000);
       case 0xa000 ... 0xbfff:
         if(!ramEnable) return unmapped;
         if(hasRtc && ramBank > 0x03) return rtcLatchActive();

@@ -13,8 +13,8 @@ typedef enum
 	Standard,
 	Mempak,
 	Rumblepak,
-    Transferpak,
-    Mouse,
+	Transferpak,
+	Mouse,
 } ControllerType;
 
 typedef enum
@@ -40,15 +40,17 @@ struct BizPlatform : ares::Platform
 	auto attach(ares::Node::Object) -> void override;
 	auto pak(ares::Node::Object) -> ares::VFS::Pak override;
 	auto video(ares::Node::Video::Screen, const u32*, u32, u32, u32) -> void override;
+	auto audio(ares::Node::Audio::Stream) -> void override;
 	auto input(ares::Node::Input::Input) -> void override;
 
 	ares::VFS::Pak bizpak = nullptr;
-	ares::Node::Audio::Stream stream = nullptr;
 	u32* videobuf = nullptr;
 	u32 pitch = 0;
 	u32 width = 0;
 	u32 height = 0;
-	bool newframe = false;
+	u16* soundbuf = alloc_invisible<u16>(1024 * 2);
+	u32 nsamps = 0;
+	bool hack = false;
 	void (*inputcb)() = nullptr;
 	bool lagged = true;
 };
@@ -58,7 +60,6 @@ auto BizPlatform::attach(ares::Node::Object node) -> void
 	if (auto stream = node->cast<ares::Node::Audio::Stream>())
 	{
 		stream->setResamplerFrequency(44100);
-		this->stream = stream;
 	}
 }
 
@@ -73,7 +74,18 @@ auto BizPlatform::video(ares::Node::Video::Screen screen, const u32* data, u32 p
 	this->pitch = pitch >> 2;
 	this->width = width;
 	this->height = height;
-	newframe = true;
+}
+
+auto BizPlatform::audio(ares::Node::Audio::Stream stream) -> void
+{
+	while (stream->pending())
+	{
+		f64 buf[2];
+		stream->read(buf);
+		soundbuf[nsamps * 2 + 0] = (s16)std::clamp(buf[0] * 32768, -32768.0, 32767.0);
+		soundbuf[nsamps * 2 + 1] = (s16)std::clamp(buf[1] * 32768, -32768.0, 32767.0);
+		if (!hack) nsamps++;
+	}
 }
 
 auto BizPlatform::input(ares::Node::Input::Input node) -> void
@@ -97,11 +109,10 @@ static array_view<u8>* gbRomData = nullptr;
 
 static inline void HackeryDoo()
 {
+	platform->hack = true;
 	root->run();
 	root->run();
-	platform->newframe = false;
-	f64 buf[2];
-	while (platform->stream->pending()) platform->stream->read(buf);
+	platform->hack = false;
 }
 
 typedef enum
@@ -594,32 +605,23 @@ EXPORT void FrameAdvance(MyFrameInfo* f)
 
 	platform->lagged = true;
 
+	platform->nsamps = 0;
+
 	root->run();
 
 	f->Width = platform->width;
 	f->Height = platform->height;
-	if (platform->newframe)
+	u32* src = platform->videobuf;
+	u32* dst = f->VideoBuffer;
+	for (int i = 0; i < f->Height; i++)
 	{
-		u32* src = platform->videobuf;
-		u32* dst = f->VideoBuffer;
-		for (int i = 0; i < f->Height; i++)
-		{
-			memcpy(dst, src, f->Width * 4);
-			dst += f->Width;
-			src += platform->pitch;
-		}
-		platform->newframe = false;
+		memcpy(dst, src, f->Width * 4);
+		dst += f->Width;
+		src += platform->pitch;
 	}
 
-	s16* soundbuf = f->SoundBuffer;
-	while (platform->stream->pending())
-	{
-		f64 buf[2];
-		platform->stream->read(buf);
-		*soundbuf++ = (s16)std::clamp(buf[0] * 32768, -32768.0, 32767.0);
-		*soundbuf++ = (s16)std::clamp(buf[1] * 32768, -32768.0, 32767.0);
-		f->Samples++;
-	}
+	f->Samples = platform->nsamps;
+	memcpy(f->SoundBuffer, platform->soundbuf, f->Samples * 4);
 
 	f->Lagged = platform->lagged;
 }
