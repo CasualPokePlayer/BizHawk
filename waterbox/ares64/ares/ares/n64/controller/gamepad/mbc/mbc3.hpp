@@ -115,6 +115,7 @@ struct Mbc3 : Mbc {
       case 0x2000 ... 0x3fff:
         romBank = data.bit(0,6);
         if(!romBank) romBank = 1;
+        printf("rombank %02X\n", (u32)romBank);
         return;
       case 0x4000 ... 0x5fff:
         ramBank = data.bit(0, 2 + hasRtc);

@@ -95,7 +95,8 @@ struct TransferPak {
       else if (resetState && cartEnable) resetState.bit(1) = 0;
       else if (resetState == 2 && !cartEnable) resetState = 1;
       else if (resetState == 1 && !cartEnable) resetState = 0;
-      return cartEnable ? 0x89 : 0x80; // hack, pokemon stadium seems to expect this???
+      return cartEnable ? 0x89 : 0x80;
+      // hack, pokemon stadium seems to expect this???
       return status;
     }
     if (!cartEnable) return unmapped;
@@ -111,6 +112,7 @@ struct TransferPak {
       if(data == 0xfe) pakEnable = 0;
       return;
     }
+    if (!pakEnable) return;
     if(address <= 0x2fff) {
       addressBank = data;
       if(data > 3) addressBank = 0;
