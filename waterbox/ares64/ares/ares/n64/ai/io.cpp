@@ -34,7 +34,7 @@ auto AI::writeWord(u32 address, u32 data_) -> void {
   if(address == 1) {
     //AI_LENGTH
     n18 length = data.bit(0,17) & ~7;
-    length *= (4.0 - (0.25 * (16 - dac.precision))) / 4.0;
+    length *= dac.precision / 16.0;
     length &= ~7;
     if(io.dmaCount < 2 && length) {
       io.dmaLength[io.dmaCount] = length;
