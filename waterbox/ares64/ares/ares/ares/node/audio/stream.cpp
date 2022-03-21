@@ -112,6 +112,7 @@ auto Stream::read(f64 samples[]) -> u32 {
 
 auto Stream::write(const f64 samples[]) -> void {
   for(u32 c : range(_channels.size())) {
+    printf("sample %f\n", samples[c]);
     f64 sample = samples[c] + 1e-25;  //constant offset used to suppress denormals
     for(auto& filter : _channels[c].filters) {
       switch(filter.mode) {
