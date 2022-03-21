@@ -6,8 +6,4 @@ struct Mouse : Controller {
 
   Mouse(Node::Port);
   auto read() -> n32 override;
-
-private:
-  n8 xLatch;
-  n8 yLatch;
 };
