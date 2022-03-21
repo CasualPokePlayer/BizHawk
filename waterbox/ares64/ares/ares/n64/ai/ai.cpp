@@ -29,16 +29,13 @@ auto AI::main() -> void {
   step(dac.period);
 }
 
-auto AI::sample() -> void {
-  printf("sampling: dmaCount = %d, dmaLength[0] = %d, dmaLength[1] = %d, dmaAddress[0] = %d, dmaAddress[1] = %d, frequency = %d, bitRate = %d\n",
-  (u32)io.dmaCount, (u32)io.dmaLength[0], (u32)io.dmaLength[1], (u32)io.dmaAddress[0], (u32)io.dmaAddress[1], (u32)dac.frequency, (u32)io.bitRate);
-  fflush(stdout);
-  
+auto AI::sample() -> void {  
   if(io.dmaCount == 0) return stream->frame(0.0, 0.0);
 
   auto data  = rdram.ram.read<Word>(io.dmaAddress[0]);
-  auto left  = s16(data >> 16);
-  auto right = s16(data >>  0);
+  printf("%04lX\n", data);
+  auto left  = s16(u16(data >> 16) & (0xFFFF << (16 - dac.precision)));
+  auto right = s16(u16(data >>  0) & (0xFFFF << (16 - dac.precision)));
   stream->frame(left / 32768.0, right / 32768.0);
 
   io.dmaAddress[0] += 4;
