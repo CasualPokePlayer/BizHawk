@@ -30,7 +30,11 @@ auto AI::main() -> void {
 }
 
 auto AI::sample() -> void {
-  if(io.dmaCount == 0 || io.dmaEnable == 0) return stream->frame(0.0, 0.0);
+  printf("sampling: dmaCount = %d, dmaLength[0] = %d, dmaLength[1] = %d, dmaAddress[0] = %d, dmaAddress[1] = %d, frequency = %d, bitRate = %d\n",
+  (u32)io.dmaCount, (u32)io.dmaLength[0], (u32)io.dmaLength[1], (u32)io.dmaAddress[0], (u32)io.dmaAddress[1], (u32)dac.frequency, (u32)io.bitRate);
+  fflush(stdout);
+  
+  if(io.dmaCount == 0) return stream->frame(0.0, 0.0);
 
   auto data  = rdram.ram.read<Word>(io.dmaAddress[0]);
   auto left  = s16(data >> 16);
