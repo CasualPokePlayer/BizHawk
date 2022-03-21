@@ -14,15 +14,12 @@ auto Mouse::read() -> n32 {
   platform->input(lclick);
 
   n32 data;
-  data.byte(0) = y->value() - yLatch;
-  data.byte(1) = x->value() - xLatch;
+  data.byte(0) = y->value();
+  data.byte(1) = x->value();
   data.bit(22) = 0;  //GND
   data.bit(23) = 0;  //RST
   data.bit(30) = rclick->value();
   data.bit(31) = lclick->value();
-
-  xLatch = x->value();
-  yLatch = y->value();
 
   return data;
 }
