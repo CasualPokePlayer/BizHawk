@@ -56,7 +56,7 @@ struct Mbc3 : Mbc {
         rtcHours = data;
         return;
       case 0x0b:
-        rtcDays = data;
+        rtcDays.bit(0,7) = data;
         return;
       case 0x0c:
         rtcDays.bit(8) = data.bit(0);

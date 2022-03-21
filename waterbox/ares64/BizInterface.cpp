@@ -550,7 +550,7 @@ EXPORT bool GetRumbleStatus(u32 num)
 } while (0)
 
 #define ADD_MEMPAK_DOMAIN(NUM) do { \
-	if (auto c = (ares::Nintendo64::Gamepad*)ares::Nintendo64::controllerPort##NUM.device.data()) \
+	if (auto c = dynamic_cast<ares::Nintendo64::Gamepad*>(ares::Nintendo64::controllerPort##NUM.device.data())) \
 	{ \
 		m[i].Data = c->ram.data; \
 		m[i].Name = "MEMPAK " #NUM; \
@@ -561,18 +561,18 @@ EXPORT bool GetRumbleStatus(u32 num)
 } while (0)
 
 #define ADD_GB_DOMAINS(NUM) do { \
-	if (auto c = (ares::Nintendo64::Gamepad*)ares::Nintendo64::controllerPort##NUM.device.data()) \
+	if (auto c = dynamic_cast<ares::Nintendo64::Gamepad*>(ares::Nintendo64::controllerPort##NUM.device.data())) \
 	{ \
 		m[i].Data = c->transferPak.rom.data; \
 		m[i].Name = "GB ROM " #NUM; \
 		m[i].Size = c->transferPak.rom.size; \
-		m[i].Flags = MEMORYAREA_FLAGS_YUGEENDIAN | MEMORYAREA_FLAGS_SWAPPED | MEMORYAREA_FLAGS_WORDSIZE4 | MEMORYAREA_FLAGS_WRITABLE; \
+		m[i].Flags = MEMORYAREA_FLAGS_YUGEENDIAN | MEMORYAREA_FLAGS_SWAPPED | MEMORYAREA_FLAGS_WORDSIZE1 | MEMORYAREA_FLAGS_WRITABLE; \
 		i++; \
 \
 		m[i].Data = c->transferPak.ram.data; \
 		m[i].Name = "GB SRAM " #NUM; \
 		m[i].Size = c->transferPak.ram.size; \
-		m[i].Flags = MEMORYAREA_FLAGS_ONEFILLED | MEMORYAREA_FLAGS_SAVERAMMABLE | MEMORYAREA_FLAGS_YUGEENDIAN | MEMORYAREA_FLAGS_SWAPPED | MEMORYAREA_FLAGS_WORDSIZE4 | MEMORYAREA_FLAGS_WRITABLE; \
+		m[i].Flags = MEMORYAREA_FLAGS_ONEFILLED | MEMORYAREA_FLAGS_SAVERAMMABLE | MEMORYAREA_FLAGS_YUGEENDIAN | MEMORYAREA_FLAGS_SWAPPED | MEMORYAREA_FLAGS_WORDSIZE1 | MEMORYAREA_FLAGS_WRITABLE; \
 		i++; \
 	} \
 } while (0)
