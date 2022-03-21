@@ -225,10 +225,10 @@ namespace BizHawk.Emulation.Cores.Consoles.Nintendo.Ares64
 
 				P2XAxis = (short)controller.AxisValue("P2 X Axis"),
 				P2YAxis = (short)controller.AxisValue("P2 Y Axis"),
-				
+
 				P3XAxis = (short)controller.AxisValue("P3 X Axis"),
 				P3YAxis = (short)controller.AxisValue("P3 Y Axis"),
-				
+
 				P4XAxis = (short)controller.AxisValue("P4 X Axis"),
 				P4YAxis = (short)controller.AxisValue("P4 Y Axis"),
 
