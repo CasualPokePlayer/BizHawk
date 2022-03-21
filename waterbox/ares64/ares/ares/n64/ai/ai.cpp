@@ -32,11 +32,10 @@ auto AI::main() -> void {
 auto AI::sample() -> void {  
   if(io.dmaCount == 0) return stream->frame(0.0, 0.0);
 
-  auto decay = 16 - dac.precision;
   auto data  = rdram.ram.read<Word>(io.dmaAddress[0]);
-  auto left  = Integer<dac.precision>(u16(data >> 16) >> decay);
-  auto right = Integer<dac.precision>(u16(data >>  0) >> decay);
-  stream->frame(left / f64(32768 >> decay), right / f64(32768 >> decay));
+  auto left  = s15(data >> 16);
+  auto right = s15(data >>  0);
+  stream->frame(left / 32768.0 / 2.0, right / 32768.0 / 2.0);
 
   io.dmaAddress[0] += 4;
   io.dmaLength [0] -= 4;
