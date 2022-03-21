@@ -23,6 +23,7 @@ auto AI::readWord(u32 address) -> u32 {
 auto AI::writeWord(u32 address, u32 data_) -> void {
   address = (address & 0xfffff) >> 2;
   n32 data = data_;
+  printf("address = %08X, data = %08X, dmaCount = %d, dmaEnable = %d\n", address, (u32)data, (u32)io.dmaCount, (u32)io.dmaEnable);
 
   if(address == 0) {
     //AI_DRAM_ADDRESS

@@ -33,9 +33,8 @@ auto AI::sample() -> void {
   if(io.dmaCount == 0) return stream->frame(0.0, 0.0);
 
   auto data  = rdram.ram.read<Word>(io.dmaAddress[0]);
-  printf("%08lX, %06X\n", data, (u32)io.dmaAddress[0]);
-  auto left  = s16(u16(data >> 16) & (0xFFFF << (16 - dac.precision)));
-  auto right = s16(u16(data >>  0) & (0xFFFF << (16 - dac.precision)));
+  auto left  = s16(data >> 16);
+  auto right = s16(data >>  0);
   stream->frame(left / 32768.0, right / 32768.0);
 
   io.dmaAddress[0] += 4;
