@@ -29,7 +29,7 @@ auto AI::main() -> void {
   step(dac.period);
 }
 
-auto AI::sample() -> void {  
+auto AI::sample() -> void {
   if(io.dmaCount == 0) return stream->frame(0.0, 0.0);
 
   auto data  = rdram.ram.read<Word>(io.dmaAddress[0]);
