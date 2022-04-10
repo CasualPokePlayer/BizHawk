@@ -2,6 +2,7 @@ NEED_LIBCO := 1
 
 ARES_PATH = $(ROOT_DIR)/ares/ares
 ANGRYLION_PATH = $(ROOT_DIR)/ares/thirdparty/angrylion-rdp/mylittle-nocomment
+SLJIT_PATH = $(ROOT_DIR)/ares/thirdparty/sljit
 
 CXXFLAGS := -std=c++17 -msse4.2 \
 	-I../libco -I.$(ROOT_DIR)/ares/ -I.$(ROOT_DIR)/ares/thirdparty/ -I.$(ARES_PATH) \
@@ -9,7 +10,8 @@ CXXFLAGS := -std=c++17 -msse4.2 \
 	-Wno-parentheses -Wno-reorder -Wno-unused-variable -Wno-delete-non-virtual-dtor \
 	-Wno-sign-compare -Wno-switch -Wno-unused-local-typedefs \
 	-fno-strict-aliasing -fwrapv -fno-operator-names \
-	-I.$(ANGRYLION_PATH) -DANGRYLION_RDP
+	-I.$(ANGRYLION_PATH) -DANGRYLION_RDP \
+	-DSLJIT_HAVE_CONFIG_PRE=1 -DSLJIT_HAVE_CONFIG_POST=1
 
 TARGET = ares64.wbx
 
@@ -43,6 +45,10 @@ SRCS_ANGRYLION = \
 	$(ANGRYLION_PATH)/main.cpp \
 	$(ANGRYLION_PATH)/n64video.cpp
 
-SRCS = $(SRCS_PROCESSORS) $(SRCS_ARES) $(SRCS_N64) $(SRCS_ANGRYLION) BizInterface.cpp
+SRCS_SLJIT = \
+	$(SLJIT_PATH)/sljit_src/sljitLir.c \
+	$(SLJIT_PATH)/../sljitAllocator.cpp
+
+SRCS = $(SRCS_PROCESSORS) $(SRCS_ARES) $(SRCS_N64) $(SRCS_ANGRYLION) $(SRCS_SLJIT) BizInterface.cpp
 
 include ../common.mak
