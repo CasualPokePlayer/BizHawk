@@ -717,3 +717,15 @@ EXPORT void SetTraceCallback(void (*callback)(const char*))
 	ares::Nintendo64::cpu.debugger.tracer.instruction->setEnabled(!!callback);
 	platform->tracecb = callback;
 }
+
+EXPORT void GetRegisters(u64* buf)
+{
+	for (int i = 0; i < 32; i++)
+	{
+		buf[i] = ares::Nintendo64::cpu.ipu.r[i].u64;
+	}
+
+	buf[32] = ares::Nintendo64::cpu.ipu.lo.u64;
+	buf[33] = ares::Nintendo64::cpu.ipu.hi.u64;
+	buf[34] = ares::Nintendo64::cpu.ipu.pc;
+}
