@@ -46,6 +46,7 @@ struct BizPlatform : ares::Platform
 {
 	auto attach(ares::Node::Object) -> void override;
 	auto pak(ares::Node::Object) -> ares::VFS::Pak override;
+	auto log(string_view) -> void override;
 	auto video(ares::Node::Video::Screen, const u32*, u32, u32, u32) -> void override;
 	auto audio(ares::Node::Audio::Stream) -> void override;
 	auto input(ares::Node::Input::Input) -> void override;
@@ -60,6 +61,7 @@ struct BizPlatform : ares::Platform
 	bool hack = false;
 	void (*inputcb)() = nullptr;
 	bool lagged = true;
+	void (*tracecb)(const char*) = nullptr;
 };
 
 auto BizPlatform::attach(ares::Node::Object node) -> void
@@ -73,6 +75,11 @@ auto BizPlatform::attach(ares::Node::Object node) -> void
 auto BizPlatform::pak(ares::Node::Object) -> ares::VFS::Pak
 {
 	return bizpak;
+}
+
+auto BizPlatform::log(string_view message) -> void
+{
+	if (tracecb) tracecb(message.data());
 }
 
 auto BizPlatform::video(ares::Node::Video::Screen screen, const u32* data, u32 pitch, u32 width, u32 height) -> void
@@ -566,13 +573,13 @@ EXPORT bool GetRumbleStatus(u32 num)
 		m[i].Data = c->transferPak.rom.data; \
 		m[i].Name = "GB ROM " #NUM; \
 		m[i].Size = c->transferPak.rom.size; \
-		m[i].Flags = MEMORYAREA_FLAGS_YUGEENDIAN | MEMORYAREA_FLAGS_SWAPPED | MEMORYAREA_FLAGS_WORDSIZE1 | MEMORYAREA_FLAGS_WRITABLE; \
+		m[i].Flags = MEMORYAREA_FLAGS_YUGEENDIAN | MEMORYAREA_FLAGS_SWAPPED | MEMORYAREA_FLAGS_WORDSIZE4 | MEMORYAREA_FLAGS_WRITABLE; \
 		i++; \
 \
 		m[i].Data = c->transferPak.ram.data; \
 		m[i].Name = "GB SRAM " #NUM; \
 		m[i].Size = c->transferPak.ram.size; \
-		m[i].Flags = MEMORYAREA_FLAGS_ONEFILLED | MEMORYAREA_FLAGS_SAVERAMMABLE | MEMORYAREA_FLAGS_YUGEENDIAN | MEMORYAREA_FLAGS_SWAPPED | MEMORYAREA_FLAGS_WORDSIZE1 | MEMORYAREA_FLAGS_WRITABLE; \
+		m[i].Flags = MEMORYAREA_FLAGS_ONEFILLED | MEMORYAREA_FLAGS_SAVERAMMABLE | MEMORYAREA_FLAGS_YUGEENDIAN | MEMORYAREA_FLAGS_SWAPPED | MEMORYAREA_FLAGS_WORDSIZE4 | MEMORYAREA_FLAGS_WRITABLE; \
 		i++; \
 	} \
 } while (0)
@@ -697,4 +704,16 @@ EXPORT void FrameAdvance(MyFrameInfo* f)
 EXPORT void SetInputCallback(void (*callback)())
 {
 	platform->inputcb = callback;
+}
+
+EXPORT void GetDisassembly(u32 address, u32 instruction, char* buf)
+{
+	auto s = ares::Nintendo64::cpu.disassembler.disassemble(address, instruction);
+	strcpy(buf, s.data());
+}
+
+EXPORT void SetTraceCallback(void (*callback)(const char*))
+{
+	ares::Nintendo64::cpu.debugger.tracer.instruction->setEnabled(!!callback);
+	platform->tracecb = callback;
 }
