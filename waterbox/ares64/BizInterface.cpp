@@ -584,6 +584,65 @@ EXPORT bool GetRumbleStatus(u32 num)
 	} \
 } while (0)
 
+static inline u8 GetByteFromWord(u32 word, u32 addr)
+{
+	switch (addr & 3)
+	{
+		case 0: return (word >> 24) & 0xFF;
+		case 1: return (word >> 16) & 0xFF;
+		case 2: return (word >>  8) & 0xFF;
+		case 3: return (word >>  0) & 0xFF;
+		default: __builtin_unreachable();
+	}
+}
+
+static u8 PeekFunc(u64 address)
+{
+	address &= 0x1fff'ffff;
+	const u32 addr = address;
+
+	if (addr > 0x0403'ffff && addr <= 0x0407'ffff) // RSP
+	{
+		address = (address & 0x3ffff) >> 2;
+		if (address == 7) // SP_SEMAPHORE
+		{
+			return GetByteFromWord(ares::Nintendo64::rsp.status.semaphore & 1, addr);
+		}
+	}
+	else if (addr > 0x0407'ffff && addr <= 0x040f'ffff) // RSP Status
+	{
+		address = (address & 0x7ffff) >> 2;
+		if (address == 0) // SP_PC_REG
+		{
+			return GetByteFromWord(ares::Nintendo64::rsp.ipu.pc & 0xFFF, addr);
+		}
+	}
+	else if (addr > 0x046f'ffff && addr <= 0x047f'ffff) // RI
+	{
+		address = (address & 0xfffff) >> 2;
+		if (address == 3) // RI_SELECT
+		{
+			return GetByteFromWord(ares::Nintendo64::ri.io.select, addr);
+		}
+	}
+
+	return ares::Nintendo64::bus.read<ares::Nintendo64::Byte>(addr);
+}
+
+static void SysBusAccess(u8* buffer, u64 address, u64 count, bool write)
+{
+	if (write)
+	{
+		while (count--)
+			ares::Nintendo64::bus.write<ares::Nintendo64::Byte>(address++, *buffer++);
+	}
+	else
+	{
+		while (count--)
+			*buffer++ = PeekFunc(address++);
+	}
+}
+
 EXPORT void GetMemoryAreas(MemoryArea *m)
 {
 	int i = 0;
@@ -604,6 +663,11 @@ EXPORT void GetMemoryAreas(MemoryArea *m)
 	ADD_GB_DOMAINS(2);
 	ADD_GB_DOMAINS(3);
 	ADD_GB_DOMAINS(4);
+
+	m[i].Data = (void*)SysBusAccess;
+	m[i].Name = "System Bus";
+	m[i].Size = 1ull << 32;
+	m[i].Flags = MEMORYAREA_FLAGS_YUGEENDIAN | MEMORYAREA_FLAGS_SWAPPED | MEMORYAREA_FLAGS_WORDSIZE4 | MEMORYAREA_FLAGS_WRITABLE | MEMORYAREA_FLAGS_FUNCTIONHOOK;
 }
 
 struct MyFrameInfo : public FrameInfo
