@@ -772,7 +772,7 @@ EXPORT void SetInputCallback(void (*callback)())
 
 EXPORT void GetDisassembly(u32 address, u32 instruction, char* buf)
 {
-	auto s = ares::Nintendo64::cpu.disassembler.disassemble(address, instruction);
+	auto s = ares::Nintendo64::cpu.disassembler.disassemble(address, instruction).strip();
 	strcpy(buf, s.data());
 }
 
