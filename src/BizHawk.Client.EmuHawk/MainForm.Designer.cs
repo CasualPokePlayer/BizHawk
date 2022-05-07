@@ -234,7 +234,6 @@ namespace BizHawk.Client.EmuHawk
 			this.KeypadMenuItem = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
 			this.LoadTIFileMenuItem = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
 			this.toolStripSeparator13 = new BizHawk.WinForms.Controls.ToolStripSeparatorEx();
-			this.AutoloadKeypadMenuItem = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
 			this.paletteToolStripMenuItem = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
 			this.A7800SubMenu = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
 			this.A7800ControllerSettingsMenuItem = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
@@ -283,7 +282,6 @@ namespace BizHawk.Client.EmuHawk
 			this.ZXSpectrumControllerConfigurationMenuItem = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
 			this.ZXSpectrumAudioSettingsMenuItem = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
 			this.ZXSpectrumNonSyncSettingsMenuItem = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
-			this.ZXSpectrumPokeMemoryMenuItem = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
 			this.ZXSpectrumMediaMenuItem = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
 			this.ZXSpectrumTapesSubMenu = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
 			this.zxt1ToolStripMenuItem = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
@@ -601,13 +599,12 @@ namespace BizHawk.Client.EmuHawk
 			// 
 			// AutoloadLastSlotMenuItem
 			// 
-			this.AutoloadLastSlotMenuItem.Text = "Autoload last Slot";
+			this.AutoloadLastSlotMenuItem.Text = "Autoload Last Slot";
 			this.AutoloadLastSlotMenuItem.Click += new System.EventHandler(this.AutoloadLastSlotMenuItem_Click);
 			// 
 			// SaveSlotSubMenu
 			// 
 			this.SaveSlotSubMenu.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-			this.SelectSlot0MenuItem,
 			this.SelectSlot1MenuItem,
 			this.SelectSlot2MenuItem,
 			this.SelectSlot3MenuItem,
@@ -617,6 +614,7 @@ namespace BizHawk.Client.EmuHawk
 			this.SelectSlot7MenuItem,
 			this.SelectSlot8MenuItem,
 			this.SelectSlot9MenuItem,
+			this.SelectSlot0MenuItem,
 			this.PreviousSlotMenuItem,
 			this.NextSlotMenuItem,
 			this.toolStripSeparator5,
@@ -1564,10 +1562,8 @@ namespace BizHawk.Client.EmuHawk
 			this.KeypadMenuItem,
 			this.LoadTIFileMenuItem,
 			this.toolStripSeparator13,
-			this.AutoloadKeypadMenuItem,
 			this.paletteToolStripMenuItem});
 			this.TI83SubMenu.Text = "TI83";
-			this.TI83SubMenu.DropDownOpened += new System.EventHandler(this.Ti83SubMenu_DropDownOpened);
 			// 
 			// KeypadMenuItem
 			// 
@@ -1578,13 +1574,6 @@ namespace BizHawk.Client.EmuHawk
 			// 
 			this.LoadTIFileMenuItem.Text = "Load TI-83 File...";
 			this.LoadTIFileMenuItem.Click += new System.EventHandler(this.Ti83LoadTIFileMenuItem_Click);
-			// 
-			// AutoloadKeypadMenuItem
-			// 
-			this.AutoloadKeypadMenuItem.Checked = true;
-			this.AutoloadKeypadMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
-			this.AutoloadKeypadMenuItem.Text = "Autoload Keypad";
-			this.AutoloadKeypadMenuItem.Click += new System.EventHandler(this.AutoloadKeypadMenuItem_Click);
 			// 
 			// paletteToolStripMenuItem
 			// 
@@ -1820,7 +1809,6 @@ namespace BizHawk.Client.EmuHawk
 			this.ZXSpectrumControllerConfigurationMenuItem,
 			this.ZXSpectrumAudioSettingsMenuItem,
 			this.ZXSpectrumNonSyncSettingsMenuItem,
-			this.ZXSpectrumPokeMemoryMenuItem,
 			this.ZXSpectrumMediaMenuItem});
 			this.zXSpectrumToolStripMenuItem.Text = "ZX Spectrum";
 			// 
@@ -1843,11 +1831,6 @@ namespace BizHawk.Client.EmuHawk
 			// 
 			this.ZXSpectrumNonSyncSettingsMenuItem.Text = "Non-Sync Settings";
 			this.ZXSpectrumNonSyncSettingsMenuItem.Click += new System.EventHandler(this.ZXSpectrumNonSyncSettingsMenuItem_Click);
-			// 
-			// ZXSpectrumPokeMemoryMenuItem
-			// 
-			this.ZXSpectrumPokeMemoryMenuItem.Text = "POKE Memory";
-			this.ZXSpectrumPokeMemoryMenuItem.Click += new System.EventHandler(this.ZXSpectrumPokeMemoryMenuItem_Click);
 			// 
 			// ZXSpectrumMediaMenuItem
 			// 
@@ -2534,7 +2517,6 @@ namespace BizHawk.Client.EmuHawk
 		private BizHawk.WinForms.Controls.StatusLabelEx EmuStatus;
 		private BizHawk.WinForms.Controls.ToolStripMenuItemEx MessagesMenuItem;
 		private BizHawk.WinForms.Controls.ToolStripMenuItemEx TI83SubMenu;
-		private BizHawk.WinForms.Controls.ToolStripMenuItemEx AutoloadKeypadMenuItem;
 		private BizHawk.WinForms.Controls.ToolStripMenuItemEx KeypadMenuItem;
 		private BizHawk.WinForms.Controls.ToolStripSeparatorEx toolStripSeparator13;
 		private BizHawk.WinForms.Controls.ToolStripMenuItemEx PathsMenuItem;
@@ -2756,7 +2738,6 @@ namespace BizHawk.Client.EmuHawk
 		private BizHawk.WinForms.Controls.ToolStripMenuItemEx ZXSpectrumCoreEmulationSettingsMenuItem;
 		private BizHawk.WinForms.Controls.ToolStripMenuItemEx ZXSpectrumNonSyncSettingsMenuItem;
 		private BizHawk.WinForms.Controls.ToolStripMenuItemEx ZXSpectrumAudioSettingsMenuItem;
-		private BizHawk.WinForms.Controls.ToolStripMenuItemEx ZXSpectrumPokeMemoryMenuItem;
 		private BizHawk.WinForms.Controls.ToolStripMenuItemEx ZXSpectrumMediaMenuItem;
 		private BizHawk.WinForms.Controls.ToolStripMenuItemEx ZXSpectrumTapesSubMenu;
 		private BizHawk.WinForms.Controls.ToolStripMenuItemEx ZXSpectrumDisksSubMenu;

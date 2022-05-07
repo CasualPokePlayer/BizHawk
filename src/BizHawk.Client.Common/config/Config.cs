@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+
+using BizHawk.Bizware.BizwareGL;
 using BizHawk.Common;
 using BizHawk.Common.PathExtensions;
 using BizHawk.Emulation.Common;
@@ -26,14 +28,20 @@ namespace BizHawk.Client.Common
 				new[] { CoreNames.QuickNes, CoreNames.NesHawk, CoreNames.SubNesHawk }),
 			(new[] { VSystemID.Raw.SNES },
 				new[] { CoreNames.Faust, CoreNames.Snes9X, CoreNames.Bsnes, CoreNames.Bsnes115 }),
+			(new[] { VSystemID.Raw.N64 },
+				new[] { CoreNames.Mupen64Plus, CoreNames.Ares64 }),
 			(new[] { VSystemID.Raw.SGB },
 				new[] { CoreNames.Gambatte, CoreNames.Bsnes, CoreNames.Bsnes115}),
 			(new[] { VSystemID.Raw.GB, VSystemID.Raw.GBC },
-				new[] { CoreNames.Gambatte, CoreNames.GbHawk, CoreNames.SubGbHawk }),
+				new[] { CoreNames.Gambatte, CoreNames.Sameboy, CoreNames.GbHawk, CoreNames.SubGbHawk }),
 			(new[] { VSystemID.Raw.GBL },
 				new[] { CoreNames.GambatteLink, CoreNames.GBHawkLink, CoreNames.GBHawkLink3x, CoreNames.GBHawkLink4x }),
 			(new[] { VSystemID.Raw.PCE, VSystemID.Raw.PCECD, VSystemID.Raw.SGX },
-				new[] { CoreNames.TurboNyma, CoreNames.HyperNyma, CoreNames.PceHawk })
+				new[] { CoreNames.TurboNyma, CoreNames.HyperNyma, CoreNames.PceHawk }),
+			(new[] { VSystemID.Raw.PSX },
+				new[] { CoreNames.Octoshock, CoreNames.Nymashock }),
+			(new[] { VSystemID.Raw.TI83 },
+				new[] { CoreNames.TI83Hawk, CoreNames.Emu83 }),
 		};
 
 		public Config()
@@ -155,7 +163,8 @@ namespace BizHawk.Client.Common
 		public int FrameSkip { get; set; } = 4;
 		public int SpeedPercent { get; set; } = 100;
 		public int SpeedPercentAlternate { get; set; } = 400;
-		public bool ClockThrottle { get; set; }= true;
+		public bool ClockThrottle { get; set; } = true;
+		public bool Unthrottled { get; set; } = false;
 		public bool AutoMinimizeSkipping { get; set; } = true;
 		public bool VSyncThrottle { get; set; } = false;
 
@@ -291,9 +300,6 @@ namespace BizHawk.Client.Common
 		public bool PlayMovieIncludeSubDir { get; set; }
 		public bool PlayMovieMatchHash { get; set; } = true;
 
-		// TI83
-		public bool Ti83AutoloadKeyPad { get; set; } = true;
-
 		public BindingCollection HotkeyBindings { get; set; } = new BindingCollection();
 
 		// Analog Hotkey values
@@ -310,10 +316,11 @@ namespace BizHawk.Client.Common
 		public bool GbAsSgb { get; set; }
 		public string LibretroCore { get; set; }
 
-		public Dictionary<string, string> PreferredCores = new Dictionary<string, string>
+		public Dictionary<string, string> PreferredCores = new()
 		{
 			[VSystemID.Raw.NES] = CoreNames.QuickNes,
 			[VSystemID.Raw.SNES] = CoreNames.Snes9X,
+			[VSystemID.Raw.N64] = CoreNames.Mupen64Plus,
 			[VSystemID.Raw.GB] = CoreNames.Gambatte,
 			[VSystemID.Raw.GBC] = CoreNames.Gambatte,
 			[VSystemID.Raw.GBL] = CoreNames.GambatteLink,
@@ -321,6 +328,8 @@ namespace BizHawk.Client.Common
 			[VSystemID.Raw.PCE] = CoreNames.TurboNyma,
 			[VSystemID.Raw.PCECD] = CoreNames.TurboNyma,
 			[VSystemID.Raw.SGX] = CoreNames.TurboNyma,
+			[VSystemID.Raw.PSX] = CoreNames.Nymashock,
+			[VSystemID.Raw.TI83] = CoreNames.Emu83,
 		};
 
 		public bool DontTryOtherCores { get; set; }
@@ -341,5 +350,8 @@ namespace BizHawk.Client.Common
 		public IReadOnlyList<string> ModifierKeysEffective;
 
 		public bool MergeLAndRModifierKeys { get; set; } = true;
+
+		/// <remarks>in seconds</remarks>
+		public int OSDMessageDuration { get; set; } = 2;
 	}
 }

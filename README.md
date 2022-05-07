@@ -3,7 +3,6 @@
 A multi-system emulator written in C#. As well as quality-of-life features for casual players, it also has recording/playback and debugging tools, making it the first choice for TASers (Tool-Assisted Speedrunners).
 
 [![(latest) release | GitHub](https://img.shields.io/github/release/TASEmulators/BizHawk.svg?logo=github&logoColor=333333&sort=semver&style=popout)](https://github.com/TASEmulators/BizHawk/releases/latest)
-[![latest dev build | AppVeyor](https://img.shields.io/badge/latest_dev_build-AppVeyor-orange.svg?logo=appveyor&logoColor=333333&style=popout)](https://ci.appveyor.com/project/zeromus/bizhawk-udexo/build/artifacts)
 [![latest dev build | GitLab CI](https://img.shields.io/badge/latest_dev_build-GitLab_CI-orange.svg?logo=gitlab&style=popout)](https://gitlab.com/TASVideos/BizHawk/pipelines/master/latest)
 [![GitHub open issues counter](https://img.shields.io/github/issues-raw/TASEmulators/BizHawk.svg?logo=github&logoColor=333333&style=popout)](https://github.com/TASEmulators/BizHawk/issues)
 
@@ -59,6 +58,7 @@ Supported consoles and computers:
 * GCE Vectrex
 * Magnavox Odyssey² / Videopac G7000
 * Mattel Intellivision
+* MSX
 * NEC
 	* PC Engine / TurboGrafx-16 + SuperGrafx + CD
 	* PC-FX
@@ -102,7 +102,7 @@ Run `EmuHawk.exe` to start. If startup is blocked by a Windows SmartScreen dialo
 EmuHawk does have some prerequisites which it can't work without (it will let you know if they're missing). The list is [here](https://github.com/TASEmulators/BizHawk-Prereqs/blob/master/README), and we've made an all-in-one installer which you can get [here](https://github.com/TASEmulators/BizHawk-Prereqs/releases/latest).
 You should only have to run this once per machine, unless the changelog says we need something extra.
 
-We will be following Microsoft in dropping support for old versions of Windows, that is, we reserve the right to ignore your problems unless you've updated to at least Win10 1909 or Win8.1 KB4586845. Read more on [MSDN](https://docs.microsoft.com/en-us/lifecycle/faq/windows).
+We will be following Microsoft in dropping support for old versions of Windows, that is, we reserve the right to ignore your problems unless you've updated to at least Win11 21H2 (initial release), Win10 20H2, or Win8.1 KB5007247. Read more on [MSDN](https://docs.microsoft.com/en-us/lifecycle/faq/windows).
 
 A "backport" release, [1.13.2](https://github.com/TASEmulators/BizHawk/releases/tag/1.13.2), is available for users of Windows XP, 7, or 8.1 32-bit. It has many bugs that will never be fixed and it doesn't have all the features of the later versions.
 
@@ -124,8 +124,8 @@ If you download BizHawk this way, **don't mix different versions**, keep each ve
 
 Run `EmuHawkMono.sh` to start EmuHawk—you can run it from anywhere, so creating a `.desktop` file to wrap the script is fine. The shell script should print an error if it fails, otherwise it's safe to ignore console output. It takes mostly the same command-line arguments as on Windows: see [*Passing command-line arguments*](#passing-command-line-arguments).
 
-Most features and cores work, notable omissions being Mupen64Plus (N64) and Octoshock (PSX). See [#1430](https://github.com/TASEmulators/BizHawk/issues/1430) for details.
-Lua support is new in 2.7, and it requires Mono >= 6.12. Comment on [#2951](https://github.com/TASEmulators/BizHawk/issues/2951) if you run into any problems with it.
+Most features and cores work, a notable omission being Mupen64Plus (N64). See the Linux thread, [#1430](https://github.com/TASEmulators/BizHawk/issues/1430), for a more detailed breakdown.
+Lua support is new in 2.7, and it requires Mono >= 6.12.0.151 (unreleased as of 2022-01). Comment on [#2951](https://github.com/TASEmulators/BizHawk/issues/2951) if you run into any problems with it.
 
 [to top](#bizhawk)
 
@@ -142,13 +142,13 @@ EmuHawk depends on certain libraries for graphics, and these don't work on macOS
 
 Development builds are made automatically whenever someone contributes. Because of this, we recommend using a release for work that requires stability (such as TASing), and only switching to a dev build if there's a specific change or addition you need.
 
-[![recent dev builds | AppVeyor](https://img.shields.io/badge/recent_dev_builds-AppVeyor-orange.svg?logo=appveyor&logoColor=333333&style=popout)](https://ci.appveyor.com/project/zeromus/bizhawk-udexo/history)
 [![recent dev builds | GitLab CI](https://img.shields.io/badge/recent_dev_builds-GitLab_CI-orange.svg?logo=gitlab&style=popout)](https://gitlab.com/TASVideos/BizHawk/pipelines)
-[![latest dev build | AppVeyor](https://img.shields.io/badge/latest_dev_build-AppVeyor-orange.svg?logo=appveyor&logoColor=333333&style=popout)](https://ci.appveyor.com/project/zeromus/bizhawk-udexo/build/artifacts)
 [![latest dev build | GitLab CI](https://img.shields.io/badge/latest_dev_build-GitLab_CI-orange.svg?logo=gitlab&style=popout)](https://gitlab.com/TASVideos/BizHawk/pipelines/master/latest)
 
+> Note: Due to recent changes by AppVeyor, artifact downloads are no longer available. Use the GitLab CI artifacts.
+
 Click one of the buttons above to download a dev build (they're also at the top of this readme). AppVeyor uses Windows and GitLab CI uses Linux, but they work all the same.
-* On the AppVeyor page for a Build, click "Artifacts", then `BizHawk_Developer-<datetime>-#<long hexadecimal>.zip`.
+* ~~On the AppVeyor page for a Build, click "Artifacts", then `BizHawk_Developer-<datetime>-#<long hexadecimal>.zip`.~~
 * On the GitLab CI page for a Pipeline, click "Jobs", then the download button on the right under the heading "Package". (On the Pipelines list page, there's also a download button on each Pipeline—choose `package_devbuild_*:archive` there.)
 
 To find the dev builds for a specific commit, you can click the green checkmark next to it (in the [commit history](https://github.com/TASEmulators/BizHawk/commits/master), for example) for a dropdown, then click either "Details" link to go to AppVeyor/GitLab.
@@ -156,6 +156,8 @@ To find the dev builds for a specific commit, you can click the green checkmark 
 ## Building
 
 ### Windows
+
+Before you can build, you'll need the .NET 6 SDK or later (comes with VS2022, or can be manually installed beside VS2019, see [full instructions](https://docs.microsoft.com/en-gb/dotnet/core/install/windows)).
 
 If you have WSL, Git BASH, or similar, clone the repo with:
 ```
@@ -173,7 +175,7 @@ With VS, start the build by choosing the `BizHawk.Client.EmuHawk` executable in 
 
 ### Unix
 
-Before you can build, you'll need the .NET 5 SDK or later (package name is usually `dotnet-sdk-5.0`, see [full instructions](https://docs.microsoft.com/en-gb/dotnet/core/install/linux)). You may need to uninstall MSBuild and/or the 3.1 SDK first. Once it's installed, run:
+Before you can build, you'll need the .NET 6 SDK or later (package name is usually `dotnet-sdk-6.0`, see [full instructions](https://docs.microsoft.com/en-gb/dotnet/core/install/linux)). Once it's installed, run:
 ```sh
 git clone https://github.com/TASEmulators/BizHawk.git BizHawk_master && cd BizHawk_master
 # or ssh: git clone git@github.com:TASEmulators/BizHawk.git BizHawk_master && cd BizHawk_master
@@ -208,7 +210,7 @@ $proc.Start()
 
 On Linux, you can pass arguments to `EmuHawkMono.sh` as expected and they will be forwarded to `mono`. (You can also `export` env. vars.) All the arguments work as on Windows, with some caveats:
 * file paths must be absolute (or relative to the install dir, `EmuHawkMono.sh` changes the CWD to there);
-* `--mono-no-redirect`: if you pass this flag *as the first argument*, it will be eaten by the script itself, and stdout will *not* be redirected to a file. (It's redirected by default.)
+* `--mono-no-redirect`: if you pass this flag *as the first argument*, it will be eaten by the script itself, and stdout/stderr will *not* be redirected to a file. (It's redirected by default.)
 
 The same example as above would be `./EmuHawkMono.sh --lua=/path/to/script.lua /path/to/rom.n64`.
 
@@ -296,15 +298,17 @@ Atari 7800 | **A7800Hawk**
 Atari Lynx | **Handy**
 Commodore 64 | **C64Hawk**
 ColecoVision | **ColecoHawk**
-Game Boy / Color | **Gambatte**, **GBHawk**
+Game Boy / Color | **Gambatte**, **GBHawk**, **SameBoy**
 Game Boy Advance | **mGBA**
 Intellivision | **IntelliHawk**
-N64 | **Mupen64Plus**
+MSX | **MSXHawk**
+N64 | Ares64, **Mupen64Plus**
+NDS | **melonDS**
 Neo Geo Pocket | **NeoPop**
 NES | **NesHawk**, QuickNes
 Odyssey² | **O2Hawk**
 PC-FX | **T.S.T.**
-Playstation (PSX) | **Octoshock**
+Playstation (PSX) | **Nymashock**, **Octoshock**
 Sega 32X | **PicoDrive**
 Sega Game Gear | **SMSHawk**
 Sega Genesis | **Genplus-gx**
@@ -312,7 +316,7 @@ Sega Master System | **SMSHawk**
 Sega Saturn | **Saturnus**
 SNES | **BSNES**, Faust, Snes9x
 Super Game Boy | **BSNES**, **Gambatte**
-TI-83 | **TI83Hawk**
+TI-83 | **Emu83**, **TI83Hawk**
 TurboGrafx | HyperNyma, **PCEHawk**, **TurboNyma**
 Uzebox | **Uzem**
 Vectrex | **VectrexHawk**
@@ -324,8 +328,6 @@ There are also works-in-progress for:
 * Amstrad CPC (home-grown core)
 * Fairchild Channel F (home-grown core)
 * [MAME](https://mamedev.org)
-* MSX (home-grown core)
-* Nintendo DS via [melonDS](http://melonds.kuribo64.net)
 * Playstation 2 via [Dobiestation](https://github.com/PSI-Rockin/DobieStation)
 * others maybe ([candidates](https://gitlab.com/TASVideos/BizHawk/snippets/1890492))
 

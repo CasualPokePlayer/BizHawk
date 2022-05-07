@@ -36,7 +36,7 @@ namespace BizHawk.Client.Common
 
 		public IEnumerable<T> EnumerateValues<T>(LuaTable table) => table.Values.Cast<T>();
 
-		public LuaTable ListToTable<T>(IList<T> list, int indexFrom = 1)
+		public LuaTable ListToTable<T>(IReadOnlyList<T> list, int indexFrom = 1)
 		{
 			var table = _lua.NewTable();
 			for (int i = 0, l = list.Count; i != l; i++) table[indexFrom + i] = list[i];
@@ -86,7 +86,12 @@ namespace BizHawk.Client.Common
 				case int i:
 					return Color.FromArgb(i);
 				case string s:
-					if (s[0] == '#' && s.Length == 9) return ParseColor(int.Parse(s.Substring(1), NumberStyles.HexNumber), safe, logCallback);
+					if (s[0] is '#' && (s.Length is 7 or 9))
+					{
+						var i1 = uint.Parse(s.Substring(1), NumberStyles.HexNumber);
+						if (s.Length is 7) i1 |= 0xFF000000U;
+						return ParseColor(unchecked((int) i1), safe, logCallback);
+					}
 					var fromName = Color.FromName(s);
 					if (fromName.IsNamedColor) return fromName;
 					if (safe) logCallback($"ParseColor: not a known color name (\"{s}\")");

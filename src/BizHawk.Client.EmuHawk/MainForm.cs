@@ -24,6 +24,7 @@ using BizHawk.Bizware.BizwareGL;
 using BizHawk.Emulation.Common;
 using BizHawk.Emulation.Common.Base_Implementations;
 using BizHawk.Emulation.Cores;
+using BizHawk.Emulation.Cores.Calculators.TI83;
 using BizHawk.Emulation.Cores.Consoles.NEC.PCE;
 using BizHawk.Emulation.Cores.Consoles.Nintendo.QuickNES;
 using BizHawk.Emulation.Cores.Consoles.SNK;
@@ -34,6 +35,7 @@ using BizHawk.Emulation.Cores.Nintendo.N64;
 using BizHawk.Emulation.Cores.Nintendo.NES;
 using BizHawk.Emulation.Cores.Nintendo.SNES;
 using BizHawk.Emulation.Cores.Nintendo.SNES9X;
+using BizHawk.Emulation.Cores.Sony.PSX;
 
 using BizHawk.Client.EmuHawk.ToolExtensions;
 using BizHawk.Client.EmuHawk.CoreExtensions;
@@ -289,9 +291,11 @@ namespace BizHawk.Client.EmuHawk
 			Func<Config> getGlobalConfig,
 			Action<Sound> updateGlobalSound,
 			string[] args,
-			out IMovieSession movieSession)
+			out IMovieSession movieSession,
+			out bool exitEarly)
 		{
 			movieSession = null;
+			exitEarly = false;
 
 			_getGlobalConfig = getGlobalConfig;
 
@@ -299,7 +303,7 @@ namespace BizHawk.Client.EmuHawk
 			{
 				if (SingleInstanceInit(args))
 				{
-					Dispose();
+					exitEarly = true;
 					return;
 				}
 			}
@@ -502,8 +506,9 @@ namespace BizHawk.Client.EmuHawk
 			if (_argParser.cmdRom != null)
 			{
 				// Commandline should always override auto-load
-				var romPath = _argParser.cmdRom.MakeAbsolute();
-				LoadRom(romPath, new LoadRomArgs { OpenAdvanced = OpenAdvancedSerializer.ParseWithLegacy(romPath) });
+				var ioa = OpenAdvancedSerializer.ParseWithLegacy(_argParser.cmdRom);
+				if (ioa is OpenAdvanced_OpenRom oaor) ioa = new OpenAdvanced_OpenRom { Path = oaor.Path.MakeAbsolute() }; // fixes #3224; should this be done for all the IOpenAdvanced types? --yoshi
+				LoadRom(ioa.SimplePath, new LoadRomArgs { OpenAdvanced = ioa });
 				if (Game == null)
 				{
 					ShowMessageBox(owner: null, $"Failed to load {_argParser.cmdRom} specified on commandline");
@@ -789,6 +794,7 @@ namespace BizHawk.Client.EmuHawk
 
 			private set
 			{
+				_didMenuPause = false; // overwritten where relevant
 				if (_emulatorPaused && !value) // Unpausing
 				{
 					InitializeFpsData();
@@ -843,10 +849,11 @@ namespace BizHawk.Client.EmuHawk
 
 			set
 			{
+				bool wasTurboSeeking = IsTurboSeeking;
 				_pauseOnFrame = value;
 				SetPauseStatusBarIcon();
 
-				if (value == null) // TODO: make an Event handler instead, but the logic here is that after turbo seeking, tools will want to do a real update when the emulator finally pauses
+				if (wasTurboSeeking && value == null) // TODO: make an Event handler instead, but the logic here is that after turbo seeking, tools will want to do a real update when the emulator finally pauses
 				{
 					Tools.UpdateToolsBefore();
 					Tools.UpdateToolsAfter();
@@ -1374,12 +1381,12 @@ namespace BizHawk.Client.EmuHawk
 
 		public void Unthrottle()
 		{
-			_unthrottled = true;
+			Config.Unthrottled = true;
 		}
 
 		public void Throttle()
 		{
-			_unthrottled = false;
+			Config.Unthrottled = false;
 		}
 
 		private void ThrottleMessage()
@@ -1400,7 +1407,7 @@ namespace BizHawk.Client.EmuHawk
 				type = ":Clock";
 			}
 
-			string throttled = _unthrottled ? "Unthrottled" : "Throttled";
+			string throttled = Config.Unthrottled ? "Unthrottled" : "Throttled";
 			string msg = $"{throttled}{type} ";
 
 			AddOnScreenMessage(msg);
@@ -1617,7 +1624,6 @@ namespace BizHawk.Client.EmuHawk
 		public int GetApproxFramerate() => _lastFpsRounded;
 
 		private readonly Throttle _throttle;
-		private bool _unthrottled;
 
 		// For handling automatic pausing when entering the menu
 		private bool _wasPaused;
@@ -1680,26 +1686,19 @@ namespace BizHawk.Client.EmuHawk
 					sb.Append($"({_lastFps:0} fps) - ");
 				}
 
-				if (!string.IsNullOrEmpty(VersionInfo.CustomBuildString))
-				{
-					sb.Append($"{VersionInfo.CustomBuildString} ");
-				}
-
-				sb.Append(Emulator.IsNull() ? "BizHawk" : Emulator.GetSystemDisplayName());
-
-				if (VersionInfo.DeveloperBuild)
-				{
-					sb.Append(" (interim)");
-				}
-
 				if (!Emulator.IsNull())
 				{
-					sb.Append($" - {Game.Name}");
+					sb.Append($"{Game.Name} [{Emulator.GetSystemDisplayName()}] - ");
 					if (MovieSession.Movie.IsActive())
 					{
-						sb.Append($" - {Path.GetFileName(MovieSession.Movie.Filename)}");
+						sb.Append($"{Path.GetFileName(MovieSession.Movie.Filename)} - ");
 					}
 				}
+
+				sb.Append(string.IsNullOrEmpty(VersionInfo.CustomBuildString)
+					? "BizHawk"
+					: VersionInfo.CustomBuildString);
+				if (VersionInfo.DeveloperBuild) sb.Append(" (interim)");
 
 				return sb.ToString();
 			}
@@ -1710,8 +1709,9 @@ namespace BizHawk.Client.EmuHawk
 			get
 			{
 				var sb = new StringBuilder();
-				if (!string.IsNullOrEmpty(VersionInfo.CustomBuildString)) sb.Append($"{VersionInfo.CustomBuildString} ");
-				sb.Append("BizHawk");
+				sb.Append(string.IsNullOrEmpty(VersionInfo.CustomBuildString)
+					? "BizHawk"
+					: VersionInfo.CustomBuildString);
 				if (VersionInfo.DeveloperBuild) sb.Append(" (interim)");
 				return sb.ToString();
 			}
@@ -1981,17 +1981,18 @@ namespace BizHawk.Client.EmuHawk
 				case VSystemID.Raw.INTV:
 					IntvSubMenu.Visible = true;
 					break;
-				case VSystemID.Raw.N64:
+				case VSystemID.Raw.N64 when Emulator is N64:
 					N64SubMenu.Visible = true;
 					break;
 				case VSystemID.Raw.NES:
 					NESSubMenu.Visible = true;
 					break;
-				case VSystemID.Raw.PSX:
+				case VSystemID.Raw.PSX when Emulator is Octoshock:
 					PSXSubMenu.Visible = true;
 					break;
 				case VSystemID.Raw.TI83:
 					TI83SubMenu.Visible = true;
+					LoadTIFileMenuItem.Visible = Emulator is TI83;
 					break;
 				case VSystemID.Raw.ZXSpectrum:
 					zXSpectrumToolStripMenuItem.Visible = true;
@@ -2101,12 +2102,10 @@ namespace BizHawk.Client.EmuHawk
 
 		private void InitControls()
 		{
-			var controls = new Controller(
-				new ControllerDefinition
-				{
-					Name = "Emulator Frontend Controls",
-					BoolButtons = Config.HotkeyBindings.Select(x => x.DisplayName).ToList()
-				});
+			Controller controls = new(new ControllerDefinition("Emulator Frontend Controls")
+			{
+				BoolButtons = Config.HotkeyBindings.Select(static x => x.DisplayName).ToList(),
+			}.MakeImmutable());
 
 			foreach (var b in Config.HotkeyBindings)
 			{
@@ -2203,12 +2202,12 @@ namespace BizHawk.Client.EmuHawk
 				speedPercent = Math.Max(speedPercent / Rewinder.RewindFrequency, 5);
 			}
 
-			DisableSecondaryThrottling = _unthrottled || turbo || fastForward || rewind;
+			DisableSecondaryThrottling = Config.Unthrottled || turbo || fastForward || rewind;
 
 			// realtime throttle is never going to be so exact that using a double here is wrong
 			_throttle.SetCoreFps(Emulator.VsyncRate());
 			_throttle.signal_paused = EmulatorPaused;
-			_throttle.signal_unthrottle = _unthrottled || turbo;
+			_throttle.signal_unthrottle = Config.Unthrottled || turbo;
 
 			// zero 26-mar-2016 - vsync and vsync throttle here both is odd, but see comments elsewhere about triple buffering
 			_throttle.signal_overrideSecondaryThrottle = (fastForward || rewind) && (Config.SoundThrottle || Config.VSyncThrottle || Config.VSync);
@@ -2289,7 +2288,9 @@ namespace BizHawk.Client.EmuHawk
 
 		public BitmapBuffer MakeScreenshotImage()
 		{
-			return DisplayManager.RenderVideoProvider(_currentVideoProvider);
+			var ret = new BitmapBuffer(_currentVideoProvider.BufferWidth, _currentVideoProvider.BufferHeight, _currentVideoProvider.GetVideoBuffer().ToArray());
+			ret.DiscardAlpha();
+			return ret;
 		}
 
 		private void SaveSlotSelectedMessage()
@@ -2578,7 +2579,6 @@ namespace BizHawk.Client.EmuHawk
 		{
 			_stateSlots.Update(Emulator, MovieSession.Movie, SaveStatePrefix());
 
-			Slot0StatusButton.ForeColor = SlotForeColor(0);
 			Slot1StatusButton.ForeColor = SlotForeColor(1);
 			Slot2StatusButton.ForeColor = SlotForeColor(2);
 			Slot3StatusButton.ForeColor = SlotForeColor(3);
@@ -2588,8 +2588,8 @@ namespace BizHawk.Client.EmuHawk
 			Slot7StatusButton.ForeColor = SlotForeColor(7);
 			Slot8StatusButton.ForeColor = SlotForeColor(8);
 			Slot9StatusButton.ForeColor = SlotForeColor(9);
+			Slot0StatusButton.ForeColor = SlotForeColor(0);
 
-			Slot0StatusButton.BackColor = SlotBackColor(0);
 			Slot1StatusButton.BackColor = SlotBackColor(1);
 			Slot2StatusButton.BackColor = SlotBackColor(2);
 			Slot3StatusButton.BackColor = SlotBackColor(3);
@@ -2599,9 +2599,9 @@ namespace BizHawk.Client.EmuHawk
 			Slot7StatusButton.BackColor = SlotBackColor(7);
 			Slot8StatusButton.BackColor = SlotBackColor(8);
 			Slot9StatusButton.BackColor = SlotBackColor(9);
+			Slot0StatusButton.BackColor = SlotBackColor(0);
 
 			SaveSlotsStatusLabel.Visible =
-				Slot0StatusButton.Visible =
 				Slot1StatusButton.Visible =
 				Slot2StatusButton.Visible =
 				Slot3StatusButton.Visible =
@@ -2611,7 +2611,8 @@ namespace BizHawk.Client.EmuHawk
 				Slot7StatusButton.Visible =
 				Slot8StatusButton.Visible =
 				Slot9StatusButton.Visible =
-				Emulator.HasSavestates();
+				Slot0StatusButton.Visible =
+					Emulator.HasSavestates();
 		}
 
 		public BitmapBuffer CaptureOSD()
@@ -2940,6 +2941,7 @@ namespace BizHawk.Client.EmuHawk
 			SyncThrottle();
 			_throttle.signal_frameAdvance = _runloopFrameAdvance;
 			_throttle.signal_continuousFrameAdvancing = _runloopFrameProgress;
+			if (_lastFastForwardingOrRewinding) _throttle.signal_paused = false;
 
 			_throttle.Step(Config, Sound, allowSleep: true, forceFrameSkip: -1);
 		}
@@ -3035,7 +3037,7 @@ namespace BizHawk.Client.EmuHawk
 			if ((runFrame || force) && !BlockFrameAdvance)
 			{
 				var isFastForwarding = InputManager.ClientControls["Fast Forward"] || IsTurboing || InvisibleEmulation;
-				var isFastForwardingOrRewinding = isFastForwarding || isRewinding || _unthrottled;
+				var isFastForwardingOrRewinding = isFastForwarding || isRewinding || Config.Unthrottled;
 
 				if (isFastForwardingOrRewinding != _lastFastForwardingOrRewinding)
 				{
@@ -3134,13 +3136,17 @@ namespace BizHawk.Client.EmuHawk
 
 				PressFrameAdvance = false;
 
-				if (IsTurboing)
+				// Update tools, but not if we're at the end of a turbo seek. In that case, updating will happen later when the seek is ended.
+				if (!(IsTurboSeeking && Emulator.Frame == PauseOnFrame.Value))
 				{
-					Tools.FastUpdateAfter();
-				}
-				else
-				{
-					UpdateToolsAfter();
+					if (IsTurboing)
+					{
+						Tools.FastUpdateAfter();
+					}
+					else
+					{
+						UpdateToolsAfter();
+					}
 				}
 
 				if (!PauseAvi && newFrame && !InvisibleEmulation)
@@ -3178,12 +3184,15 @@ namespace BizHawk.Client.EmuHawk
 					{
 						Tools.TAStudio.StopSeeking();
 					}
-					PauseOnFrame = null;
+					else
+					{
+						PauseOnFrame = null;
+					}
 				}
 			}
-
-			if (InputManager.ClientControls["Rewind"] || PressRewind)
+			else if (isRewinding)
 			{
+				// Tools will want to be updated after rewind (load state), but we only need to manually do this if we did not frame advance.
 				UpdateToolsAfter();
 			}
 
@@ -3736,11 +3745,6 @@ namespace BizHawk.Client.EmuHawk
 				loader.OnLoadSettings += CoreSettings;
 				loader.OnLoadSyncSettings += CoreSyncSettings;
 
-				if (Tools.IsLoaded<GenericDebugger>())
-				{
-					Tools.Restart<GenericDebugger>();
-				}
-
 				// this also happens in CloseGame(). But it needs to happen here since if we're restarting with the same core,
 				// any settings changes that we made need to make it back to config before we try to instantiate that core with
 				// the new settings objects
@@ -3877,13 +3881,6 @@ namespace BizHawk.Client.EmuHawk
 					if (Emulator.HasBoardInfo())
 					{
 						Console.WriteLine("Core reported BoardID: \"{0}\"", Emulator.AsBoardInfo().BoardName);
-					}
-
-					// restarts the lua console if a different rom is loaded.
-					// im not really a fan of how this is done..
-					if (Config.RecentRoms.Empty || Config.RecentRoms.MostRecent != openAdvancedArgs)
-					{
-						Tools.Restart<LuaConsole>();
 					}
 
 					Config.RecentRoms.Add(openAdvancedArgs);
@@ -4179,7 +4176,7 @@ namespace BizHawk.Client.EmuHawk
 				return;
 			}
 
-			if (new SavestateFile(Emulator, MovieSession, QuickBmpFile, MovieSession.UserBag).Load(path))
+			if (new SavestateFile(Emulator, MovieSession, QuickBmpFile, MovieSession.UserBag).Load(path, this))
 			{
 				OSD.ClearGuiText();
 				EmuClient.OnStateLoaded(this, userFriendlyStateName);
@@ -4826,6 +4823,6 @@ namespace BizHawk.Client.EmuHawk
 			LoadRom(args[0]);
 		}
 
-		public IQuickBmpFile QuickBmpFile { get; } = new QuickBmpFile();
+		public IQuickBmpFile QuickBmpFile { get; } = EmuHawk.QuickBmpFile.INSTANCE;
 	}
 }

@@ -1,6 +1,7 @@
 ﻿using System.IO;
 
 using BizHawk.Emulation.Common;
+using BizHawk.Emulation.Cores;
 using BizHawk.Emulation.Cores.Consoles.Sega.gpgx;
 
 namespace BizHawk.Client.Common.movie.import
@@ -89,10 +90,7 @@ namespace BizHawk.Client.Common.movie.import
 
 			var controlConverter = new GPGXControlConverter(input, false);
 			
-			var controller = new SimpleController
-			{
-				Definition = controlConverter.ControllerDef
-			};
+			SimpleController controller = new(controlConverter.ControllerDef);
 
 			// Unknown.
 			r.ReadByte();
@@ -167,6 +165,7 @@ namespace BizHawk.Client.Common.movie.import
 			}
 
 			Result.Movie.SyncSettingsJson = ConfigService.SaveWithType(ss);
+			Result.Movie.HeaderEntries[HeaderKeys.Core] = CoreNames.Gpgx;
 		}
 	}
 }

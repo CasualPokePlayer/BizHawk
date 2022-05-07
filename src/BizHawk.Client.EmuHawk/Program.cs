@@ -49,7 +49,7 @@ namespace BizHawk.Client.EmuHawk
 
 			// this will look in subdirectory "dll" to load pinvoked stuff
 			var dllDir = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "dll");
-			SetDllDirectory(dllDir);
+			_ = SetDllDirectory(dllDir);
 
 			//in case assembly resolution fails, such as if we moved them into the dll subdiretory, this event handler can reroute to them
 			AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve;
@@ -181,17 +181,15 @@ namespace BizHawk.Client.EmuHawk
 							// possibly sharing config w/ Windows, assume the user wants the not-slow method (but don't change the config)
 							return TryInitIGL(EDispMethod.OpenGL);
 						}
-						IGL_SlimDX9 glSlimDX;
 						try
 						{
-							glSlimDX = new IGL_SlimDX9();
+							return CheckRenderer(IndirectX.CreateD3DGLImpl());
 						}
 						catch (Exception ex)
 						{
 							new ExceptionBox(new Exception("Initialization of Direct3d 9 Display Method failed; falling back to GDI+", ex)).ShowDialog();
 							return TryInitIGL(initialConfig.DispMethod = EDispMethod.GdiPlus);
 						}
-						return CheckRenderer(glSlimDX);
 					case EDispMethod.OpenGL:
 						var glOpenTK = new IGL_TK(2, 0, false);
 						if (glOpenTK.Version < 200)
@@ -226,7 +224,7 @@ namespace BizHawk.Client.EmuHawk
 				//note: this is pasted instead of being put in a static method due to this initialization code being sensitive to things like that, and not wanting to cause it to break
 				//pasting should be safe (not affecting the jit order of things)
 				var dllDir = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "dll");
-				SetDllDirectory(dllDir);
+				_ = SetDllDirectory(dllDir);
 			}
 
 			Util.DebugWriteLine(EmuHawkUtil.CLRHostHasElevatedPrivileges ? "running as Superuser/Administrator" : "running as unprivileged user");
@@ -241,7 +239,14 @@ namespace BizHawk.Client.EmuHawk
 					() => initialConfig,
 					newSound => globalSound = newSound,
 					args,
-					out var movieSession);
+					out var movieSession,
+					out var exitEarly);
+				if (exitEarly)
+				{
+					//TODO also use this for ArgParser failure
+					mf.Dispose();
+					return 0;
+				}
 				mf.LoadGlobalConfigFromFile = iniPath =>
 				{
 					if (!VersionInfo.DeveloperBuild && !ConfigService.IsFromSameVersion(iniPath, out var msg))

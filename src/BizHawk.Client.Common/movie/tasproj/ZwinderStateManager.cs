@@ -9,7 +9,7 @@ namespace BizHawk.Client.Common
 {
 	public class ZwinderStateManager : IStateManager, IDisposable
 	{
-		private static readonly byte[] NonState = new byte[0];
+		private static readonly byte[] NonState = Array.Empty<byte>();
 
 		private readonly Func<int, bool> _reserveCallback;
 		internal readonly SortedList<int> StateCache = new SortedList<int>();
@@ -319,11 +319,9 @@ namespace BizHawk.Client.Common
 				return;
 			}
 
-			// We do not want to consider reserved states for a notion of Last
-			// reserved states can include future states in the case of branch states
-			if ((frame <= LastRing && NeedsGap(frame)) || force)
+			// We use the gap buffer for forced capture to avoid crowding the "current" buffer and thus reducing it's actual span of covered frames.
+			if (NeedsGap(frame) || force)
 			{
-				// We use the gap buffer for forced capture to avoid crowding the "current" buffer and thus reducing it's actual span of covered frames.
 				CaptureGap(frame, source);
 				return;
 			}
@@ -395,6 +393,12 @@ namespace BizHawk.Client.Common
 
 		private bool NeedsGap(int frame)
 		{
+			// We don't want to "fill gaps" if we are past the latest state in the current/recent buffers.
+			if (frame >= LastRing)
+			{
+				return false;
+			}
+
 			// When starting to fill gaps we won't actually know the true frequency, so fall back to current
 			// Current may very well not be the same as gap, but it's a reasonable behavior to have a current sized gap before seeing filler sized gaps
 			var frequency = _gapFiller.Count == 0 ? _current.RewindFrequency : _gapFiller.RewindFrequency;

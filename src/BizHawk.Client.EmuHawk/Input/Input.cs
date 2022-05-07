@@ -42,7 +42,6 @@ namespace BizHawk.Client.EmuHawk
 		{
 			_getConfigCallback = getConfigCallback;
 			_currentConfig = _getConfigCallback();
-			_currentConfig.MergeLAndRModifierKeys = true; // for debugging
 			UpdateModifierKeysEffective();
 
 			MainFormInputAllowedCallback = mainFormInputAllowedCallback;
@@ -72,19 +71,19 @@ namespace BizHawk.Client.EmuHawk
 		private bool _trackDeltas;
 		private bool _ignoreEventsNextPoll;
 
-		private static readonly IReadOnlyList<string> ModifierKeysBase = new[] { "Win", "Ctrl", "Alt", "Shift" };
+		private static readonly IReadOnlyList<string> ModifierKeysBase = new[] { "Super", "Ctrl", "Alt", "Shift" };
 
-		private static readonly IReadOnlyList<string> ModifierKeysBaseUnmerged = new[] { "Win", "Ctrl", "Alt", "Shift", "LeftWin", "RightWin", "LeftCtrl", "RightCtrl", "LeftAlt", "RightAlt", "LeftShift", "RightShift" };
+		private static readonly IReadOnlyList<string> ModifierKeysBaseUnmerged = new[] { "Super", "Ctrl", "Alt", "Shift", "LeftSuper", "RightSuper", "LeftCtrl", "RightCtrl", "LeftAlt", "RightAlt", "LeftShift", "RightShift" };
 
 		public void UpdateModifierKeysEffective()
 			=> _currentConfig.ModifierKeysEffective = (_currentConfig.MergeLAndRModifierKeys ? ModifierKeysBase : ModifierKeysBaseUnmerged)
 				.Concat(_currentConfig.ModifierKeys)
 				.Take(32).ToArray();
 
-		private readonly IReadOnlyDictionary<string, string> _modifierKeyPreMap = new Dictionary<string, string>
+		internal static readonly IReadOnlyDictionary<string, string> ModifierKeyPreMap = new Dictionary<string, string>
 		{
-			["LeftWin"] = "Win",
-			["RightWin"] = "Win",
+			["LeftSuper"] = "Win",
+			["RightSuper"] = "Win",
 			["LeftCtrl"] = "Ctrl",
 			["RightCtrl"] = "Ctrl",
 			["LeftAlt"] = "Alt",
@@ -93,9 +92,17 @@ namespace BizHawk.Client.EmuHawk
 			["RightShift"] = "Shift",
 		};
 
+		internal static readonly IReadOnlyDictionary<string, string> ModifierKeyInvPreMap = new Dictionary<string, string>
+		{
+			["Super"] = "LeftWin",
+			["Ctrl"] = "LeftCtrl",
+			["Alt"] = "LeftAlt",
+			["Shift"] = "LeftShift",
+		};
+
 		private void HandleButton(string button, bool newState, ClientInputFocus source)
 		{
-			if (!(_currentConfig.MergeLAndRModifierKeys &&_modifierKeyPreMap.TryGetValue(button, out var button1))) button1 = button;
+			if (!(_currentConfig.MergeLAndRModifierKeys && ModifierKeyPreMap.TryGetValue(button, out var button1))) button1 = button;
 			var modIndex = _currentConfig.ModifierKeysEffective.IndexOf(button1);
 			var currentModifier = modIndex is -1 ? 0U : 1U << modIndex;
 			if (EnableIgnoreModifiers && currentModifier is not 0U) return;
@@ -209,59 +216,10 @@ namespace BizHawk.Client.EmuHawk
 
 		private void UpdateThreadProc()
 		{
-			static string KeyName(DistinctKey k) => k switch
-			{
-				DistinctKey.Back => "Backspace",
-				DistinctKey.Enter => "Enter",
-				DistinctKey.CapsLock => "CapsLock",
-				DistinctKey.PageDown => "PageDown",
-				DistinctKey.D0 => "Number0",
-				DistinctKey.D1 => "Number1",
-				DistinctKey.D2 => "Number2",
-				DistinctKey.D3 => "Number3",
-				DistinctKey.D4 => "Number4",
-				DistinctKey.D5 => "Number5",
-				DistinctKey.D6 => "Number6",
-				DistinctKey.D7 => "Number7",
-				DistinctKey.D8 => "Number8",
-				DistinctKey.D9 => "Number9",
-				DistinctKey.LWin => "LeftWin",
-				DistinctKey.RWin => "RightWin",
-				DistinctKey.NumPad0 => "Keypad0",
-				DistinctKey.NumPad1 => "Keypad1",
-				DistinctKey.NumPad2 => "Keypad2",
-				DistinctKey.NumPad3 => "Keypad3",
-				DistinctKey.NumPad4 => "Keypad4",
-				DistinctKey.NumPad5 => "Keypad5",
-				DistinctKey.NumPad6 => "Keypad6",
-				DistinctKey.NumPad7 => "Keypad7",
-				DistinctKey.NumPad8 => "Keypad8",
-				DistinctKey.NumPad9 => "Keypad9",
-				DistinctKey.Multiply => "KeypadMultiply",
-				DistinctKey.Add => "KeypadAdd",
-				DistinctKey.Separator => "KeypadComma",
-				DistinctKey.Subtract => "KeypadSubtract",
-				DistinctKey.Decimal => "KeypadDecimal",
-				DistinctKey.Divide => "KeypadDivide",
-				DistinctKey.Scroll => "ScrollLock",
-				DistinctKey.OemSemicolon => "Semicolon",
-				DistinctKey.OemPlus => "Equals",
-				DistinctKey.OemComma => "Comma",
-				DistinctKey.OemMinus => "Minus",
-				DistinctKey.OemPeriod => "Period",
-				DistinctKey.OemQuestion => "Slash",
-				DistinctKey.OemTilde => "Backtick",
-				DistinctKey.OemOpenBrackets => "LeftBracket",
-				DistinctKey.OemPipe => "Backslash",
-				DistinctKey.OemCloseBrackets => "RightBracket",
-				DistinctKey.OemQuotes => "Apostrophe",
-				DistinctKey.OemBackslash => "OEM102",
-				DistinctKey.NumPadEnter => "KeypadEnter",
-				_ => k.ToString()
-			};
 			while (true)
 			{
 				_currentConfig = _getConfigCallback();
+				UpdateModifierKeysEffective();
 				Adapter.UpdateConfig(_currentConfig);
 
 				var keyEvents = Adapter.ProcessHostKeyboards();
@@ -274,7 +232,9 @@ namespace BizHawk.Client.EmuHawk
 
 					//analyze keys
 					foreach (var ke in keyEvents)
-						HandleButton(KeyName(ke.Key), ke.Pressed, ClientInputFocus.Keyboard);
+					{
+						HandleButton(DistinctKeyNameOverrides.GetName(in ke.Key), ke.Pressed, ClientInputFocus.Keyboard);
+					}
 
 					lock (_axisValues)
 					{

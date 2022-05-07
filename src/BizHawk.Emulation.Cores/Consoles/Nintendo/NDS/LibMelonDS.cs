@@ -29,17 +29,6 @@ namespace BizHawk.Emulation.Cores.Consoles.Nintendo.NDS
 			POWER = 0x8000,
 		}
 
-		[Flags]
-		public enum LoadFlags : uint
-		{
-			NONE = 0x00,
-			USE_REAL_BIOS = 0x01,
-			SKIP_FIRMWARE = 0x02,
-			GBA_CART_PRESENT = 0x04,
-			ACCURATE_AUDIO_BITRATE = 0x08,
-			FIRMWARE_OVERRIDE = 0x10,
-		}
-
 		[StructLayout(LayoutKind.Sequential)]
 		public new class FrameInfo : LibWaterboxCore.FrameInfo
 		{
@@ -51,8 +40,37 @@ namespace BizHawk.Emulation.Cores.Consoles.Nintendo.NDS
 			public byte GBALightSensor;
 		}
 
+		[Flags]
+		public enum LoadFlags : uint
+		{
+			NONE = 0x00,
+			USE_REAL_BIOS = 0x01,
+			SKIP_FIRMWARE = 0x02,
+			GBA_CART_PRESENT = 0x04,
+			RESERVED_FLAG = 0x08,
+			FIRMWARE_OVERRIDE = 0x10,
+			IS_DSI = 0x20,
+			LOAD_DSIWARE = 0x40,
+			THREADED_RENDERING = 0x80,
+		}
+
 		[StructLayout(LayoutKind.Sequential)]
-		public class FirmwareSettings
+		public struct LoadData
+		{
+			public IntPtr DsRomData;
+			public int DsRomLength;
+			public IntPtr GbaRomData;
+			public int GbaRomLength;
+			public IntPtr GbaRamData;
+			public int GbaRamLength;
+			public IntPtr NandData;
+			public int NandLength;
+			public IntPtr TmdData;
+			public NDS.NDSSettings.AudioBitrateType AudioBitrate;
+		}
+
+		[StructLayout(LayoutKind.Sequential)]
+		public struct FirmwareSettings
 		{
 			public IntPtr FirmwareUsername; // max 10 length (then terminator)
 			public int FirmwareUsernameLength;
@@ -65,7 +83,7 @@ namespace BizHawk.Emulation.Cores.Consoles.Nintendo.NDS
 		}
 
 		[BizImport(CC)]
-		public abstract bool Init(LoadFlags flags, FirmwareSettings fwSettings);
+		public abstract bool Init(LoadFlags loadFlags, ref LoadData loadData, ref FirmwareSettings fwSettings);
 
 		[BizImport(CC)]
 		public abstract void PutSaveRam(byte[] data, uint len);
@@ -85,6 +103,15 @@ namespace BizHawk.Emulation.Cores.Consoles.Nintendo.NDS
 		[BizImport(CC)]
 		public abstract void SetReg(int ncpu, int index, int val);
 
+		[BizImport(CC)]
+		public abstract int GetCallbackCycleOffset();
+
+		[UnmanagedFunctionPointer(CC)]
+		public delegate void MemoryCallback(uint addr);
+
+		[BizImport(CC)]
+		public abstract void SetMemoryCallback(int which, MemoryCallback callback);
+
 		// bit 0 -> ARM9 or ARM7
 		// bit 1 -> ARM or THUMB mode
 		public enum CpuTypes : uint
@@ -96,9 +123,27 @@ namespace BizHawk.Emulation.Cores.Consoles.Nintendo.NDS
 		}
 
 		[UnmanagedFunctionPointer(CC)]
-		public delegate void TraceCallback(CpuTypes _cpu, IntPtr _regs, uint _opcode, long _ccoffset);
+		public delegate void TraceCallback(CpuTypes _cpu, IntPtr _regs, uint _opcode);
 
 		[BizImport(CC)]
 		public abstract void SetTraceCallback(TraceCallback callback);
+
+		[BizImport(CC)]
+		public abstract IntPtr GetFrameThreadProc();
+
+		[UnmanagedFunctionPointer(CC)]
+		public delegate void ThreadStartCallback();
+
+		[BizImport(CC)]
+		public abstract void SetThreadStartCallback(ThreadStartCallback callback);
+
+		[BizImport(CC)]
+		public abstract int GetNANDSize();
+
+		[BizImport(CC)]
+		public abstract void GetNANDData(byte[] buf);
+
+		[BizImport(CC)]
+		public abstract void ResetCaches();
 	}
 }

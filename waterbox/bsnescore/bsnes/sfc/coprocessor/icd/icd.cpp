@@ -24,7 +24,7 @@ namespace SameBoy {
   static auto joyp_write(GB_gameboy_t*, uint8_t value) -> void {
     bool p14 = value & 0x10;
     bool p15 = value & 0x20;
-	if (!p14 || !p15) platform->notify("NOTIFY NO_LAG_SGB");
+	if (!p14 || !p15) platform->notify("NO_LAG_SGB");
     icd.joypWrite(p14, p15);
   }
 
@@ -84,7 +84,7 @@ auto ICD::load() -> bool {
 
   GB_random_set_enabled(configuration.hacks.entropy != "None");
   if(Frequency == 0) {
-    GB_init(&sameboy, GB_MODEL_SGB_NO_SFC);
+    GB_init(&sameboy, Region::PAL() ? GB_MODEL_SGB_PAL_NO_SFC : GB_MODEL_SGB_NTSC_NO_SFC);
     GB_load_boot_rom_from_buffer(&sameboy, (const unsigned char*)&SGB1BootROM[0], 256);
   } else {
     GB_init(&sameboy, GB_MODEL_SGB2_NO_SFC);

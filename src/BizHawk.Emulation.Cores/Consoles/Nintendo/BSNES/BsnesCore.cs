@@ -1,8 +1,5 @@
 using System;
-using System.Linq;
-using System.Xml;
 using System.IO;
-
 using BizHawk.Common;
 using BizHawk.Emulation.Common;
 using BizHawk.Emulation.Cores.Components.W65816;
@@ -11,35 +8,27 @@ using BizHawk.Emulation.Cores.Components.W65816;
 
 namespace BizHawk.Emulation.Cores.Nintendo.BSNES
 {
-	[PortedCore(CoreNames.Bsnes115, "bsnes team", "v115+", "https://bsnes.dev", isReleased: false)]
+	[PortedCore(CoreNames.Bsnes115, "bsnes team", "v115+", "https://github.com/bsnes-emu/bsnes")]
 	[ServiceNotApplicable(new[] { typeof(IDriveLight) })]
 	public unsafe partial class BsnesCore : IEmulator, IDebuggable, IVideoProvider, ISaveRam, IStatable, IInputPollable, IRegionable, ISettable<BsnesCore.SnesSettings, BsnesCore.SnesSyncSettings>
 	{
-		private BsnesApi.SNES_REGION _region;
-
 		[CoreConstructor(VSystemID.Raw.SGB)]
 		[CoreConstructor(VSystemID.Raw.SNES)]
-		public BsnesCore(GameInfo game, byte[] rom, CoreComm comm,
-			SnesSettings settings, SnesSyncSettings syncSettings)
-			:this(game, rom, null, null, comm, settings, syncSettings)
-		{}
-
-		public BsnesCore(GameInfo game, byte[] romData, byte[] xmlData, string baseRomPath, CoreComm comm,
-			SnesSettings settings, SnesSyncSettings syncSettings)
+		public BsnesCore(CoreLoadParameters<SnesSettings, SnesSyncSettings> loadParameters)
 		{
-			_baseRomPath = baseRomPath;
 			var ser = new BasicServiceProvider(this);
 			ServiceProvider = ser;
 
-			CoreComm = comm;
+			this._romPath = Path.ChangeExtension(loadParameters.Roms[0].RomPath, null);
+			CoreComm = loadParameters.Comm;
+			_settings = loadParameters.Settings ?? new SnesSettings();
+			_syncSettings = loadParameters.SyncSettings ?? new SnesSyncSettings();
+
+			IsSGB = loadParameters.Game.System == VSystemID.Raw.SGB;
 			byte[] sgbRomData = null;
-
-			_settings = settings ?? new SnesSettings();
-			_syncSettings = syncSettings ?? new SnesSyncSettings();
-
-			if (game.System == VSystemID.Raw.SGB)
+			if (IsSGB)
 			{
-				if ((romData[0x143] & 0xc0) == 0xc0)
+				if ((loadParameters.Roms[0].RomData[0x143] & 0xc0) == 0xc0)
 				{
 					throw new CGBNotSupportedException();
 				}
@@ -48,18 +37,25 @@ namespace BizHawk.Emulation.Cores.Nintendo.BSNES
 					? CoreComm.CoreFileProvider.GetFirmwareOrThrow(new("SNES", "Rom_SGB2"), "SGB2 Rom is required for SGB2 emulation.")
 					: CoreComm.CoreFileProvider.GetFirmwareOrThrow(new("SNES", "Rom_SGB"), "SGB1 Rom is required for SGB1 emulation.");
 
-				game.FirmwareHash = SHA1Checksum.ComputeDigestHex(sgbRomData);
+				loadParameters.Game.FirmwareHash = SHA1Checksum.ComputeDigestHex(sgbRomData);
 			}
 
 			BsnesApi.SnesCallbacks callbacks = new()
 			{
 				inputPollCb = snes_input_poll,
-				inputStateCb = snes_input_state,
 				noLagCb = snes_no_lag,
+				controllerLatchCb = snes_controller_latch,
 				videoFrameCb = snes_video_refresh,
 				audioSampleCb = snes_audio_sample,
 				pathRequestCb = snes_path_request,
-				snesTraceCb = snes_trace
+				traceCb = snes_trace,
+				readHookCb = ReadHook,
+				writeHookCb = WriteHook,
+				execHookCb = ExecHook,
+				msuOpenCb = msu_open,
+				msuSeekCb = msu_seek,
+				msuReadCb = msu_read,
+				msuEndCb = msu_end
 			};
 
 			Api = new BsnesApi(CoreComm.CoreFileProvider.DllPath(), CoreComm, callbacks.AllDelegatesInMemoryOrder());
@@ -67,61 +63,37 @@ namespace BizHawk.Emulation.Cores.Nintendo.BSNES
 			_controllers = new BsnesControllers(_syncSettings);
 
 			generate_palette();
-			// TODO: massive random hack till waterboxhost gets fixed to support 5+ args
-			ushort mergedBools = (ushort) ((_syncSettings.Hotfixes ? 1 << 8 : 0) | (_syncSettings.FastPPU ? 1 : 0));
-			Api.core.snes_init(_syncSettings.Entropy, _syncSettings.LeftPort, _syncSettings.RightPort, mergedBools);
+			BsnesApi.SnesInitData snesInitData = new()
+			{
+				entropy = _syncSettings.Entropy,
+				left_port = _syncSettings.LeftPort,
+				right_port = _syncSettings.RightPort,
+				hotfixes = _syncSettings.Hotfixes,
+				fast_ppu = _syncSettings.FastPPU,
+				fast_dsp = _syncSettings.FastDSP,
+				fast_coprocessors = _syncSettings.FastCoprocessors,
+				region_override = _syncSettings.RegionOverride,
+			};
+			Api.core.snes_init(ref snesInitData);
 			Api.SetCallbacks(callbacks);
 
 			// start up audio resampler
 			InitAudio();
 			ser.Register<ISoundProvider>(_resampler);
 
-			if (game.System == VSystemID.Raw.SGB)
+			if (IsSGB)
 			{
-				IsSGB = true;
-				SystemId = VSystemID.Raw.SNES;
 				ser.Register<IBoardInfo>(new SGBBoardInfo());
 
-				_currLoadParams = new LoadParams
-				{
-					type = LoadParamType.SuperGameBoy,
-					baseRomPath = baseRomPath,
-					romData = sgbRomData,
-					sgbRomData = romData
-				};
+				Api.core.snes_load_cartridge_super_gameboy(sgbRomData, loadParameters.Roms[0].RomData,
+					sgbRomData!.Length, loadParameters.Roms[0].RomData.Length);
 			}
 			else
 			{
-				// we may need to get some information out of the cart, even during the following bootup/load process
-				if (xmlData != null)
-				{
-					_romxml = new XmlDocument();
-					_romxml.Load(new MemoryStream(xmlData));
-
-					// bsnes wont inspect the xml to load the necessary sfc file.
-					// so, we have to do that here and pass it in as the romData :/
-
-					// TODO: uhh i have no idea what the xml is or whether this below code is needed
-					if (_romxml["cartridge"]?["rom"] != null)
-					{
-						romData = File.ReadAllBytes(PathSubfile(_romxml["cartridge"]["rom"].Attributes["name"].Value));
-					}
-					else
-					{
-						throw new Exception("Could not find rom file specification in xml file. Please check the integrity of your xml file");
-					}
-				}
-
-				SystemId = VSystemID.Raw.SNES;
-				_currLoadParams = new LoadParams
-				{
-					type = LoadParamType.Normal,
-					baseRomPath = baseRomPath,
-					romData = romData
-				};
+				Api.core.snes_load_cartridge_normal(loadParameters.Roms[0].RomData, loadParameters.Roms[0].RomData.Length);
 			}
 
-			LoadCurrent();
+			_region = Api.core.snes_get_region();
 
 			if (_region == BsnesApi.SNES_REGION.NTSC)
 			{
@@ -148,17 +120,12 @@ namespace BizHawk.Emulation.Cores.Nintendo.BSNES
 
 		private CoreComm CoreComm { get; }
 
-		private readonly string _baseRomPath;
-
-		private string PathSubfile(string fname) => Path.Combine(_baseRomPath, fname);
-
 		private readonly BsnesControllers _controllers;
 		private readonly ITraceable _tracer;
-		private readonly XmlDocument _romxml;
 
 		private IController _controller;
-		private readonly LoadParams _currLoadParams;
 		private SpeexResampler _resampler;
+		private readonly string _romPath;
 		private bool _disposed;
 
 		public bool IsSGB { get; }
@@ -172,49 +139,18 @@ namespace BizHawk.Emulation.Cores.Nintendo.BSNES
 
 		private string snes_path_request(int slot, string hint, bool required)
 		{
-			// TODO: this msu1 handling code is outdated and needs to be remade from someone with knowledge.
-			// every rom requests msu1.rom... why? who knows.
-			// also handle msu-1 pcm files here
-			bool isMsu1Rom = hint == "msu1/data.rom";
-			bool isMsu1Pcm = Path.GetExtension(hint).ToLower() == ".pcm";
-			if (isMsu1Rom || isMsu1Pcm)
+			switch (hint)
 			{
-				// well, check if we have an msu-1 xml
-				if (_romxml?["cartridge"]?["msu1"] != null)
-				{
-					var msu1 = _romxml["cartridge"]["msu1"];
-					if (isMsu1Rom && msu1["rom"]?.Attributes["name"] != null)
-					{
-						return PathSubfile(msu1["rom"].Attributes["name"].Value);
-					}
-
-					if (isMsu1Pcm)
-					{
-						// return @"D:\roms\snes\SuperRoadBlaster\SuperRoadBlaster-1.pcm";
-						// return "";
-						int wantsTrackNumber = int.Parse(hint.Replace("track-", "").Replace(".pcm", ""));
-						wantsTrackNumber++;
-						string wantsTrackString = wantsTrackNumber.ToString();
-						foreach (var child in msu1.ChildNodes.Cast<XmlNode>())
-						{
-							if (child.Name == "track" && child.Attributes["number"].Value == wantsTrackString)
-							{
-								return PathSubfile(child.Attributes["name"].Value);
-							}
-						}
-					}
-				}
-
-				// not found.. what to do? (every rom will get here when msu1.rom is requested)
-				return "";
-			}
-
-			// not MSU-1.  ok.
-			if (hint == "save.ram")
-			{
-				// core asked for saveram, but the interface isn't designed to be able to handle this.
-				// so, we'll just return nothing and the frontend will set the saveram itself later
-				return null;
+				case "manifest.bml":
+					Api.AddReadonlyFile($"{_romPath}.bml", hint);
+					return hint;
+				case "msu1/data.rom":
+					Api.AddReadonlyFile($"{_romPath}.msu", hint);
+					return hint;
+				case "save.ram":
+					// core asked for saveram, but the interface isn't designed to be able to handle this.
+					// so, we'll just return nothing and the frontend will set the saveram itself later
+					return null;
 			}
 
 			string firmwareId;
@@ -241,7 +177,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.BSNES
 			string ret = "";
 			FirmwareID fwid = new(firmwareSystem, firmwareId);
 			const string MISSING_FIRMWARE_MSG = "Game may function incorrectly without the requested firmware.";
-			var data = required
+			byte[] data = required
 				? CoreComm.CoreFileProvider.GetFirmwareOrThrow(fwid, MISSING_FIRMWARE_MSG)
 				: CoreComm.CoreFileProvider.GetFirmware(fwid, MISSING_FIRMWARE_MSG);
 			if (data != null)
@@ -256,55 +192,30 @@ namespace BizHawk.Emulation.Cores.Nintendo.BSNES
 			return ret;
 		}
 
-		private enum LoadParamType
-		{
-			Normal, SuperGameBoy
-		}
-
-		private struct LoadParams
-		{
-			public LoadParamType type;
-			public string baseRomPath;
-			public byte[] romData;
-			public byte[] sgbRomData;
-		}
-
-		private void LoadCurrent()
-		{
-			if (_currLoadParams.type == LoadParamType.Normal)
-				Api.core.snes_load_cartridge_normal(_currLoadParams.baseRomPath, _currLoadParams.romData, _currLoadParams.romData.Length);
-			else
-				Api.core.snes_load_cartridge_super_gameboy(_currLoadParams.baseRomPath, _currLoadParams.romData,
-					_currLoadParams.sgbRomData, (ulong) _currLoadParams.romData.Length << 32 |  (uint)_currLoadParams.sgbRomData.Length);
-
-			_region = Api.core.snes_get_region();
-		}
-
-		// poll which updates the controller state
-		private void snes_input_poll()
-		{
-			_controllers.CoreInputPoll(_controller);
-		}
-
 		/// <param name="port">0 or 1, corresponding to L and R physical ports on the snes</param>
 		/// <param name="index">meaningless for most controllers.  for multitap, 0-3 for which multitap controller</param>
 		/// <param name="id">button ID enum; in the case of a regular controller, this corresponds to shift register position</param>
 		/// <returns>for regular controllers, one bit D0 of button status.  for other controls, varying ranges depending on id</returns>
-		private short snes_input_state(int port, int index, int id)
+		private short snes_input_poll(int port, int index, int id)
 		{
-			return _controllers.CoreInputState(port, index, id);
+			return _controllers.CoreInputPoll(_controller, port, index, id);
 		}
 
 		private void snes_no_lag(bool sgbPoll)
 		{
-			// gets called whenever there was input polled, aka no lag
+			// gets called whenever there was input read in the core
 			if (!IsSGB || sgbPoll)
 			{
 				IsLagFrame = false;
 			}
 		}
 
-		private readonly int[] palette = new int[32768];
+		private void snes_controller_latch()
+		{
+			InputCallbacks.Call();
+		}
+
+		private readonly int[] palette = new int[0x8000];
 
 		private void generate_palette()
 		{
@@ -355,7 +266,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.BSNES
 					ushort* sp = data + y * pitch + 48;
 					for (int x = 0; x < 160; x++)
 					{
-						_videoBuffer[di++] = palette[*sp++];
+						_videoBuffer[di++] = palette[*sp++ & 0x7FFF];
 					}
 				}
 				return;
@@ -366,7 +277,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.BSNES
 				int si = y / heightMultiplier * pitch;
 				for (int x = 0; x < width * widthMultiplier; x++)
 				{
-					_videoBuffer[di++] = palette[data[si + x / widthMultiplier]];
+					_videoBuffer[di++] = palette[data[si + x / widthMultiplier] & 0x7FFF];
 				}
 			}
 		}
@@ -383,5 +294,57 @@ namespace BizHawk.Emulation.Cores.Nintendo.BSNES
 
 		private void snes_trace(string disassembly, string registerInfo)
 			=> _tracer.Put(new(disassembly: disassembly, registerInfo: registerInfo));
+
+		private void ReadHook(uint addr)
+		{
+			if (MemoryCallbacks.HasReads)
+			{
+				MemoryCallbacks.CallMemoryCallbacks(addr, 0, (uint) MemoryCallbackFlags.AccessRead, "System Bus");
+			}
+		}
+
+		private void WriteHook(uint addr, byte value)
+		{
+			if (MemoryCallbacks.HasWrites)
+			{
+				MemoryCallbacks.CallMemoryCallbacks(addr, value, (uint) MemoryCallbackFlags.AccessWrite, "System Bus");
+			}
+		}
+
+		private void ExecHook(uint addr)
+		{
+			if (MemoryCallbacks.HasExecutes)
+			{
+				MemoryCallbacks.CallMemoryCallbacks(addr, 0, (uint) MemoryCallbackFlags.AccessExecute, "System Bus");
+			}
+		}
+
+		private FileStream _currentMsuTrack;
+
+		private void msu_seek(long offset, bool relative)
+		{
+			_currentMsuTrack?.Seek(offset, relative ? SeekOrigin.Current : SeekOrigin.Begin);
+		}
+		private byte msu_read()
+		{
+			return (byte) (_currentMsuTrack?.ReadByte() ?? 0);
+		}
+
+		private void msu_open(ushort trackId)
+		{
+			_currentMsuTrack?.Dispose();
+			try
+			{
+				_currentMsuTrack = File.OpenRead($"{_romPath}-{trackId}.pcm");
+			}
+			catch
+			{
+				_currentMsuTrack = null;
+			}
+		}
+		private bool msu_end()
+		{
+			return _currentMsuTrack.Position == _currentMsuTrack.Length;
+		}
 	}
 }

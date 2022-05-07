@@ -11,11 +11,16 @@ namespace BizHawk.Client.Common
 	/// </summary>
 	public class SimpleController : IController
 	{
-		public ControllerDefinition Definition { get; set; }
+		public ControllerDefinition Definition { get; }
+
+		public IInputDisplayGenerator InputDisplayGenerator { get; set; } = null;
 
 		protected WorkingDictionary<string, bool> Buttons { get; private set; } = new WorkingDictionary<string, bool>();
 		protected WorkingDictionary<string, int> Axes { get; private set; } = new WorkingDictionary<string, int>();
 		protected WorkingDictionary<string, int> HapticFeedback { get; private set; } = new WorkingDictionary<string, int>();
+
+		public SimpleController(ControllerDefinition definition)
+			=> Definition = definition;
 
 		public void Clear()
 		{
@@ -39,7 +44,9 @@ namespace BizHawk.Client.Common
 
 		public void SetHapticChannelStrength(string name, int strength) => HapticFeedback[name] = strength;
 
-		public IDictionary<string, bool> BoolButtons() => Buttons;
+		public IReadOnlyDictionary<string, int> AxisValues() => Axes;
+
+		public IReadOnlyDictionary<string, bool> BoolButtons() => Buttons;
 
 		public void AcceptNewAxis(string axisId, int value)
 		{

@@ -1,6 +1,4 @@
-﻿#nullable disable
-
-using System;
+﻿using System;
 
 namespace BizHawk.Emulation.Common
 {
@@ -14,7 +12,7 @@ namespace BizHawk.Emulation.Common
 		private readonly long _spfNumerator;
 		private readonly long _spfDenominator;
 		private long _remainder;
-		private short[] _buff = new short[0];
+		private short[] _buff = Array.Empty<short>();
 
 		private NullSound()
 		{

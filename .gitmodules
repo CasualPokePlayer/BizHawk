@@ -14,7 +14,7 @@
 [submodule "mgba"]
 	path = submodules/mgba
 	url = https://github.com/TASEmulators/mgba.git
-	branch = bizhawk-0.9
+	branch = bizhawk-0.10
 [submodule "waterbox/melon/melonDS"]
 	path = waterbox/melon/melonDS
 	url = https://github.com/TASEmulators/melonDS.git
@@ -39,4 +39,18 @@
 	url = https://github.com/jbremer/darm.git
 [submodule "submodules/libfwunpack"]
 	path = submodules/libfwunpack
-	url = https://github.com/TASEmulators/fwunpack
+	url = https://github.com/TASEmulators/fwunpack.git
+[submodule "submodules/libemu83"]
+	path = submodules/libemu83
+	url = https://github.com/CasualPokePlayer/Emu83.git
+[submodule "submodules/sameboy/libsameboy"]
+	path = submodules/sameboy/libsameboy
+	url = https://github.com/LIJI32/SameBoy.git
+[submodule "waterbox/ares64/ares/thirdparty/angrylion-rdp"]
+	path = waterbox/ares64/ares/thirdparty/angrylion-rdp
+	url = https://github.com/TASEmulators/angrylion-rdp.git
+	branch = ares
+[submodule "libmupen64plus/mupen64plus-video-angrylion-rdp"]
+	path = libmupen64plus/mupen64plus-video-angrylion-rdp
+	url = https://github.com/TASEmulators/angrylion-rdp.git
+	branch = biz_mupen64plus

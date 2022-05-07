@@ -4,6 +4,7 @@ using BizHawk.Emulation.Cores;
 using BizHawk.Emulation.Cores.Nintendo.GBA;
 using BizHawk.Emulation.Cores.Nintendo.GBHawk;
 using BizHawk.Emulation.Cores.Nintendo.Gameboy;
+using BizHawk.Emulation.Cores.Nintendo.Sameboy;
 
 namespace BizHawk.Client.Common.movie.import
 {
@@ -111,11 +112,8 @@ namespace BizHawk.Client.Common.movie.import
 
 			// (If all 3 of these bits are "0", it is for regular GB.)
 			string platform = VSystemID.Raw.GB;
-			if (isGBA)
-			{
-				platform = VSystemID.Raw.GBA;
-				Result.Movie.HeaderEntries[HeaderKeys.Core] = CoreNames.Mgba;
-			}
+
+			if (isGBA) platform = VSystemID.Raw.GBA;
 
 			if (isGBC)
 			{
@@ -273,40 +271,44 @@ namespace BizHawk.Client.Common.movie.import
 
 			if (isGBA)
 			{
-				var ss = new MGBAHawk.SyncSettings { SkipBios = true };
-				Result.Movie.SyncSettingsJson = ConfigService.SaveWithType(ss);
+				Result.Movie.HeaderEntries[HeaderKeys.Core] = CoreNames.Mgba;
+				Result.Movie.SyncSettingsJson = ConfigService.SaveWithType(new MGBAHawk.SyncSettings { SkipBios = true });
 			}
 			else
 			{
-				if (Config.PreferredCores[VSystemID.Raw.GB] == CoreNames.GbHawk || Config.PreferredCores[VSystemID.Raw.GB] == CoreNames.SubGbHawk)
+				Result.Movie.HeaderEntries[HeaderKeys.Core] = Config.PreferredCores[VSystemID.Raw.GB];
+				switch (Config.PreferredCores[VSystemID.Raw.GB])
 				{
-					var tempSync = new GBHawk.GBSyncSettings();
-					if (is_GBC) { tempSync.ConsoleMode = GBHawk.GBSyncSettings.ConsoleModeType.GBC; }
-					else { tempSync.ConsoleMode = GBHawk.GBSyncSettings.ConsoleModeType.GB; }
-					Result.Movie.SyncSettingsJson = ConfigService.SaveWithType(tempSync);
-				}
-				else
-				{
-					var temp_sync = new Gameboy.GambatteSyncSettings();
-					if (is_GBC) { temp_sync.ConsoleMode = Gameboy.GambatteSyncSettings.ConsoleModeType.GBC; }
-					else { temp_sync.ConsoleMode = Gameboy.GambatteSyncSettings.ConsoleModeType.GB; }
-					Result.Movie.SyncSettingsJson = ConfigService.SaveWithType(temp_sync);
+					case CoreNames.Gambatte:
+						Result.Movie.SyncSettingsJson = ConfigService.SaveWithType(new Gameboy.GambatteSyncSettings
+						{
+							ConsoleMode = is_GBC ? Gameboy.GambatteSyncSettings.ConsoleModeType.GBC : Gameboy.GambatteSyncSettings.ConsoleModeType.GB,
+						});
+						break;
+					case CoreNames.GbHawk:
+					case CoreNames.SubGbHawk:
+						Result.Movie.SyncSettingsJson = ConfigService.SaveWithType(new GBHawk.GBSyncSettings
+						{
+							ConsoleMode = is_GBC ? GBHawk.GBSyncSettings.ConsoleModeType.GBC : GBHawk.GBSyncSettings.ConsoleModeType.GB,
+						});
+						break;
+					case CoreNames.Sameboy:
+						Result.Movie.SyncSettingsJson = ConfigService.SaveWithType(new Sameboy.SameboySyncSettings
+						{
+							ConsoleMode = is_GBC ? Sameboy.SameboySyncSettings.GBModel.GB_MODEL_CGB_E : Sameboy.SameboySyncSettings.GBModel.GB_MODEL_DMG_B,
+						});
+						break;
 				}
 			}
 		}
 
 		private static SimpleController GbController()
-		{
-			return new SimpleController
+			=> new(new ControllerDefinition("Gameboy Controller")
 			{
-				Definition = new ControllerDefinition
-				{
-					BoolButtons = { "Up", "Down", "Left", "Right", "Start", "Select", "B", "A", "Power" }
-				}
-			};
-		}
+				BoolButtons = { "Up", "Down", "Left", "Right", "Start", "Select", "B", "A", "Power" }
+			}.MakeImmutable());
 
 		private static SimpleController GbaController()
-			=> new SimpleController { Definition = MGBAHawk.GBAController };
+			=> new(MGBAHawk.GBAController);
 	}
 }

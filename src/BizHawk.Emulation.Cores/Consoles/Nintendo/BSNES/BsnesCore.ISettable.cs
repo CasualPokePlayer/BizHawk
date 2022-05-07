@@ -27,8 +27,11 @@ namespace BizHawk.Emulation.Cores.Nintendo.BSNES
 				|| o.RightPort != _syncSettings.RightPort
 				|| o.LimitAnalogChangeSensitivity != _syncSettings.LimitAnalogChangeSensitivity
 				|| o.Entropy != _syncSettings.Entropy
+				|| o.RegionOverride != _syncSettings.RegionOverride
 				|| o.Hotfixes != _syncSettings.Hotfixes
 				|| o.FastPPU != _syncSettings.FastPPU
+				|| o.FastDSP != _syncSettings.FastDSP
+				|| o.FastCoprocessors != _syncSettings.FastCoprocessors
 				|| o.UseSGB2 != _syncSettings.UseSGB2;
 
 			_syncSettings = o;
@@ -72,9 +75,15 @@ namespace BizHawk.Emulation.Cores.Nintendo.BSNES
 
 			public BsnesApi.ENTROPY Entropy { get; set; } = BsnesApi.ENTROPY.Low;
 
+			public BsnesApi.REGION_OVERRIDE RegionOverride { get; set; } = BsnesApi.REGION_OVERRIDE.Auto;
+
 			public bool Hotfixes { get; set; } = true;
 
 			public bool FastPPU { get; set; } = true;
+
+			public bool FastDSP { get; set; } = true;
+
+			public bool FastCoprocessors { get; set; } = true;
 
 			public bool UseSGB2 { get; set; } = true;
 

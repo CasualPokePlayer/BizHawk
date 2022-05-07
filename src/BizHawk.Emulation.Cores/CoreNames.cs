@@ -10,6 +10,7 @@ namespace BizHawk.Emulation.Cores
 	public static class CoreNames
 	{
 		public const string A7800Hawk = "A7800Hawk";
+		public const string Ares64 = "Ares64";
 		public const string Atari2600Hawk = "Atari2600Hawk";
 		public const string BlastEm = "BlastEm";
 		public const string Bsnes = "BSNES";
@@ -20,6 +21,7 @@ namespace BizHawk.Emulation.Cores
 		public const string CPCHawk = "CPCHawk";
 		public const string Cygne = "Cygne/Mednafen";
 		public const string DobieStation = "DobieStation";
+		public const string Emu83 = "Emu83";
 		public const string Faust = "Faust";
 		public const string Gambatte = "Gambatte";
 		public const string GambatteLink = "GambatteLink";
@@ -40,11 +42,13 @@ namespace BizHawk.Emulation.Cores
 		public const string Mupen64Plus = "Mupen64Plus";
 		public const string NesHawk = "NesHawk";
 		public const string NeoPop = "NeoPop";
+		public const string Nymashock = "Nymashock";
 		public const string O2Hawk = "O2Hawk";
 		public const string Octoshock = "Octoshock";
 		public const string PceHawk = "PCEHawk";
 		public const string PicoDrive = "PicoDrive";
 		public const string QuickNes = "QuickNes";
+		public const string Sameboy = "SameBoy";
 		public const string Saturnus = "Saturnus";
 		public const string SMSHawk = "SMSHawk";
 		public const string Snes9X = "Snes9x";

@@ -6,8 +6,13 @@ bool Memory::GlobalWriteEnable = false;
 Bus bus;
 
 Bus::~Bus() {
-  if(lookup) delete[] lookup;
-  if(target) delete[] target;
+  //if(lookup) delete[] lookup;
+  //if(target) delete[] target;
+  abort();
+}
+
+auto Bus::lock() -> void {
+  locked = true;
 }
 
 auto Bus::reset() -> void {
@@ -15,13 +20,17 @@ auto Bus::reset() -> void {
     reader[id].reset();
     writer[id].reset();
     counter[id] = 0;
+    peekable[id] = false;
   }
 
-  if(lookup) delete[] lookup;
-  if(target) delete[] target;
+  //if(lookup) delete[] lookup;
+  //if(target) delete[] target;
 
-  lookup = new uint8 [16 * 1024 * 1024]();
-  target = new uint32[16 * 1024 * 1024]();
+  //lookup = new uint8 [16 * 1024 * 1024]();
+  //target = new uint32[16 * 1024 * 1024]();
+
+  if (!lookup) lookup = alloc_invisible<uint8> (16 * 1024 * 1024);
+  if (!target) target = alloc_invisible<uint32>(16 * 1024 * 1024);
 
   reader[0] = [](uint, uint8 data) -> uint8 { return data; };
   writer[0] = [](uint, uint8) -> void {};
@@ -30,8 +39,9 @@ auto Bus::reset() -> void {
 auto Bus::map(
   const function<uint8 (uint, uint8)>& read,
   const function<void  (uint, uint8)>& write,
-  const string& addr, uint size, uint base, uint mask
+  const string& addr, bool isPeekable, uint size, uint base, uint mask
 ) -> uint {
+  if (locked) return 0;
   uint id = 1;
   while(counter[id]) {
     if(++id >= 256) return print("SFC error: bus map exhausted\n"), 0;
@@ -39,6 +49,7 @@ auto Bus::map(
 
   reader[id] = read;
   writer[id] = write;
+  peekable[id] = isPeekable;
 
   auto p = addr.split(":", 1L);
   auto banks = p(0).split(",");
@@ -75,6 +86,7 @@ auto Bus::map(
 }
 
 auto Bus::unmap(const string& addr) -> void {
+  if (locked) return;
   auto p = addr.split(":", 1L);
   auto banks = p(0).split(",");
   auto addrs = p(1).split(",");

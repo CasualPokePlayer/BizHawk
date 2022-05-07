@@ -6,7 +6,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.SubNESHawk
 	[Core(CoreNames.SubNesHawk, "")]
 	[ServiceNotApplicable(new[] { typeof(IDriveLight) })]
 	public partial class SubNESHawk : IEmulator, IStatable, IInputPollable,
-		ISettable<NES.NES.NESSettings, NES.NES.NESSyncSettings>
+		ISettable<NES.NES.NESSettings, NES.NES.NESSyncSettings>, ICycleTiming
 	{
 		[CoreConstructor(VSystemID.Raw.NES, Priority = CorePriority.SuperLow)]
 		public SubNESHawk(CoreComm comm, GameInfo game, byte[] rom, /*string gameDbFn,*/ NES.NES.NESSettings settings, NES.NES.NESSyncSettings syncSettings)
@@ -14,15 +14,11 @@ namespace BizHawk.Emulation.Cores.Nintendo.SubNESHawk
 			var subNesSettings = (NES.NES.NESSettings)settings ?? new NES.NES.NESSettings();
 			var subNesSyncSettings = (NES.NES.NESSyncSettings)syncSettings ?? new NES.NES.NESSyncSettings();
 
-			_nesCore = new NES.NES(comm, game, rom, subNesSettings, subNesSyncSettings)
-			{
-				using_reset_timing = true
-			};
+			_nesCore = new NES.NES(comm, game, rom, subNesSettings, subNesSyncSettings, true);
 
 			HardReset();
 			current_cycle = 0;
 			_nesCore.cpu.ext_ppu_cycle = current_cycle;
-			VblankCount = 0;
 
 			_nesStatable = _nesCore.ServiceProvider.GetService<IStatable>();
 
@@ -55,9 +51,6 @@ namespace BizHawk.Emulation.Cores.Nintendo.SubNESHawk
 
 		private readonly NES.NES _nesCore;
 
-		// needed for movies to accurately calculate timing
-		public int VblankCount;
-
 		public void HardReset() => _nesCore.HardReset();
 
 		private void SoftReset()
@@ -83,5 +76,8 @@ namespace BizHawk.Emulation.Cores.Nintendo.SubNESHawk
 		public NES.NES.NESSyncSettings GetSyncSettings() => _nesCore.GetSyncSettings();
 		public PutSettingsDirtyBits PutSettings(NES.NES.NESSettings o) => _nesCore.PutSettings(o);
 		public PutSettingsDirtyBits PutSyncSettings(NES.NES.NESSyncSettings o) => _nesCore.PutSyncSettings(o);
+
+		public long CycleCount => _nesCore.CycleCount;
+		public double ClockRate => _nesCore.ClockRate;
 	}
 }

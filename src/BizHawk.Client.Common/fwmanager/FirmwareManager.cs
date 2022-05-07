@@ -208,10 +208,12 @@ namespace BizHawk.Client.Common
 				{
 					ri.KnownFirmwareFile = ff;
 
-					// if the known firmware file is for a different firmware, flag it so we can show a warning
-					if (FirmwareDatabase.FirmwareOptions.Any(fo => fo.Hash == rff.Hash && fo.ID != fr.ID))
+					// assume the firmware file is for a different firmware, unflag it in case it isn't
+					// logic here is important, see: https://github.com/TASEmulators/BizHawk/issues/3095
+					ri.KnownMismatching = true;
+					if (FirmwareDatabase.FirmwareOptions.Any(fo => fo.Hash == rff.Hash && fo.ID == fr.ID))
 					{
-						ri.KnownMismatching = true;
+						ri.KnownMismatching = false;
 					}
 				}
 			}

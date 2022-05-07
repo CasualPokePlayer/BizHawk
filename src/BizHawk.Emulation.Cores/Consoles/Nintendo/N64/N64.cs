@@ -102,15 +102,21 @@ namespace BizHawk.Emulation.Cores.Nintendo.N64
 			}
 
 			string rsp;
-			switch (_syncSettings.Rsp)
+			if (_syncSettings.VideoPlugin is PluginType.GLideN64) // GLideN64 can use either HLE or LLE RSP
 			{
-				default:
-				case N64SyncSettings.RspType.Rsp_Hle:
-					rsp = "mupen64plus-rsp-hle.dll";
-					break;
-				//case N64SyncSettings.RspType.Rsp_cxd4:
-				//	rsp = "mupen64plus-rsp-cxd4.dll";
-				//	break;
+				rsp = _syncSettings.Rsp switch
+				{
+					N64SyncSettings.RspType.Rsp_cxd4 => "mupen64plus-rsp-cxd4-sse2.dll",
+					_ => "mupen64plus-rsp-hle.dll",
+				};
+			}
+			else if (_syncSettings.VideoPlugin is PluginType.Angrylion) // Angrylion can only use LLE RSP
+			{
+				rsp = "mupen64plus-rsp-cxd4-sse2.dll";
+			}
+			else // the rest can only use HLE RSP
+			{
+				rsp = "mupen64plus-rsp-hle.dll";
 			}
 
 			api.AttachPlugin(mupen64plusApi.m64p_plugin_type.M64PLUGIN_RSP, rsp);
@@ -246,7 +252,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.N64
 
 		public DisplayType Region => _display_type;
 
-		public ControllerDefinition ControllerDefinition { get; } = new ControllerDefinition { Name = "Nintendo 64 Controller" };
+		public ControllerDefinition ControllerDefinition { get; private set; } = new("Nintendo 64 Controller");
 
 		public void ResetCounters()
 		{

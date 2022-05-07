@@ -1,7 +1,11 @@
+#ifndef MEMORY_H
+#define MEMORY_H
+
 #include <iostream>
 #include <cstdint>
 #include <iomanip>
 #include <string>
+#include <cstring>
 
 using namespace std;
 
@@ -85,8 +89,8 @@ namespace MSXHawk
 			bios_rom = new uint8_t[0x4000];
 			basic_rom = new uint8_t[0x4000];
 			
-			memcpy(bios_rom, bios, 0x4000);
-			memcpy(basic_rom, basic, 0x4000);
+			std::memcpy(bios_rom, bios, 0x4000);
+			std::memcpy(basic_rom, basic, 0x4000);
 		}
 
 		void Load_ROM(uint8_t* ext_rom_1, uint32_t ext_rom_size_1, uint32_t ext_rom_mapper_1, uint8_t* ext_rom_2, uint32_t ext_rom_size_2, uint32_t ext_rom_mapper_2)
@@ -94,8 +98,8 @@ namespace MSXHawk
 			rom_1 = new uint8_t[ext_rom_size_1];
 			rom_2 = new uint8_t[ext_rom_size_2];
 
-			memcpy(rom_1, ext_rom_1, ext_rom_size_1);
-			memcpy(rom_2, ext_rom_2, ext_rom_size_2);
+			std::memcpy(rom_1, ext_rom_1, ext_rom_size_1);
+			std::memcpy(rom_2, ext_rom_2, ext_rom_size_2);
 
 			rom_mapper_1 = ext_rom_mapper_1;
 			rom_mapper_2 = ext_rom_mapper_2;
@@ -103,8 +107,8 @@ namespace MSXHawk
 			// page size 0x2000 for konami games
 			if (rom_mapper_1 == 1 || rom_mapper_1 == 2) { rom_size_1 = ext_rom_size_1 / 0x2000 - 1; }
 			if (rom_mapper_2 == 1 || rom_mapper_2 == 2) { rom_size_2 = ext_rom_size_2 / 0x2000 - 1; }
-			
 
+			// initial state
 			if (rom_mapper_1 == 1 || rom_mapper_1 == 2)
 			{
 				rom1_konami_page_0 = 0;
@@ -118,6 +122,26 @@ namespace MSXHawk
 				rom2_konami_page_1 = 1;
 				rom2_konami_page_2 = 2;
 				rom2_konami_page_3 = 3;
+			}
+
+			// page size 0x2000 for generic ascii 8kb mapper
+			if (rom_mapper_1 == 3) { rom_size_1 = ext_rom_size_1 / 0x2000 - 1; }
+			if (rom_mapper_2 == 3) { rom_size_2 = ext_rom_size_2 / 0x2000 - 1; }
+
+			// reuse konami page names (same size) however different initial state
+			if (rom_mapper_1 == 3)
+			{
+				rom1_konami_page_0 = 0;
+				rom1_konami_page_1 = 0;
+				rom1_konami_page_2 = 0;
+				rom1_konami_page_3 = 0;
+			}
+			if (rom_mapper_2 == 3)
+			{
+				rom2_konami_page_0 = 0;
+				rom2_konami_page_1 = 0;
+				rom2_konami_page_2 = 0;
+				rom2_konami_page_3 = 0;
 			}
 
 			// default memory map setup
@@ -217,3 +241,5 @@ namespace MSXHawk
 		#pragma endregion
 	};
 }
+
+#endif

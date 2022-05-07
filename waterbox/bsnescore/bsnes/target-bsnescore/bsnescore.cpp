@@ -14,7 +14,7 @@ using namespace SuperFamicom;
 // currently unused; was only used in the graphics debugger as far as i can see
 int snes_peek_logical_register(int reg)
 {
-    if (emulator->configuration("Hacks/PPU/Fast") == "true")
+    if (SuperFamicom::system.fastPPU())
     switch(reg)
     {
         //zero 17-may-2014
@@ -122,17 +122,14 @@ EXPORT void snes_set_callbacks(SnesCallbacks* callbacks)
     snesCallbacks = SnesCallbacks(*callbacks);
 }
 
-EXPORT void snes_init(int entropy, uint left_port, uint right_port, uint16_t merged_bools)// bool hotfixes, bool fast_ppu)
+EXPORT void snes_init(SnesInitData* init_data)
 {
-    bool hotfixes = merged_bools >> 8;
-    bool fast_ppu = merged_bools & 1;
     fprintf(stderr, "snes_init was called!\n");
     emulator = new SuperFamicom::Interface;
     program = new Program;
-    // memset(&cdlInfo,0,sizeof(cdlInfo));
 
     string entropy_string;
-    switch (entropy)
+    switch (init_data->entropy)
     {
         case 0: entropy_string = "None"; break;
         case 1: entropy_string = "Low"; break;
@@ -140,15 +137,19 @@ EXPORT void snes_init(int entropy, uint left_port, uint right_port, uint16_t mer
     }
     emulator->configure("Hacks/Entropy", entropy_string);
 
-    emulator->connect(ID::Port::Controller1, left_port);
-    emulator->connect(ID::Port::Controller2, right_port);
+    emulator->connect(ID::Port::Controller1, init_data->left_port);
+    emulator->connect(ID::Port::Controller2, init_data->right_port);
 
-    emulator->configure("Hacks/Hotfixes", hotfixes);
-    emulator->configure("Hacks/PPU/Fast", fast_ppu);
+    emulator->configure("Hacks/Hotfixes", init_data->hotfixes);
+    emulator->configure("Hacks/PPU/Fast", init_data->fast_ppu);
+    emulator->configure("Hacks/DSP/Fast", init_data->fast_dsp);
+    emulator->configure("Hacks/Coprocessor/DelayedSync", init_data->fast_coprocessors);
 
     emulator->configure("Video/BlurEmulation", false); // blurs the video when not using fast ppu. I don't like it so I disable it here :)
     // needed in order to get audio sync working. should probably figure out what exactly this does or how to change that properly
     Emulator::audio.setFrequency(SAMPLE_RATE);
+
+    program->regionOverride = init_data->region_override;
 }
 
 EXPORT void snes_power(void)
@@ -170,12 +171,6 @@ EXPORT void snes_reset(void)
 // note: run with runahead doesn't work yet, i suspect it's due to the serialize thing breaking (cause of libco)
 EXPORT void snes_run(void)
 {
-    snesCallbacks.snes_input_poll();
-
-    // TODO: I currently have implemented separate poll and state calls, where poll updates the state and the state call just receives this
-    // based on the way this is implemented this approach might be useless in terms of reducing polling load, will need confirmation here
-    // the runahead feature should also be considered in case this is ever implemented and works
-
     emulator->run();
 }
 
@@ -204,10 +199,8 @@ EXPORT void snes_unserialize(const uint8_t* data, int size)
 }
 
 EXPORT void snes_load_cartridge_normal(
-  const char* base_rom_path, const uint8_t* rom_data, int rom_size
+  const uint8_t* rom_data, int rom_size
 ) {
-    program->superFamicom.location = base_rom_path;
-
     program->superFamicom.raw_data.resize(rom_size);
     memcpy(program->superFamicom.raw_data.data(), rom_data, rom_size);
 
@@ -216,12 +209,8 @@ EXPORT void snes_load_cartridge_normal(
 
 // TODO: merged_rom_sizes is bad, fix this
 EXPORT void snes_load_cartridge_super_gameboy(
-  const char* base_rom_path, const uint8_t* rom_data, const uint8_t* sgb_rom_data, uint64_t merged_rom_sizes
+  const uint8_t* rom_data, const uint8_t* sgb_rom_data, int rom_size, int sgb_rom_size
 ) {
-    int rom_size = merged_rom_sizes >> 32;
-    int sgb_rom_size = merged_rom_sizes & 0xffffffff;
-    program->superFamicom.location = base_rom_path;
-
     program->superFamicom.raw_data.resize(rom_size);
     memcpy(program->superFamicom.raw_data.data(), rom_data, rom_size);
 
@@ -236,7 +225,7 @@ EXPORT void snes_load_cartridge_super_gameboy(
 
 EXPORT void snes_set_layer_enables(LayerEnables* layerEnables)
 {
-    if (emulator->configuration("Hacks/PPU/Fast") == "true") {
+    if (SuperFamicom::system.fastPPU()) {
         ppufast.io.bg1.priority_enabled[0] = layerEnables->BG1_Prio0;
         ppufast.io.bg1.priority_enabled[1] = layerEnables->BG1_Prio1;
         ppufast.io.bg2.priority_enabled[0] = layerEnables->BG2_Prio0;
@@ -267,9 +256,40 @@ EXPORT void snes_set_trace_enabled(bool enabled)
     platform->traceEnabled = enabled;
 }
 
+EXPORT void snes_set_hooks_enabled(bool read_hook_enabled, bool write_hook_enabled, bool execute_hook_enabled)
+{
+    platform->readHookEnabled = read_hook_enabled;
+    platform->writeHookEnabled = write_hook_enabled;
+    platform->executeHookEnabled = execute_hook_enabled;
+}
 
-EXPORT int snes_get_region(void) {
-    return Region::PAL();
+
+uint8_t* snes_get_effective_saveram(int* ram_size) {
+    if (cartridge.has.SA1) {
+        *ram_size = sa1.bwram.size();
+        return sa1.bwram.data();
+    } else if (cartridge.has.SuperFX) {
+        *ram_size = superfx.ram.size();
+        return superfx.ram.data();
+    } else if (cartridge.has.HitachiDSP) {
+        *ram_size = hitachidsp.ram.size();
+        return hitachidsp.ram.data();
+    } else if (cartridge.has.SPC7110) {
+        *ram_size = spc7110.ram.size();
+        return spc7110.ram.data();
+    } else if (cartridge.has.OBC1) {
+        *ram_size = obc1.ram.size();
+        return obc1.ram.data();
+    }
+
+    // note: if sufamiturbo is ever implemented frontend, this will need some additional consideration
+    // because sufamiturbo can have up to 2 cartridges (and respective save rams)
+    *ram_size = cartridge.ram.size();
+    return cartridge.ram.data();
+}
+
+EXPORT System::Region snes_get_region(void) {
+    return SuperFamicom::system.region();
 }
 
 EXPORT char snes_get_mapper(void) {
@@ -293,14 +313,25 @@ EXPORT char snes_get_mapper(void) {
 EXPORT void* snes_get_memory_region(int id, int* size, int* word_size)
 {
     if(!emulator->loaded()) return nullptr;
-    bool fast_ppu = emulator->configuration("Hacks/PPU/Fast") == "true";
+    bool fast_ppu = SuperFamicom::system.fastPPU();
 
     switch(id)
     {
+        // this cartridge ram is a generalized memory region that can be anything that is considered
+        // cartridge or save ram for any coprocessor like SA-1, or just the basic cartridge ram
         case SNES_MEMORY::CARTRIDGE_RAM:
-            *size = cartridge.ram.size();
             *word_size = 1;
-            return cartridge.ram.data();
+            return snes_get_effective_saveram(size);
+        case SNES_MEMORY::CARTRIDGE_ROM:
+            *size = program->superFamicom.program.size();
+            *word_size = 1;
+            return program->superFamicom.program.data();
+        case SNES_MEMORY::SGB_ROM:
+            *size = program->gameBoy.program.size();
+            *word_size = 1;
+            return program->gameBoy.program.data();
+
+        // unused
         case SNES_MEMORY::BSX_RAM:
             if (!cartridge.has.BSMemorySlot) break;
             *size = mcc.rom.size();
@@ -321,11 +352,19 @@ EXPORT void* snes_get_memory_region(int id, int* size, int* word_size)
             *size = sufamiturboB.ram.size();
             *word_size = 1;
             return sufamiturboB.ram.data();
+
         case SNES_MEMORY::SA1_IRAM:
             if (!cartridge.has.SA1) break;
             *size = sa1.iram.size();
             *word_size = 1;
             return sa1.iram.data();
+        case SNES_MEMORY::SA1_BWRAM:
+            // effectively the cartridge ram, listed here to allow direct BWRAM access
+            // instead of relying on the CARTRIDGE_RAM domain
+            if (!cartridge.has.SA1) break;
+            *size = sa1.bwram.size();
+            *word_size = 1;
+            return sa1.bwram.data();
 
         case SNES_MEMORY::WRAM:
             *size = sizeof(cpu.wram);
@@ -347,11 +386,6 @@ EXPORT void* snes_get_memory_region(int id, int* size, int* word_size)
             *size = sizeof(ppufast.cgram);
             *word_size = sizeof(*ppufast.cgram);
             return ppufast.cgram;
-
-        case SNES_MEMORY::CARTRIDGE_ROM:
-            *size = cartridge.rom.size();
-            *word_size = 1;
-            return cartridge.rom.data();
     }
 
     return nullptr;
@@ -359,7 +393,7 @@ EXPORT void* snes_get_memory_region(int id, int* size, int* word_size)
 
 EXPORT uint8_t snes_bus_read(unsigned addr)
 {
-    return bus.read(addr);
+    return bus.peek(addr);
 }
 
 EXPORT void snes_bus_write(unsigned addr, uint8_t value)
@@ -417,4 +451,13 @@ EXPORT bool snes_cpu_step()
     emulator->run();
     scheduler.StepOnce = false;
     return scheduler.event == Scheduler::Event::Frame;
+}
+
+// should be called on savestate load, to get msu files loaded and in the correct state
+EXPORT void snes_msu_sync()
+{
+    if (cartridge.has.MSU1) {
+        msu1.dataOpen();
+        msu1.audioOpen();
+    }
 }

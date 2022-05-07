@@ -27,7 +27,7 @@ namespace BizHawk.Emulation.Cores.Consoles.Nintendo.NDS
 			Rotate0,
 			Rotate90,
 			Rotate180,
-			Rotate270
+			Rotate270,
 		}
 
 		public class NDSSettings
@@ -59,32 +59,42 @@ namespace BizHawk.Emulation.Cores.Consoles.Nintendo.NDS
 				set => _screengap = Math.Max(0, Math.Min(128, value));
 			}
 
-			[DisplayName("Accurate Audio Bitrate")]
-			[Description("If true, the audio bitrate will be set to 10. Otherwise, it will be set to 16.")]
-			[DefaultValue(true)]
-			public bool AccurateAudioBitrate { get; set; }
-
-			public NDSSettings Clone()
+			public enum AudioBitrateType : int
 			{
-				return (NDSSettings)MemberwiseClone();
+				Auto,
+				Ten,
+				Sixteen,
 			}
 
-			public static bool NeedsReboot(NDSSettings x, NDSSettings y)
+			[DisplayName("Audio Bitrate")]
+			[Description("Auto will set the audio bitrate most accurate to the console (10 for DS, 16 for DSi).")]
+			[DefaultValue(AudioBitrateType.Auto)]
+			public AudioBitrateType AudioBitrate { get; set; }
+
+			public NDSSettings Clone() => MemberwiseClone() as NDSSettings;
+
+			public static bool NeedsScreenResize(NDSSettings x, NDSSettings y)
 			{
-				return false;
+				bool ret = false;
+				ret |= x.ScreenLayout != y.ScreenLayout;
+				ret |= x.ScreenGap != y.ScreenGap;
+				ret |= x.ScreenRotation != y.ScreenRotation;
+				return ret;
 			}
 
-			public NDSSettings()
-			{
-				SettingsUtil.SetDefaultValues(this);
-			}
+			public NDSSettings() => SettingsUtil.SetDefaultValues(this);
 		}
 
-		private static readonly DateTime minDate = new DateTime(2000, 1, 1);
-		private static readonly DateTime maxDate = new DateTime(2099, 12, 31, 23, 59, 59);
+		private static readonly DateTime minDate = new(2000, 1, 1);
+		private static readonly DateTime maxDate = new(2099, 12, 31, 23, 59, 59);
 
 		public class NDSSyncSettings
 		{
+			[DisplayName("Threaded 3D Rendering")]
+			[Description("Offloads 3D rendering to a separate thread")]
+			[DefaultValue(true)]
+			public bool ThreadedRendering { get; set; }
+
 			[JsonIgnore]
 			private DateTime _initaltime;
 
@@ -103,8 +113,13 @@ namespace BizHawk.Emulation.Cores.Consoles.Nintendo.NDS
 			[DefaultValue(false)]
 			public bool UseRealTime { get; set; }
 
+			[DisplayName("DSi Mode")]
+			[Description("If true, DSi mode will be used.")]
+			[DefaultValue(false)]
+			public bool UseDSi { get; set; }
+
 			[DisplayName("Use Real BIOS")]
-			[Description("If true, real BIOS files will be used.")]
+			[Description("If true, real BIOS files will be used. Forced true for DSi.")]
 			[DefaultValue(false)]
 			public bool UseRealBIOS { get; set; }
 
@@ -141,7 +156,7 @@ namespace BizHawk.Emulation.Cores.Consoles.Nintendo.NDS
 			public string FirmwareUsername
 			{
 				get => _firmwareusername;
-				set => _firmwareusername = value.Substring(0, Math.Min(10, value.Length));
+				set => _firmwareusername = value.Length != 0 ? value.Substring(0, Math.Min(10, value.Length)) : _firmwareusername.Substring(0, 1);
 			}
 
 			public enum Language : int
@@ -250,37 +265,22 @@ namespace BizHawk.Emulation.Cores.Consoles.Nintendo.NDS
 				set => _firmwaremessage = value.Substring(0, Math.Min(26, value.Length));
 			}
 
-			public NDSSyncSettings Clone()
-			{
-				return (NDSSyncSettings)MemberwiseClone();
-			}
+			public NDSSyncSettings Clone() => MemberwiseClone() as NDSSyncSettings;
 
-			public static bool NeedsReboot(NDSSyncSettings x, NDSSyncSettings y)
-			{
-				return !DeepEquality.DeepEquals(x, y);
-			}
+			public static bool NeedsReboot(NDSSyncSettings x, NDSSyncSettings y) => !DeepEquality.DeepEquals(x, y);
 
-			public NDSSyncSettings()
-			{
-				SettingsUtil.SetDefaultValues(this);
-			}
+			public NDSSyncSettings() => SettingsUtil.SetDefaultValues(this);
 		}
 
-		public NDSSettings GetSettings()
-		{
-			return _settings.Clone();
-		}
+		public NDSSettings GetSettings() => _settings.Clone();
 
-		public NDSSyncSettings GetSyncSettings()
-		{
-			return _syncSettings.Clone();
-		}
+		public NDSSyncSettings GetSyncSettings() => _syncSettings.Clone();
 
 		public PutSettingsDirtyBits PutSettings(NDSSettings o)
 		{
-			var ret = NDSSettings.NeedsReboot(_settings, o);
+			var ret = NDSSettings.NeedsScreenResize(_settings, o);
 			_settings = o;
-			return ret ? PutSettingsDirtyBits.RebootCore : PutSettingsDirtyBits.None;
+			return ret ? PutSettingsDirtyBits.ScreenLayoutChanged : PutSettingsDirtyBits.None;
 		}
 
 		public PutSettingsDirtyBits PutSyncSettings(NDSSyncSettings o)

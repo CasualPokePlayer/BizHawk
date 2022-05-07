@@ -14,7 +14,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 		IBoardInfo, IRomInfo, ISettable<NES.NESSettings, NES.NESSyncSettings>, ICodeDataLogger
 	{
 		[CoreConstructor(VSystemID.Raw.NES)]
-		public NES(CoreComm comm, GameInfo game, byte[] rom, NESSettings settings, NESSyncSettings syncSettings)
+		public NES(CoreComm comm, GameInfo game, byte[] rom, NESSettings settings, NESSyncSettings syncSettings, bool subframe = false)
 		{
 			var ser = new BasicServiceProvider(this);
 			ServiceProvider = ser;
@@ -70,6 +70,8 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 					ser.Register(reader);
 				}
 			}
+
+			ResetControllerDefinition(subframe);
 		}
 
 		private static readonly bool USE_DATABASE = true;
@@ -250,19 +252,20 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 
 		[Obsolete] // with the changes to both nes and quicknes cores, nothing uses this anymore
 		public static readonly ControllerDefinition NESController =
-			new ControllerDefinition
+			new ControllerDefinition("NES Controller")
 			{
-				Name = "NES Controller",
 				BoolButtons = {
 					"P1 Up", "P1 Down", "P1 Left", "P1 Right", "P1 Start", "P1 Select", "P1 B", "P1 A", "Reset", "Power",
 					"P2 Up", "P2 Down", "P2 Left", "P2 Right", "P2 Start", "P2 Select", "P2 B", "P2 A"
 				}
-			};
+			}.MakeImmutable();
 
 		public ControllerDefinition ControllerDefinition { get; private set; }
 
 		private int _frame;
-		public int Frame { get => _frame;
+		public int Frame
+		{
+			get => _frame;
 			set => _frame = value;
 		}
 
@@ -441,7 +444,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 				{
 					//now that we know we have an iNES header, we can try to ignore it.
 
-					var trimmed = file.AsSpan(start: 16, length: file.Length - 32);
+					var trimmed = file.AsSpan(start: 16, length: file.Length - 16);
 					hash_sha1 = SHA1Checksum.ComputePrefixedHex(trimmed);
 					hash_sha1_several.Add(hash_sha1);
 					hash_md5 = MD5Checksum.ComputePrefixedHex(trimmed);

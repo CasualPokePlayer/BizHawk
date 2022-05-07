@@ -4,19 +4,22 @@
 #include "RTC.h"
 #include "ARM.h"
 #include "NDSCart.h"
-#include "NDSCart_SRAMManager.h"
 #include "GBACart.h"
+#include "DSi.h"
+#include "DSi_NAND.h"
 #include "Platform.h"
-#include "Config.h"
+#include "BizConfig.h"
 #include "types.h"
 #include "frontend/mic_blow.h"
 
-#include "../emulibc/emulibc.h"
-#include "../emulibc/waterboxcore.h"
+#include "emulibc.h"
+#include "waterboxcore.h"
 
 #include <cmath>
 #include <algorithm>
 #include <time.h>
+
+#include <sstream>
 
 #define EXPORT extern "C" ECL_EXPORT
 
@@ -35,18 +38,26 @@ typedef enum
 	USE_REAL_BIOS = 0x01,
 	SKIP_FIRMWARE = 0x02,
 	GBA_CART_PRESENT = 0x04,
-	ACCURATE_AUDIO_BITRATE = 0x08,
+	RESERVED_FLAG = 0x08,
 	FIRMWARE_OVERRIDE = 0x10,
+	IS_DSI = 0x20,
+	LOAD_DSIWARE = 0x40,
+	THREADED_RENDERING = 0x80,
 } LoadFlags;
 
-static const char* bios9_path = "bios9.rom";
-static const char* bios7_path = "bios7.rom";
-static const char* firmware_path = "firmware.bin";
-static const char* rom_path = "game.rom";
-static const char* sram_path = "save.ram";
-static const char* gba_rom_path = "gba.rom";
-static const char* gba_sram_path = "gba.ram";
-static const char* no_path = "";
+typedef struct
+{
+	u8* DsRomData;
+	u32 DsRomLen;
+	u8* GbaRomData;
+	u32 GbaRomLen;
+	u8* GbaRamData;
+	u32 GbaRamLen;
+	char* NandData;
+	u32 NandLen;
+	u8* TmdData;
+	s32 AudioBitrate;
+} LoadData;
 
 typedef struct
 {
@@ -60,72 +71,118 @@ typedef struct
 	s32 FirmwareMessageLength;
 } FirmwareSettings;
 
-EXPORT bool Init(LoadFlags flags, FirmwareSettings* fwSettings)
+extern std::stringstream* NANDFilePtr;
+
+static bool LoadDSiWare(u8* TmdData)
 {
-	Config::ExternalBIOSEnable = !!(flags & USE_REAL_BIOS);
+	FILE* bios7i = Platform::OpenLocalFile(Config::DSiBIOS7Path, "rb");
+	if (!reinterpret_cast<void*>(bios7i))
+		return false;
 
-	strncpy(Config::BIOS9Path, Config::ExternalBIOSEnable ? bios9_path : no_path, 1023);
-	Config::BIOS9Path[1023] = '\0';
-	strncpy(Config::BIOS7Path, Config::ExternalBIOSEnable ? bios7_path : no_path, 1023);
-	Config::BIOS7Path[1023] = '\0';
-	strncpy(Config::FirmwarePath, firmware_path, 1023);
-	Config::FirmwarePath[1023] = '\0';
+	u8 es_keyY[16];
+	fseek(bios7i, 0x8308, SEEK_SET);
+	fread(es_keyY, 16, 1, bios7i);
+	fclose(bios7i);
 
-	NDS::SetConsoleType(0);
+	FILE* curNAND = Platform::OpenLocalFile(Config::DSiNANDPath, "r+b");
+	if (!curNAND)
+		return false;
+
+	if (!DSi_NAND::Init(curNAND, es_keyY))
+		return false;
+
+	bool ret = DSi_NAND::ImportTitle("dsiware.rom", TmdData, false);
+
+	DSi_NAND::DeInit();
+	return ret;
+}
+
+EXPORT bool Init(LoadFlags loadFlags, LoadData* loadData, FirmwareSettings* fwSettings)
+{
+	Config::ExternalBIOSEnable = !!(loadFlags & USE_REAL_BIOS);
+	Config::AudioBitrate = loadData->AudioBitrate;
+	Config::FirmwareOverrideSettings = !!(loadFlags & FIRMWARE_OVERRIDE);
+	biz_skip_fw = !!(loadFlags & SKIP_FIRMWARE);
+	bool isDsi = !!(loadFlags & IS_DSI);
+
+	NDS::SetConsoleType(isDsi);
 	// time calls are deterministic under wbx, so this will force the mac address to a constant value instead of relying on whatever is in the firmware
 	// fixme: might want to allow the user to specify mac address?
+	// edit: upstream has ability to set mac address, most work is in frontend now
 	srand(time(NULL));
 	Config::RandomizeMAC = true;
-	Config::AudioBitrate = !!(flags & ACCURATE_AUDIO_BITRATE) ? 1 : 2;
-	Config::FixedBootTime = true;
-	Config::UseRealTime = false;
-	Config::TimeAtBoot = 0;
 	biz_time = 0;
 	RTC::RtcCallback = BizRtcCallback;
 
-	Config::FirmwareOverrideSettings = !!(flags & FIRMWARE_OVERRIDE);
 	if (Config::FirmwareOverrideSettings)
 	{
-		memcpy(Config::FirmwareUsername, fwSettings->FirmwareUsername, fwSettings->FirmwareUsernameLength);
-		Config::FirmwareUsername[fwSettings->FirmwareUsernameLength] = 0;
+		std::string fwUsername(fwSettings->FirmwareUsername, fwSettings->FirmwareUsernameLength);
+		fwUsername += '\0';
+		Config::FirmwareUsername = fwUsername;
 		Config::FirmwareLanguage = fwSettings->FirmwareLanguage;
 		Config::FirmwareBirthdayMonth = fwSettings->FirmwareBirthdayMonth;
 		Config::FirmwareBirthdayDay = fwSettings->FirmwareBirthdayDay;
 		Config::FirmwareFavouriteColour = fwSettings->FirmwareFavouriteColour;
-		memcpy(Config::FirmwareMessage, fwSettings->FirmwareMessage, fwSettings->FirmwareMessageLength);
-		Config::FirmwareMessage[fwSettings->FirmwareMessageLength] = 0;
+		std::string fwMessage(fwSettings->FirmwareMessage, fwSettings->FirmwareMessageLength);
+		fwMessage += '\0';
+		Config::FirmwareMessage = fwMessage;
+	}
+
+	NANDFilePtr = isDsi ? new std::stringstream(std::string(loadData->NandData, loadData->NandLen), std::ios_base::in | std::ios_base::out | std::ios_base::binary) : nullptr;
+
+	if (isDsi && (loadFlags & LOAD_DSIWARE))
+	{
+		if (!LoadDSiWare(loadData->TmdData))
+			return false;
 	}
 
 	if (!NDS::Init()) return false;
 	GPU::InitRenderer(false);
+	biz_render_settings.Soft_Threaded = !!(loadFlags & THREADED_RENDERING);
 	GPU::SetRenderSettings(false, biz_render_settings);
-	biz_skip_fw = !!(flags & SKIP_FIRMWARE);
-	if (!NDS::LoadROM(rom_path, no_path, biz_skip_fw)) return false;
-	if (flags & GBA_CART_PRESENT) { if (!NDS::LoadGBAROM(gba_rom_path, gba_sram_path)) return false; }
+	NDS::LoadBIOS();
+	if (!isDsi || !(loadFlags & LOAD_DSIWARE))
+	{
+		if (!NDS::LoadCart(loadData->DsRomData, loadData->DsRomLen, nullptr, 0))
+			return false;
+	}
+	if (!isDsi && (loadFlags & GBA_CART_PRESENT))
+	{
+		if (!NDS::LoadGBACart(loadData->GbaRomData, loadData->GbaRomLen, loadData->GbaRamData, loadData->GbaRamLen))
+			return false;
+	}
+	if (biz_skip_fw) NDS::SetupDirectBoot("");
+	NDS::Start();
 	Config::FirmwareOverrideSettings = false;
 	return true;
 }
 
+namespace NDSCart { extern CartCommon* Cart; }
+extern bool NdsSaveRamIsDirty;
+
 EXPORT void PutSaveRam(u8* data, u32 len)
 {
-	if (NDSCart_SRAMManager::SecondaryBufferLength > 0)
-		NDSCart_SRAMManager::UpdateBuffer(data, len);
+	NDS::LoadSave(data, len);
+	NdsSaveRamIsDirty = false;
 }
 
 EXPORT void GetSaveRam(u8* data)
 {
-	if (NDSCart_SRAMManager::SecondaryBufferLength > 0)
-		NDSCart_SRAMManager::FlushSecondaryBuffer(data, NDSCart_SRAMManager::SecondaryBufferLength);
+	if (NDSCart::Cart)
+	{
+		NDSCart::Cart->GetSaveData(data);
+		NdsSaveRamIsDirty = false;
+	}
 }
 
 EXPORT s32 GetSaveRamLength()
 {
-	return NDSCart_SRAMManager::SecondaryBufferLength;
+	return NDSCart::Cart ? NDSCart::Cart->GetSaveLen() : 0;
 }
 
 EXPORT bool SaveRamIsDirty()
 {
-	return NDSCart_SRAMManager::NeedsFlush();
+	return NdsSaveRamIsDirty;
 }
 
 /* excerpted from gbatek
@@ -205,17 +262,33 @@ static bool SafeToPeek(u32 addr)
 static void ARM9Access(u8* buffer, s64 address, s64 count, bool write)
 {
 	if (write)
-		while (count--) NDS::ARM9Write8(address++, *buffer++);
+	{
+		void (*Write)(u32, u8) = NDS::ConsoleType == 1 ? DSi::ARM9Write8 : NDS::ARM9Write8;
+		while (count--)
+			Write(address++, *buffer++);
+	}
 	else
-		while (count--) *buffer++ = SafeToPeek<true>(address) ? NDS::ARM9Read8(address) : 0, address++;
+	{
+		u8 (*Read)(u32) = NDS::ConsoleType == 1 ? DSi::ARM9Read8 : NDS::ARM9Read8;
+		while (count--)
+			*buffer++ = SafeToPeek<true>(address) ? Read(address) : 0, address++;
+	}
 }
 
 static void ARM7Access(u8* buffer, s64 address, s64 count, bool write)
 {
 	if (write)
-		while (count--) NDS::ARM7Write8(address++, *buffer++);
+	{
+		void (*Write)(u32, u8) = NDS::ConsoleType == 1 ? DSi::ARM7Write8 : NDS::ARM7Write8;
+		while (count--)
+			Write(address++, *buffer++);
+	}
 	else
-		while (count--) *buffer++ = SafeToPeek<false>(address) ? NDS::ARM7Read8(address) : 0, address++;
+	{
+		u8 (*Read)(u32) = NDS::ConsoleType == 1 ? DSi::ARM7Read8 : NDS::ARM7Read8;
+		while (count--)
+			*buffer++ = SafeToPeek<true>(address) ? Read(address) : 0, address++;
+	}
 }
 
 EXPORT void GetMemoryAreas(MemoryArea *m)
@@ -262,8 +335,8 @@ struct MyFrameInfo : public FrameInfo
 {
 	s64 Time;
 	u32 Keys;
-	s8 TouchX;
-	s8 TouchY;
+	u8 TouchX;
+	u8 TouchY;
 	s8 MicVolume;
 	s8 GBALightSensor;
 };
@@ -288,20 +361,29 @@ static void MicFeedNoise(s8 vol)
 	}
 }
 
+static bool RunningFrame = false;
+
 EXPORT void FrameAdvance(MyFrameInfo* f)
 {
+	RunningFrame = true;
+
 	if (f->Keys & 0x8000)
 	{
-		NDS::LoadBIOS(false);
-		if (biz_skip_fw) NDS::SetupDirectBoot();
+		NDS::LoadBIOS();
+		if (biz_skip_fw) NDS::SetupDirectBoot("");
+		NDS::Start();
 	}
 
 	NDS::SetKeyMask(~f->Keys & 0xFFF);
 
 	if (f->Keys & 0x1000)
+	{
 		NDS::TouchScreen(f->TouchX, f->TouchY);
+	}
 	else
+	{
 		NDS::ReleaseScreen();
+	}
 
 	if (f->Keys & 0x2000)
 		NDS::SetLidClosed(false);
@@ -327,20 +409,26 @@ EXPORT void FrameAdvance(MyFrameInfo* f)
 
 	biz_time = f->Time;
 	NDS::RunFrame();
-	for (int i = 0; i < (256 * 192); i++)
-	{
-		f->VideoBuffer[i] = GPU::Framebuffer[GPU::FrontBuffer][0][i];
-		f->VideoBuffer[(256 * 192) + i] = GPU::Framebuffer[GPU::FrontBuffer][1][i];
-	}
+	dynamic_cast<GPU3D::SoftRenderer*>(GPU3D::CurrentRenderer.get())->StopRenderThread();
+	const u32 SingleScreenSize = 256 * 192;
+	memcpy(f->VideoBuffer, GPU::Framebuffer[GPU::FrontBuffer][0], SingleScreenSize * sizeof (u32));
+	memcpy(f->VideoBuffer + SingleScreenSize, GPU::Framebuffer[GPU::FrontBuffer][1], SingleScreenSize * sizeof (u32));
 	f->Width = 256;
 	f->Height = 384;
 	f->Samples = SPU::GetOutputSize() / 2;
 	SPU::ReadOutput(f->SoundBuffer, f->Samples);
+	if (f->Samples < 547) // hack
+	{
+		memset(f->SoundBuffer + (f->Samples * 2), 0, ((547 * 2) - (f->Samples * 2)) * sizeof (u16));
+		f->Samples = 547;
+	}
 	f->Cycles = NDS::GetSysClockCycles(2);
 	f->Lagged = NDS::LagFrameFlag;
+
+	RunningFrame = false;
 }
 
-void (*InputCallback)();
+void (*InputCallback)() = nullptr;
 
 EXPORT void SetInputCallback(void (*callback)())
 {
@@ -357,7 +445,72 @@ EXPORT void SetReg(s32 ncpu, s32 index, s32 val)
 	NDS::SetReg(ncpu, index, val);
 }
 
-EXPORT void SetTraceCallback(void (*callback)(u32 cpu, u32* regs, u32 opcode, s64 ccoffset))
+EXPORT u32 GetCallbackCycleOffset()
+{
+	return RunningFrame ? NDS::GetSysClockCycles(2) : 0;
+}
+
+void (*ReadCallback)(u32) = nullptr;
+void (*WriteCallback)(u32) = nullptr;
+void (*ExecuteCallback)(u32) = nullptr;
+
+EXPORT void SetMemoryCallback(u32 which, void (*callback)(u32 addr))
+{
+	switch (which)
+	{
+		case 0: ReadCallback = callback; break;
+		case 1: WriteCallback = callback; break;
+		case 2: ExecuteCallback = callback; break;
+	}
+}
+
+void (*TraceCallback)(u32, u32*, u32) = nullptr;
+
+EXPORT void SetTraceCallback(void (*callback)(u32 cpu, u32* regs, u32 opcode))
 {
 	TraceCallback = callback;
+}
+
+namespace Platform
+{
+	extern uintptr_t FrameThreadProc;
+	extern void (*ThreadStartCallback)();
+}
+
+EXPORT uintptr_t GetFrameThreadProc()
+{
+	return Platform::FrameThreadProc;
+}
+
+EXPORT void SetThreadStartCallback(void (*callback)())
+{
+	Platform::ThreadStartCallback = callback;
+}
+
+EXPORT u32 GetNANDSize()
+{
+	if (NANDFilePtr)
+	{
+		NANDFilePtr->seekg(0, std::ios::end);
+		return NANDFilePtr->tellg();
+	}
+
+	return 0;
+}
+
+EXPORT void GetNANDData(char* buf)
+{
+	if (NANDFilePtr)
+	{
+		u32 sz = GetNANDSize();		
+		NANDFilePtr->seekg(0);
+		NANDFilePtr->read(buf, sz);
+	}
+}
+
+namespace GPU { void ResetVRAMCache(); }
+
+EXPORT void ResetCaches()
+{
+	GPU::ResetVRAMCache();
 }

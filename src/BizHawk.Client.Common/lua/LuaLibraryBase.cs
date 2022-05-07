@@ -25,7 +25,7 @@ namespace BizHawk.Client.Common
 
 		public abstract string Name { get; }
 
-		public ApiContainer APIs { protected get; set; }
+		public ApiContainer APIs { get; set; }
 
 		protected readonly Action<string> LogOutputCallback;
 
@@ -62,9 +62,7 @@ namespace BizHawk.Client.Common
 			return (int)(double)luaArg;
 		}
 
-		protected void Log(object message)
-		{
-			LogOutputCallback?.Invoke(message.ToString());
-		}
+		protected void Log(string message)
+			=> LogOutputCallback?.Invoke(message);
 	}
 }

@@ -10,20 +10,34 @@
 
 enum SNES_MEMORY {
     CARTRIDGE_RAM,
+    CARTRIDGE_ROM,
+    SGB_ROM,
+
+    // bsx and sufamiturbo unused cause unsupported by frontend
     BSX_RAM,
     BSX_PRAM,
     SUFAMI_TURBO_A_RAM,
     SUFAMI_TURBO_B_RAM,
     SA1_IRAM,
+    SA1_BWRAM,
 
     WRAM,
     APURAM,
     VRAM,
-    CGRAM,
-
-    CARTRIDGE_ROM
+    CGRAM
 };
 
+
+struct SnesInitData {
+    int entropy;
+    unsigned left_port;
+    unsigned right_port;
+    bool hotfixes;
+    bool fast_ppu;
+    bool fast_dsp;
+    bool fast_coprocessors;
+    int region_override;
+};
 
 struct LayerEnables
 {

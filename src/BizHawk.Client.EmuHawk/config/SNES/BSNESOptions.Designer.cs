@@ -49,17 +49,21 @@
             this.Obj1Checkbox = new System.Windows.Forms.CheckBox();
             this.EntropyBox = new System.Windows.Forms.ComboBox();
             this.lblEntropy = new BizHawk.WinForms.Controls.LocLabelEx();
+            this.RegionBox = new System.Windows.Forms.ComboBox();
+            this.lblRegion = new BizHawk.WinForms.Controls.LocLabelEx();
             this.cbGameHotfixes = new System.Windows.Forms.CheckBox();
             this.cbFastPPU = new System.Windows.Forms.CheckBox();
             this.cbCropSGBFrame = new System.Windows.Forms.CheckBox();
             this.cbUseSGB2 = new System.Windows.Forms.CheckBox();
+            this.cbFastDSP = new System.Windows.Forms.CheckBox();
+            this.cbFastCoprocessor = new System.Windows.Forms.CheckBox();
             this.groupBox1.SuspendLayout();
             this.SuspendLayout();
             // 
             // btnOk
             // 
             this.btnOk.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnOk.Location = new System.Drawing.Point(136, 303);
+            this.btnOk.Location = new System.Drawing.Point(136, 344);
             this.btnOk.Name = "btnOk";
             this.btnOk.Size = new System.Drawing.Size(75, 23);
             this.btnOk.TabIndex = 0;
@@ -71,7 +75,7 @@
             // 
             this.btnCancel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.btnCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.btnCancel.Location = new System.Drawing.Point(217, 303);
+            this.btnCancel.Location = new System.Drawing.Point(217, 344);
             this.btnCancel.Name = "btnCancel";
             this.btnCancel.Size = new System.Drawing.Size(75, 23);
             this.btnCancel.TabIndex = 1;
@@ -115,7 +119,7 @@
             this.groupBox1.Controls.Add(this.Obj3Checkbox);
             this.groupBox1.Controls.Add(this.Obj2Checkbox);
             this.groupBox1.Controls.Add(this.Obj1Checkbox);
-            this.groupBox1.Location = new System.Drawing.Point(18, 165);
+            this.groupBox1.Location = new System.Drawing.Point(18, 206);
             this.groupBox1.Name = "groupBox1";
             this.groupBox1.Size = new System.Drawing.Size(274, 132);
             this.groupBox1.TabIndex = 11;
@@ -265,21 +269,40 @@
             "None",
             "Low",
             "High"});
-            this.EntropyBox.Location = new System.Drawing.Point(164, 138);
+            this.EntropyBox.Location = new System.Drawing.Point(18, 173);
             this.EntropyBox.Name = "EntropyBox";
             this.EntropyBox.Size = new System.Drawing.Size(128, 21);
             this.EntropyBox.TabIndex = 14;
             // 
             // lblEntropy
             // 
-            this.lblEntropy.Location = new System.Drawing.Point(249, 117);
+            this.lblEntropy.Location = new System.Drawing.Point(15, 157);
             this.lblEntropy.Name = "lblEntropy";
             this.lblEntropy.Text = "Entropy";
+            // 
+            // RegionBox
+            // 
+            this.RegionBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.RegionBox.FormattingEnabled = true;
+            this.RegionBox.Items.AddRange(new object[] {
+            "Auto",
+            "NTSC",
+            "PAL"});
+            this.RegionBox.Location = new System.Drawing.Point(159, 173);
+            this.RegionBox.Name = "RegionBox";
+            this.RegionBox.Size = new System.Drawing.Size(128, 21);
+            this.RegionBox.TabIndex = 15;
+            // 
+            // lblRegion
+            // 
+            this.lblRegion.Location = new System.Drawing.Point(156, 157);
+            this.lblRegion.Name = "lblRegion";
+            this.lblRegion.Text = "Region";
             // 
             // cbGameHotfixes
             // 
             this.cbGameHotfixes.AutoSize = true;
-            this.cbGameHotfixes.Location = new System.Drawing.Point(18, 111);
+            this.cbGameHotfixes.Location = new System.Drawing.Point(18, 107);
             this.cbGameHotfixes.Name = "cbGameHotfixes";
             this.cbGameHotfixes.Size = new System.Drawing.Size(93, 17);
             this.cbGameHotfixes.TabIndex = 22;
@@ -289,7 +312,7 @@
             // cbFastPPU
             // 
             this.cbFastPPU.AutoSize = true;
-            this.cbFastPPU.Location = new System.Drawing.Point(18, 138);
+            this.cbFastPPU.Location = new System.Drawing.Point(159, 107);
             this.cbFastPPU.Name = "cbFastPPU";
             this.cbFastPPU.Size = new System.Drawing.Size(90, 17);
             this.cbFastPPU.TabIndex = 23;
@@ -306,16 +329,36 @@
             this.cbCropSGBFrame.TabIndex = 27;
             this.cbCropSGBFrame.Text = "Crop SGB Frame";
             this.cbCropSGBFrame.UseVisualStyleBackColor = true;
-            //
+            // 
             // cbUseSGB2
-            //
+            // 
             this.cbUseSGB2.AutoSize = true;
-            this.cbUseSGB2.Location = new System.Drawing.Point(129, 84);
+            this.cbUseSGB2.Location = new System.Drawing.Point(159, 84);
             this.cbUseSGB2.Name = "cbUseSGB2";
             this.cbUseSGB2.Size = new System.Drawing.Size(76, 17);
             this.cbUseSGB2.TabIndex = 30;
             this.cbUseSGB2.Text = "Use SGB2";
             this.cbUseSGB2.UseVisualStyleBackColor = true;
+            // 
+            // cbFastDSP
+            // 
+            this.cbFastDSP.AutoSize = true;
+            this.cbFastDSP.Location = new System.Drawing.Point(18, 130);
+            this.cbFastDSP.Name = "cbFastDSP";
+            this.cbFastDSP.Size = new System.Drawing.Size(101, 17);
+            this.cbFastDSP.TabIndex = 34;
+            this.cbFastDSP.Text = "DSP Fast Mode";
+            this.cbFastDSP.UseVisualStyleBackColor = true;
+            // 
+            // cbFastCoprocessor
+            // 
+            this.cbFastCoprocessor.AutoSize = true;
+            this.cbFastCoprocessor.Location = new System.Drawing.Point(159, 130);
+            this.cbFastCoprocessor.Name = "cbFastCoprocessor";
+            this.cbFastCoprocessor.Size = new System.Drawing.Size(138, 17);
+            this.cbFastCoprocessor.TabIndex = 35;
+            this.cbFastCoprocessor.Text = "Coprocessor Fast Mode";
+            this.cbFastCoprocessor.UseVisualStyleBackColor = true;
             // 
             // BSNESOptions
             // 
@@ -323,13 +366,17 @@
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.CancelButton = this.btnCancel;
-            this.ClientSize = new System.Drawing.Size(304, 338);
+            this.ClientSize = new System.Drawing.Size(304, 379);
+            this.Controls.Add(this.cbFastCoprocessor);
+            this.Controls.Add(this.cbFastDSP);
             this.Controls.Add(this.cbUseSGB2);
             this.Controls.Add(this.cbCropSGBFrame);
             this.Controls.Add(this.cbFastPPU);
             this.Controls.Add(this.cbGameHotfixes);
             this.Controls.Add(this.lblEntropy);
             this.Controls.Add(this.EntropyBox);
+            this.Controls.Add(this.lblRegion);
+            this.Controls.Add(this.RegionBox);
             this.Controls.Add(this.groupBox1);
             this.Controls.Add(this.lblDoubleSize);
             this.Controls.Add(this.cbDoubleSize);
@@ -366,6 +413,8 @@
 		private System.Windows.Forms.CheckBox Obj1Checkbox;
 		private System.Windows.Forms.ComboBox EntropyBox;
 		private WinForms.Controls.LocLabelEx lblEntropy;
+		private System.Windows.Forms.ComboBox RegionBox;
+		private WinForms.Controls.LocLabelEx lblRegion;
 		private System.Windows.Forms.CheckBox cbGameHotfixes;
 		private System.Windows.Forms.CheckBox cbFastPPU;
 		private System.Windows.Forms.CheckBox Bg1_0Checkbox;
@@ -376,5 +425,7 @@
 		private WinForms.Controls.LocLabelEx lblPriority0;
 		private System.Windows.Forms.CheckBox cbCropSGBFrame;
 		private System.Windows.Forms.CheckBox cbUseSGB2;
+		private System.Windows.Forms.CheckBox cbFastDSP;
+		private System.Windows.Forms.CheckBox cbFastCoprocessor;
 	}
 }

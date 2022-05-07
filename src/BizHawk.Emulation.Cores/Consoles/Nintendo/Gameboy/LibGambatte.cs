@@ -25,8 +25,8 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 			CGB_MODE = 1,
 			/// <summary>Use GBA intial CPU register values when in CGB mode.</summary>
 			GBA_FLAG = 2,
-			/// <summary>Use heuristics to detect and support some multicart MBCs disguised as MBC1.</summary>
-			MULTICART_COMPAT = 4,
+			/// <summary>Previously a multicart heuristic enable. Reserved for future use.</summary>
+			RESERVED_FLAG = 4,
 			/// <summary>Treat the ROM as having SGB support regardless of what its header advertises.</summary>
 			SGB_MODE = 8,
 			/// <summary>Prevent implicit saveSavedata calls for the ROM.</summary>
@@ -43,7 +43,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 		[Flags]
 		public enum CDLog_Flags : int
 		{
-			ExecFirst = 1,
+			ExecOpcode = 1,
 			ExecOperand = 2,
 			Data = 4
 		}
@@ -100,6 +100,9 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 		[DllImport("libgambatte", CallingConvention = CallingConvention.Cdecl)]
 		public static extern int gambatte_generatesgbsamples(IntPtr core, short[] soundbuf, out uint samples);
 
+		[DllImport("libgambatte", CallingConvention = CallingConvention.Cdecl)]
+		public static extern int gambatte_generatembcsamples(IntPtr core, short[] soundbuf);
+
 		/// <summary>
 		/// Reset to initial state.
 		/// Equivalent to reloading a ROM image, or turning a Game Boy Color off and on again.
@@ -154,14 +157,14 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 		/// </summary>
 		/// <returns>bitfield combination of pressed buttons</returns>
 		[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-		public delegate Buttons InputGetter();
+		public delegate Buttons InputGetter(IntPtr p);
 
 		/// <summary>
 		/// Sets the callback used for getting input state.
 		/// </summary>
 		/// <param name="core">opaque state pointer</param>
 		[DllImport("libgambatte", CallingConvention = CallingConvention.Cdecl)]
-		public static extern void gambatte_setinputgetter(IntPtr core, InputGetter getinput);
+		public static extern void gambatte_setinputgetter(IntPtr core, InputGetter getinput, IntPtr p);
 
 		/// <summary>
 		/// Gets which SGB controller is in use, 0 indexed.
@@ -337,27 +340,24 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 		/// </summary>
 		/// <param name="core">opaque state pointer</param>
 		/// <param name="dest">byte buffer to write into.  gambatte_savesavedatalength() bytes will be written</param>
-		/// <param name="isDeterministic">determinism bool. RTC data is ignored if set </param>
 		[DllImport("libgambatte", CallingConvention = CallingConvention.Cdecl)]
-		public static extern void gambatte_savesavedata(IntPtr core, byte[] dest, bool isDeterministic);
+		public static extern void gambatte_savesavedata(IntPtr core, byte[] dest);
 
 		/// <summary>
 		/// restore persistant cart memory.
 		/// </summary>
 		/// <param name="core">opaque state pointer</param>
 		/// <param name="data">byte buffer to read from.  gambatte_savesavedatalength() bytes will be read</param>
-		/// <param name="isDeterministic">determinism bool. RTC data is ignored if set </param>
 		[DllImport("libgambatte", CallingConvention = CallingConvention.Cdecl)]
-		public static extern void gambatte_loadsavedata(IntPtr core, byte[] data, bool isDeterministic);
+		public static extern void gambatte_loadsavedata(IntPtr core, byte[] data);
 
 		/// <summary>
 		/// get the size of the persistant cart memory block.  this value DEPENDS ON THE PARTICULAR CART LOADED
 		/// </summary>
 		/// <param name="core">opaque state pointer</param>
-		/// <param name="isDeterministic">determinism bool. RTC data is ignored if set </param>
 		/// <returns>length in bytes.  0 means no internal persistant cart memory</returns>
 		[DllImport("libgambatte", CallingConvention = CallingConvention.Cdecl)]
-		public static extern int gambatte_savesavedatalength(IntPtr core, bool isDeterministic);
+		public static extern int gambatte_getsavedatalength(IntPtr core);
 
 		/// <summary>
 		/// new savestate method
@@ -390,6 +390,18 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 		/// <param name="data">enough room for 16 ascii chars plus terminator</param>
 		[DllImport("libgambatte", CallingConvention = CallingConvention.Cdecl)]
 		public static extern void gambatte_romtitle(IntPtr core, byte[] data);
+
+		/// <summary>
+		/// Pakinfo of currently loaded ROM image.
+		/// </summary>
+		/// <param name="core">opaque state pointer</param>
+		/// <param name="mbc">enough room for 25 ascii chars plus terminator</param>
+		/// <param name="rambanks">number of rambanks</param>
+		/// <param name="rombanks">number of rombanks</param>
+		/// <param name="crc">core reported crc32</param>
+		/// <param name="headerchecksumok">core reported header checksum status</param>
+		[DllImport("libgambatte", CallingConvention = CallingConvention.Cdecl)]
+		public static extern void gambatte_pakinfo(IntPtr core, byte[] mbc, ref uint rambanks, ref uint rombanks, ref uint crc, ref uint headerchecksumok);
 
 		/// <summary>
 		/// memory areas that gambatte_getmemoryarea() can return
@@ -454,7 +466,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 		/// write a single byte to the cpu bus.  while there is no cycle cost to these writes, there can be quite a few side effects.
 		/// use at your own risk.
 		/// </summary>
-		/// <param name="core">opaque state pointe</param>
+		/// <param name="core">opaque state pointer</param>
 		/// <param name="addr">system bus address</param>
 		/// <param name="val">byte to write</param>
 		[DllImport("libgambatte", CallingConvention = CallingConvention.Cdecl)]
@@ -463,24 +475,57 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 		/// <summary>
 		/// link cable stuff; never touch for normal operation
 		/// </summary>
-		/// <param name="core">opaque state pointe</param>
+		/// <param name="core">opaque state pointer</param>
 		/// <param name="which">todo</param>
 		/// <returns>todo</returns>
 		[DllImport("libgambatte", CallingConvention = CallingConvention.Cdecl)]
 		public static extern int gambatte_linkstatus(IntPtr core, int which);
 
 		/// <summary>
-		/// get current rom bank
+		/// get current bank for type of memory
 		/// </summary>
-		/// <param name="core">opaque state pointe</param>
-		/// <returns>current rom bank</returns>
+		/// <param name="core">opaque state pointer</param>
+		/// <param name="type">type of memory</param>
+		/// <returns>current bank</returns>
 		[DllImport("libgambatte", CallingConvention = CallingConvention.Cdecl)]
-		public static extern int gambatte_getrombank(IntPtr core);
+		public static extern int gambatte_getbank(IntPtr core, BankType type);
+
+		/// <summary>
+		/// get current bank for type of memory at address
+		/// </summary>
+		/// <param name="core">opaque state pointer</param>
+		/// <param name="addr">address for memory type</param>
+		/// <returns>current bank, or 0 if not applicable</returns>
+		[DllImport("libgambatte", CallingConvention = CallingConvention.Cdecl)]
+		public static extern int gambatte_getaddrbank(IntPtr core, ushort addr);
+
+		/// <summary>
+		/// set current bank for type of memory
+		/// </summary>
+		/// <param name="core">opaque state pointer</param>
+		/// <param name="type">type of memory</param>
+		/// <param name="bank">bank to set</param>
+		[DllImport("libgambatte", CallingConvention = CallingConvention.Cdecl)]
+		public static extern void gambatte_setbank(IntPtr core, BankType type, int bank);
+
+		/// <summary>
+		/// set current bank for type of memory at address
+		/// </summary>
+		/// <param name="core">opaque state pointer</param>
+		/// <param name="addr">address for memory type</param>
+		/// <param name="bank">bank to set</param>
+		[DllImport("libgambatte", CallingConvention = CallingConvention.Cdecl)]
+		public static extern void gambatte_setaddrbank(IntPtr core, ushort addr, int bank);
+
+		public enum BankType : int
+		{
+			ROM0, ROMX, VRAM, SRAM, WRAM
+		}
 
 		/// <summary>
 		/// get current sram bank
 		/// </summary>
-		/// <param name="core">opaque state pointe</param>
+		/// <param name="core">opaque state pointer</param>
 		/// <returns>current sram bank</returns>
 		[DllImport("libgambatte", CallingConvention = CallingConvention.Cdecl)]
 		public static extern int gambatte_getsrambank(IntPtr core);
@@ -507,24 +552,11 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 		}
 
 		/// <summary>
-		/// get MBC3 RTC reg values
+		/// set time in dividers (2^21/sec)
 		/// </summary>
 		/// <param name="core">opaque state pointer</param>
-		/// <param name="dest">length of at least 11, please</param>
+		/// <param name="dividers">time in dividers</param>
 		[DllImport("libgambatte", CallingConvention = CallingConvention.Cdecl)]
-		public static extern void gambatte_getrtcregs(IntPtr core, int[] dest);
-
-		/// <summary>
-		/// set MBC3 RTC reg values
-		/// </summary>
-		/// <param name="core">opaque state pointer</param>
-		/// <param name="src">length of at least 11, please</param>
-		[DllImport("libgambatte", CallingConvention = CallingConvention.Cdecl)]
-		public static extern void gambatte_setrtcregs(IntPtr core, int[] src);
-
-		public enum RtcRegIndices : int
-		{
-			Dh, Dl, H, M, S, C, Dh_L, Dl_L, H_L, M_L, S_L
-		}
+		public static extern void gambatte_settime(IntPtr core, ulong dividers);
 	}
 }

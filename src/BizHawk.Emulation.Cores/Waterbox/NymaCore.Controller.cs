@@ -46,9 +46,8 @@ namespace BizHawk.Emulation.Cores.Waterbox
 				HashSet<string> hiddenPorts,
 				string controllerDeckName)
 			{
-				var ret = new ControllerDefinition
+				ControllerDefinition ret = new(controllerDeckName)
 				{
-					Name = controllerDeckName,
 					CategoryLabels =
 					{
 						{ "Power", "System" },
@@ -247,6 +246,9 @@ namespace BizHawk.Emulation.Cores.Waterbox
 							case InputType.Status:
 								// TODO: wire up statuses to something (not controller, of course)
 								break;
+							case InputType.Rumble:
+								// TODO: wtf do we do here???
+								break;
 							default:
 							{
 								throw new NotImplementedException($"Unimplemented button type {input.Type}");
@@ -264,7 +266,7 @@ namespace BizHawk.Emulation.Cores.Waterbox
 					ret.BoolButtons.Add("Previous Disk");
 					ret.BoolButtons.Add("Next Disk");
 				}
-				Definition = ret;
+				Definition = ret.MakeImmutable();
 				finalDevices.Add(null);
 				Devices = finalDevices.ToArray();
 				_switchPreviousFrame = switchPreviousFrame.ToArray();

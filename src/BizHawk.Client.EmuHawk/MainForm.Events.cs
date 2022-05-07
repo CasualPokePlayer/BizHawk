@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -13,7 +14,7 @@ using BizHawk.Client.EmuHawk.ToolExtensions;
 using BizHawk.Common;
 using BizHawk.Emulation.Common;
 using BizHawk.Emulation.Cores.Atari.A7800Hawk;
-using BizHawk.Emulation.Cores.Calculators;
+using BizHawk.Emulation.Cores.Calculators.TI83;
 using BizHawk.Emulation.Cores.ColecoVision;
 using BizHawk.Emulation.Cores.Computers.AmstradCPC;
 using BizHawk.Emulation.Cores.Computers.AppleII;
@@ -72,7 +73,6 @@ namespace BizHawk.Client.EmuHawk
 			void SetSlotFont(ToolStripMenuItemEx menu, int slot) => menu.SetStyle(
 				HasSlot(slot) ? (FontStyle.Italic | FontStyle.Bold) : FontStyle.Regular);
 
-			SetSlotFont(SaveState0MenuItem, 0);
 			SetSlotFont(SaveState1MenuItem, 1);
 			SetSlotFont(SaveState2MenuItem, 2);
 			SetSlotFont(SaveState3MenuItem, 3);
@@ -82,6 +82,7 @@ namespace BizHawk.Client.EmuHawk
 			SetSlotFont(SaveState7MenuItem, 7);
 			SetSlotFont(SaveState8MenuItem, 8);
 			SetSlotFont(SaveState9MenuItem, 9);
+			SetSlotFont(SaveState0MenuItem, 0);
 
 			SaveState1MenuItem.ShortcutKeyDisplayString = Config.HotkeyBindings["Save State 1"].Bindings;
 			SaveState2MenuItem.ShortcutKeyDisplayString = Config.HotkeyBindings["Save State 2"].Bindings;
@@ -126,7 +127,6 @@ namespace BizHawk.Client.EmuHawk
 
 		private void SaveSlotSubMenu_DropDownOpened(object sender, EventArgs e)
 		{
-			SelectSlot0MenuItem.ShortcutKeyDisplayString = Config.HotkeyBindings["Select State 0"].Bindings;
 			SelectSlot1MenuItem.ShortcutKeyDisplayString = Config.HotkeyBindings["Select State 1"].Bindings;
 			SelectSlot2MenuItem.ShortcutKeyDisplayString = Config.HotkeyBindings["Select State 2"].Bindings;
 			SelectSlot3MenuItem.ShortcutKeyDisplayString = Config.HotkeyBindings["Select State 3"].Bindings;
@@ -136,12 +136,12 @@ namespace BizHawk.Client.EmuHawk
 			SelectSlot7MenuItem.ShortcutKeyDisplayString = Config.HotkeyBindings["Select State 7"].Bindings;
 			SelectSlot8MenuItem.ShortcutKeyDisplayString = Config.HotkeyBindings["Select State 8"].Bindings;
 			SelectSlot9MenuItem.ShortcutKeyDisplayString = Config.HotkeyBindings["Select State 9"].Bindings;
+			SelectSlot0MenuItem.ShortcutKeyDisplayString = Config.HotkeyBindings["Select State 0"].Bindings;
 			PreviousSlotMenuItem.ShortcutKeyDisplayString = Config.HotkeyBindings["Previous Slot"].Bindings;
 			NextSlotMenuItem.ShortcutKeyDisplayString = Config.HotkeyBindings["Next Slot"].Bindings;
 			SaveToCurrentSlotMenuItem.ShortcutKeyDisplayString = Config.HotkeyBindings["Quick Save"].Bindings;
 			LoadCurrentSlotMenuItem.ShortcutKeyDisplayString = Config.HotkeyBindings["Quick Load"].Bindings;
 
-			SelectSlot0MenuItem.Checked = Config.SaveSlot == 0;
 			SelectSlot1MenuItem.Checked = Config.SaveSlot == 1;
 			SelectSlot2MenuItem.Checked = Config.SaveSlot == 2;
 			SelectSlot3MenuItem.Checked = Config.SaveSlot == 3;
@@ -151,6 +151,7 @@ namespace BizHawk.Client.EmuHawk
 			SelectSlot7MenuItem.Checked = Config.SaveSlot == 7;
 			SelectSlot8MenuItem.Checked = Config.SaveSlot == 8;
 			SelectSlot9MenuItem.Checked = Config.SaveSlot == 9;
+			SelectSlot0MenuItem.Checked = Config.SaveSlot == 0;
 		}
 
 		private void SaveRamSubMenu_DropDownOpened(object sender, EventArgs e)
@@ -344,8 +345,7 @@ namespace BizHawk.Client.EmuHawk
 
 		private void SelectSlotMenuItems_Click(object sender, EventArgs e)
 		{
-			if (sender == SelectSlot0MenuItem) Config.SaveSlot = 0;
-			else if (sender == SelectSlot1MenuItem) Config.SaveSlot = 1;
+			if (sender == SelectSlot1MenuItem) Config.SaveSlot = 1;
 			else if (sender == SelectSlot2MenuItem) Config.SaveSlot = 2;
 			else if (sender == SelectSlot3MenuItem) Config.SaveSlot = 3;
 			else if (sender == SelectSlot4MenuItem) Config.SaveSlot = 4;
@@ -354,6 +354,7 @@ namespace BizHawk.Client.EmuHawk
 			else if (sender == SelectSlot7MenuItem) Config.SaveSlot = 7;
 			else if (sender == SelectSlot8MenuItem) Config.SaveSlot = 8;
 			else if (sender == SelectSlot9MenuItem) Config.SaveSlot = 9;
+			else if (sender == SelectSlot0MenuItem) Config.SaveSlot = 0;
 
 			UpdateStatusSlots();
 			SaveSlotSelectedMessage();
@@ -413,9 +414,17 @@ namespace BizHawk.Client.EmuHawk
 			form.ShowDialog();
 		}
 
+		private string CanProvideFirmware(FirmwareID id, string hash)
+			=> FirmwareManager.Resolve(
+				Config.PathEntries,
+				Config.FirmwareUserSpecifications,
+				FirmwareDatabase.FirmwareRecords.First(fr => fr.ID == id),
+//				exactFile: hash, //TODO re-scan FW dir for this file, then try autopatching
+				forbidScan: true)?.Hash;
+
 		private void PlayMovieMenuItem_Click(object sender, EventArgs e)
 		{
-			using var form = new PlayMovie(this, Config, Game, Emulator, MovieSession);
+			using var form = new PlayMovie(this, Config, Game, Emulator, MovieSession, CanProvideFirmware);
 			form.ShowDialog();
 		}
 
@@ -617,18 +626,13 @@ namespace BizHawk.Client.EmuHawk
 
 		private void PauseMenuItem_Click(object sender, EventArgs e)
 		{
-			if (IsTurboSeeking || IsSeeking)
+			if (Config.PauseWhenMenuActivated && sender == PauseMenuItem)
 			{
-				PauseOnFrame = null;
+				const string ERR_MSG = nameof(PauseMenuItem_Click) + " ran before " + nameof(MaybeUnpauseFromMenuClosed) + "?";
+				Debug.Assert(EmulatorPaused == _wasPaused, ERR_MSG);
+				// fall through
 			}
-			else if (EmulatorPaused)
-			{
-				UnpauseEmulator();
-			}
-			else
-			{
-				PauseEmulator();
-			}
+			TogglePause();
 		}
 
 		private void PowerMenuItem_Click(object sender, EventArgs e)
@@ -815,7 +819,7 @@ namespace BizHawk.Client.EmuHawk
 				Speed400MenuItem.Enabled =
 				Config.ClockThrottle;
 
-			miUnthrottled.Checked = _unthrottled;
+			miUnthrottled.Checked = Config.Unthrottled;
 		}
 
 		private void KeyPriorityMenuItem_DropDownOpened(object sender, EventArgs e)
@@ -896,8 +900,8 @@ namespace BizHawk.Client.EmuHawk
 		{
 			static IEnumerable<string> GetDeviceNamesCallback(ESoundOutputMethod outputMethod) => outputMethod switch
 			{
-				ESoundOutputMethod.DirectSound => DirectSoundSoundOutput.GetDeviceNames(),
-				ESoundOutputMethod.XAudio2 => XAudio2SoundOutput.GetDeviceNames(),
+				ESoundOutputMethod.DirectSound => IndirectX.GetDSSinkNames(),
+				ESoundOutputMethod.XAudio2 => IndirectX.GetXAudio2SinkNames(),
 				ESoundOutputMethod.OpenAL => OpenALSoundOutput.GetDeviceNames(),
 				_ => Enumerable.Empty<string>()
 			};
@@ -1047,7 +1051,7 @@ namespace BizHawk.Client.EmuHawk
 
 		private void UnthrottledMenuItem_Click(object sender, EventArgs e)
 		{
-			_unthrottled ^= true;
+			Config.Unthrottled ^= true;
 			ThrottleMessage();
 		}
 
@@ -1468,19 +1472,9 @@ namespace BizHawk.Client.EmuHawk
 			Tools.Load<BarcodeEntry>();
 		}
 
-		private void Ti83SubMenu_DropDownOpened(object sender, EventArgs e)
-		{
-			AutoloadKeypadMenuItem.Checked = Config.Ti83AutoloadKeyPad;
-		}
-
 		private void Ti83KeypadMenuItem_Click(object sender, EventArgs e)
 		{
 			Tools.Load<TI83KeyPad>();
-		}
-
-		private void AutoloadKeypadMenuItem_Click(object sender, EventArgs e)
-		{
-			Config.Ti83AutoloadKeyPad ^= true;
 		}
 
 		private void Ti83LoadTIFileMenuItem_Click(object sender, EventArgs e)
@@ -1516,7 +1510,7 @@ namespace BizHawk.Client.EmuHawk
 
 		private void Ti83PaletteMenuItem_Click(object sender, EventArgs e)
 		{
-			if (Emulator is TI83 ti83)
+			if (Emulator is TI83Common ti83)
 			{
 				using var form = new TI83PaletteConfig(this, ti83.GetSettings().Clone());
 				if (form.ShowDialog().IsOk()) AddOnScreenMessage("Palette settings saved");
@@ -1890,15 +1884,6 @@ namespace BizHawk.Client.EmuHawk
 			}
 		}
 
-		private void ZXSpectrumPokeMemoryMenuItem_Click(object sender, EventArgs e)
-		{
-			if (Emulator is ZXSpectrum speccy)
-			{
-				using var form = new ZxSpectrumPokeMemory(speccy);
-				form.ShowDialog();
-			}
-		}
-
 		private void ZXSpectrumMediaMenuItem_DropDownOpened(object sender, EventArgs e)
 		{
 			if (Emulator is ZXSpectrum speccy)
@@ -2122,12 +2107,12 @@ namespace BizHawk.Client.EmuHawk
 
 		private void OnlineHelpMenuItem_Click(object sender, EventArgs e)
 		{
-			System.Diagnostics.Process.Start("http://tasvideos.org/BizHawk.html");
+			System.Diagnostics.Process.Start("https://tasvideos.org/BizHawk");
 		}
 
 		private void ForumsMenuItem_Click(object sender, EventArgs e)
 		{
-			System.Diagnostics.Process.Start("http://tasvideos.org/forum/viewforum.php?f=64");
+			System.Diagnostics.Process.Start("https://tasvideos.org/Forum/Subforum/64");
 		}
 
 		private void FeaturesMenuItem_Click(object sender, EventArgs e)
@@ -2143,9 +2128,7 @@ namespace BizHawk.Client.EmuHawk
 
 		private void MainFormContextMenu_Opening(object sender, System.ComponentModel.CancelEventArgs e)
 		{
-			_wasPaused = EmulatorPaused;
-			_didMenuPause = true;
-			PauseEmulator();
+			MaybePauseFromMenuOpened();
 
 			OpenRomContextMenuItem.Visible = Emulator.IsNull() || _inFullscreen;
 
@@ -2242,12 +2225,7 @@ namespace BizHawk.Client.EmuHawk
 		}
 
 		private void MainFormContextMenu_Closing(object sender, ToolStripDropDownClosingEventArgs e)
-		{
-			if (!_wasPaused)
-			{
-				UnpauseEmulator();
-			}
-		}
+			=> MaybeUnpauseFromMenuClosed();
 
 		private void DisplayConfigMenuItem_Click(object sender, EventArgs e)
 		{
@@ -2460,28 +2438,12 @@ namespace BizHawk.Client.EmuHawk
 
 		private void MainForm_Activated(object sender, EventArgs e)
 		{
-			if (!Config.RunInBackground)
-			{
-				if (!_wasPaused)
-				{
-					UnpauseEmulator();
-				}
-
-				_wasPaused = false;
-			}
+			if (!Config.RunInBackground) MaybeUnpauseFromMenuClosed();
 		}
 
 		private void MainForm_Deactivate(object sender, EventArgs e)
 		{
-			if (!Config.RunInBackground)
-			{
-				if (EmulatorPaused)
-				{
-					_wasPaused = true;
-				}
-
-				PauseEmulator();
-			}
+			if (!Config.RunInBackground) MaybePauseFromMenuOpened();
 		}
 
 		private void TimerMouseIdle_Tick(object sender, EventArgs e)
@@ -2504,11 +2466,6 @@ namespace BizHawk.Client.EmuHawk
 
 		private void MainForm_Shown(object sender, EventArgs e)
 		{
-			if (Emulator is TI83 && Config.Ti83AutoloadKeyPad)
-			{
-				Tools.Load<TI83KeyPad>();
-			}
-
 			if (Config.RecentWatches.AutoLoad)
 			{
 				Tools.LoadRamWatch(!Config.DisplayRamWatch);
@@ -2537,22 +2494,18 @@ namespace BizHawk.Client.EmuHawk
 
 		public void MaybePauseFromMenuOpened()
 		{
-			if (Config.PauseWhenMenuActivated)
-			{
-				_wasPaused = EmulatorPaused;
-				_didMenuPause = true;
-				PauseEmulator();
-			}
+			if (!Config.PauseWhenMenuActivated) return;
+			_wasPaused = EmulatorPaused;
+			PauseEmulator();
+			_didMenuPause = true; // overwrites value set during PauseEmulator call
 		}
 
 		private void MainformMenu_MenuDeactivate(object sender, EventArgs e) => MaybeUnpauseFromMenuClosed();
 
 		public void MaybeUnpauseFromMenuClosed()
 		{
-			if (!_wasPaused)
-			{
-				UnpauseEmulator();
-			}
+			if (_wasPaused || !Config.PauseWhenMenuActivated) return;
+			UnpauseEmulator();
 		}
 
 		private static void FormDragEnter(object sender, DragEventArgs e)

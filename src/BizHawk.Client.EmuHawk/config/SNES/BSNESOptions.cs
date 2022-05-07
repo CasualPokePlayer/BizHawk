@@ -20,8 +20,11 @@ namespace BizHawk.Client.EmuHawk
 				AlwaysDoubleSize = s.AlwaysDoubleSize,
 				CropSGBFrame = s.CropSGBFrame,
 				Entropy = ss.Entropy,
+				RegionOverride = ss.RegionOverride,
 				Hotfixes = ss.Hotfixes,
 				FastPPU = ss.FastPPU,
+				FastDSP = ss.FastDSP,
+				FastCoprocessors = ss.FastCoprocessors,
 				UseSGB2 = ss.UseSGB2,
 				ShowObj1 = s.ShowOBJ_0,
 				ShowObj2 = s.ShowOBJ_1,
@@ -43,8 +46,11 @@ namespace BizHawk.Client.EmuHawk
 				s.AlwaysDoubleSize = dlg.AlwaysDoubleSize;
 				s.CropSGBFrame = dlg.CropSGBFrame;
 				ss.Entropy = dlg.Entropy;
+				ss.RegionOverride = dlg.RegionOverride;
 				ss.Hotfixes = dlg.Hotfixes;
 				ss.FastPPU = dlg.FastPPU;
+				ss.FastDSP = dlg.FastDSP;
+				ss.FastCoprocessors = dlg.FastCoprocessors;
 				ss.UseSGB2 = dlg.UseSGB2;
 				s.ShowOBJ_0 = dlg.ShowObj1;
 				s.ShowOBJ_1 = dlg.ShowObj2;
@@ -88,6 +94,18 @@ namespace BizHawk.Client.EmuHawk
 			init => cbDoubleSize.Enabled = cbFastPPU.Checked = value;
 		}
 
+		private bool FastDSP
+		{
+			get => cbFastDSP.Checked;
+			init => cbFastDSP.Checked = value;
+		}
+
+		private bool FastCoprocessors
+		{
+			get => cbFastCoprocessor.Checked;
+			init => cbFastCoprocessor.Checked = value;
+		}
+
 		private bool UseSGB2
 		{
 			get => cbUseSGB2.Checked;
@@ -98,6 +116,12 @@ namespace BizHawk.Client.EmuHawk
 		{
 			get => (BsnesApi.ENTROPY) EntropyBox.SelectedIndex;
 			init => EntropyBox.SelectedIndex = (int) value;
+		}
+
+		private BsnesApi.REGION_OVERRIDE RegionOverride
+		{
+			get => (BsnesApi.REGION_OVERRIDE)RegionBox.SelectedIndex;
+			init => RegionBox.SelectedIndex = (int)value;
 		}
 
 		private bool ShowObj1 { get => Obj1Checkbox.Checked; init => Obj1Checkbox.Checked = value; }

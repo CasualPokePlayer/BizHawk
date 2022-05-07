@@ -1,4 +1,4 @@
-﻿#nullable disable
+﻿using System;
 
 namespace BizHawk.Emulation.Common
 {
@@ -9,7 +9,11 @@ namespace BizHawk.Emulation.Common
 	/// <seealso cref="IVideoProvider" />
 	public class NullVideo : IVideoProvider
 	{
-		public int[] GetVideoBuffer() => new int[BufferWidth * BufferHeight];
+		public int[] GetVideoBuffer()
+		{
+			Array.Clear(VideoBuffer, 0, VideoBuffer.Length);
+			return VideoBuffer;
+		}
 
 		public static NullVideo Instance { get; } = new NullVideo();
 
@@ -32,5 +36,7 @@ namespace BizHawk.Emulation.Common
 		public int VsyncNumerator => DefaultVsyncNum;
 
 		public int VsyncDenominator => DefaultVsyncDen;
+
+		private static readonly int[] VideoBuffer = new int[DefaultWidth * DefaultHeight];
 	}
 }

@@ -29,16 +29,12 @@ namespace BizHawk.Client.EmuHawk
 		}
 
 		/// <summary>extension method to make <see cref="Control.Invoke(Delegate)"/> easier to use</summary>
-		public static object Invoke(this Control control, Action action)
-		{
-			return control.Invoke(action);
-		}
+		public static void Invoke(this Control control, Action action)
+			=> control.Invoke(action);
 
 		/// <summary>extension method to make <see cref="Control.BeginInvoke(Delegate)"/> easier to use</summary>
-		public static IAsyncResult BeginInvoke(this Control control, Action action)
-		{
-			return control.BeginInvoke(action);
-		}
+		public static void BeginInvoke(this Control control, Action action)
+			=> control.BeginInvoke(action);
 
 		public static ToolStripMenuItem ToColumnsMenu(this InputRoll inputRoll, Action changeCallback)
 		{
@@ -101,7 +97,7 @@ namespace BizHawk.Client.EmuHawk
 			Type t = controlToClone.GetType();
 			var instance = (T) Activator.CreateInstance(t);
 
-			t.GetProperty("AutoSize")?.SetValue(instance, false, null);
+			t.GetProperty("AutoSize")?.SetMethod?.Invoke(instance, new object[] {false});
 
 			for (int i = 0; i < 3; i++) // why 3 passes of this? --yoshi
 			{

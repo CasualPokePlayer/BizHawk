@@ -14,6 +14,7 @@ using BizHawk.Emulation.Common;
 using BizHawk.Emulation.Cores;
 using BizHawk.Emulation.Cores.Nintendo.GBA;
 using BizHawk.Emulation.Cores.Nintendo.N64;
+using BizHawk.Emulation.Cores.Nintendo.Sameboy;
 using BizHawk.WinForms.Controls;
 
 namespace BizHawk.Client.EmuHawk
@@ -35,11 +36,11 @@ namespace BizHawk.Client.EmuHawk
 
 		private sealed class DebugVSystemMenuItem : ToolStripMenuItemEx
 		{
-			public readonly IReadOnlyCollection<string> ExtraSysIDs;
+			public readonly IReadOnlyCollection<string> SysIDs;
 
-			public DebugVSystemMenuItem(string labelText, IReadOnlyCollection<string>? extraSysIDs = null)
+			public DebugVSystemMenuItem(string labelText, params string[] extraSysIDs)
 			{
-				ExtraSysIDs = extraSysIDs ?? Array.Empty<string>();
+				SysIDs = new[] { labelText }.Concat(extraSysIDs).ToHashSet();
 				Text = labelText;
 			}
 		}
@@ -186,7 +187,19 @@ namespace BizHawk.Client.EmuHawk
 						Text = "Firmware",
 					},
 					new ToolStripSeparatorEx(),
-					new DebugVSystemMenuItem("GBA")
+					new DebugVSystemMenuItem(VSystemID.Raw.GB, VSystemID.Raw.GBC)
+					{
+						DropDownItems =
+						{
+							new DebugVSystemChildItem(
+								"Debug SameBoy States",
+								() => ((Sameboy) Emulator).DebugSameBoyState())
+							{
+								RequiresCore = CoreNames.Sameboy,
+							},
+						},
+					},
+					new DebugVSystemMenuItem(VSystemID.Raw.GBA)
 					{
 						DropDownItems =
 						{
@@ -198,7 +211,7 @@ namespace BizHawk.Client.EmuHawk
 							},
 						},
 					},
-					new DebugVSystemMenuItem("N64")
+					new DebugVSystemMenuItem(VSystemID.Raw.N64)
 					{
 						DropDownItems =
 						{
@@ -215,7 +228,7 @@ namespace BizHawk.Client.EmuHawk
 				var coreName = Emulator.Attributes().CoreName;
 				foreach (var item in ((ToolStripMenuItemEx) ddoSender).DropDownItems.OfType<DebugVSystemMenuItem>())
 				{
-					var groupEnabled = item.Text == sysID || item.ExtraSysIDs.Contains(sysID);
+					var groupEnabled = item.SysIDs.Contains(sysID);
 					foreach (var child in item.DropDownItems.Cast<DebugVSystemChildItem>().Where(static child => child.RequiresLoadedRom)) // RequiresLoadedRom == false => leave Enabled as default true
 					{
 						child.Enabled = groupEnabled && (child.RequiresCore is null || child.RequiresCore == coreName);

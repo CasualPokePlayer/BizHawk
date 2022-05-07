@@ -38,7 +38,7 @@ namespace BizHawk.Client.Common
 
 		public void SetFromMnemonicStr(string inputLogEntry)
 		{
-			var controller = _movieSession.GenerateMovieController();
+			var controller = _movieSession.GenerateMovieController(_inputManager.ActiveController.Definition);
 			try
 			{
 				controller.SetFromMnemonic(inputLogEntry);
@@ -89,12 +89,12 @@ namespace BizHawk.Client.Common
 			}
 		}
 
-		public void SetAnalog(IReadOnlyDictionary<string, int?> controls, object controller = null)
+		public void SetAnalog(IReadOnlyDictionary<string, int?> controls, int? controller = null)
 		{
 			foreach (var (k, v) in controls) SetAnalog(k, v, controller);
 		}
 
-		public void SetAnalog(string control, int? value = null, object controller = null)
+		public void SetAnalog(string control, int? value = null, int? controller = null)
 		{
 			try
 			{

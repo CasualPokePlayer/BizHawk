@@ -21,7 +21,7 @@ namespace BizHawk.Emulation.Cores.Computers.MSX
 			// look up game in db before transforming ROM
 			var hash_md5 = MD5Checksum.ComputePrefixedHex(rom);
 			var gi = Database.CheckDatabase(hash_md5);
-			var dict = gi.GetOptions();
+			var dict = (gi != null) ? gi.GetOptions() : null;
 			string s_mapper;
 
 			for (int i = 0; i < rom.Length; i++)
@@ -48,22 +48,28 @@ namespace BizHawk.Emulation.Cores.Computers.MSX
 				// Assume default konami style mapper
 				if (gi == null)
 				{
-					
+					mapper_1 = 3;
+					Console.WriteLine("Using Ascii 8 KB Mapper");
 				}
 				else if (!dict.TryGetValue("mapper", out s_mapper))
 				{
-					mapper_1 = 1;
-					Console.WriteLine("Using Konami Mapper");
+					mapper_1 = 3;
+					Console.WriteLine("Using Ascii 8 KB Mapper");
 				}
 				else
 				{
+					if (s_mapper == "1")
+					{
+						mapper_1 = 1;
+						Console.WriteLine("Using Konami Mapper");
+					}
+
 					if (s_mapper == "2")
 					{
 						mapper_1 = 2;
 						Console.WriteLine("Using Konami Mapper with SCC");
 					}
-				}			
-				
+				}					
 			}
 
 			// if the original was not 64 or 48 k, move it (may need to do this case by case)

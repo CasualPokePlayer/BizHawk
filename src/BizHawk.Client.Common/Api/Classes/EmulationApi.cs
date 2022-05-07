@@ -1,6 +1,9 @@
-﻿using System;
+﻿#nullable enable
+
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 
 using BizHawk.Common;
 using BizHawk.Emulation.Common;
@@ -20,29 +23,29 @@ namespace BizHawk.Client.Common
 	public sealed class EmulationApi : IEmulationApi
 	{
 		[RequiredService]
-		private IEmulator Emulator { get; set; }
+		private IEmulator? Emulator { get; set; }
 
 		[OptionalService]
-		private IBoardInfo BoardInfo { get; set; }
+		private IBoardInfo? BoardInfo { get; set; }
 
 		[OptionalService]
-		private IDebuggable DebuggableCore { get; set; }
+		private IDebuggable? DebuggableCore { get; set; }
 
 		[OptionalService]
-		private IDisassemblable DisassemblableCore { get; set; }
+		private IDisassemblable? DisassemblableCore { get; set; }
 
 		[OptionalService]
-		private IInputPollable InputPollableCore { get; set; }
+		private IInputPollable? InputPollableCore { get; set; }
 
 		[OptionalService]
-		private IMemoryDomains MemoryDomains { get; set; }
+		private IMemoryDomains? MemoryDomains { get; set; }
 
 		[OptionalService]
-		private IRegionable RegionableCore { get; set; }
+		private IRegionable? RegionableCore { get; set; }
 
 		private readonly Config _config;
 
-		private readonly IGameInfo _game;
+		private readonly IGameInfo? _game;
 
 		private readonly Action<string> LogCallback;
 
@@ -56,13 +59,9 @@ namespace BizHawk.Client.Common
 			}
 		}
 
-		public Action FrameAdvanceCallback { get; set; }
-
 		public bool ForbiddenConfigReferenceUsed { get; private set; }
 
-		public Action YieldCallback { get; set; }
-
-		public EmulationApi(Action<string> logCallback, Config config, IGameInfo game)
+		public EmulationApi(Action<string> logCallback, Config config, IGameInfo? game)
 		{
 			_config = config;
 			_game = game;
@@ -71,11 +70,10 @@ namespace BizHawk.Client.Common
 
 		public void DisplayVsync(bool enabled) => _config.VSync = enabled;
 
-		public void FrameAdvance() => FrameAdvanceCallback();
+		public int FrameCount()
+			=> Emulator!.Frame;
 
-		public int FrameCount() => Emulator.Frame;
-
-		public object Disassemble(uint pc, string name = "")
+		public object? Disassemble(uint pc, string? name = null)
 		{
 			try
 			{
@@ -83,7 +81,7 @@ namespace BizHawk.Client.Common
 				{
 					return new {
 						disasm = DisassemblableCore.Disassemble(
-							string.IsNullOrEmpty(name) ? MemoryDomains.SystemBus : MemoryDomains[name],
+							string.IsNullOrEmpty(name) ? MemoryDomains!.SystemBus : MemoryDomains![name!]!,
 							pc,
 							out var l
 						),
@@ -103,7 +101,7 @@ namespace BizHawk.Client.Common
 				if (DebuggableCore != null)
 				{
 					var registers = DebuggableCore.GetCpuFlagsAndRegisters();
-					return registers.TryGetValue(name, out var rv) ? rv.Value : (ulong?) null;
+					return registers.TryGetValue(name, out var rv) ? rv.Value : null;
 				}
 			}
 			catch (NotImplementedException) {}
@@ -111,7 +109,7 @@ namespace BizHawk.Client.Common
 			return null;
 		}
 
-		public Dictionary<string, ulong> GetRegisters()
+		public IReadOnlyDictionary<string, ulong> GetRegisters()
 		{
 			try
 			{
@@ -152,7 +150,8 @@ namespace BizHawk.Client.Common
 			return default;
 		}
 
-		public string GetSystemId() => _game.System;
+		public string GetSystemId()
+			=> _game!.System;
 
 		public bool IsLagged()
 		{
@@ -184,13 +183,19 @@ namespace BizHawk.Client.Common
 
 		public void MinimizeFrameskip(bool enabled) => _config.AutoMinimizeSkipping = enabled;
 
-		public void Yield() => YieldCallback();
-
 		public string GetDisplayType() => (RegionableCore?.Region)?.ToString() ?? "";
 
 		public string GetBoardName() => BoardInfo?.BoardName ?? "";
 
-		public object GetSettings() => Emulator switch
+		public IGameInfo? GetGameInfo()
+			=> _game;
+
+		public IReadOnlyDictionary<string, string?> GetGameOptions()
+			=> _game == null
+				? new Dictionary<string, string?>()
+				: ((GameInfo) _game).GetOptions().ToDictionary(static kvp => kvp.Key, static kvp => (string?) kvp.Value);
+
+		public object? GetSettings() => Emulator switch
 		{
 			GPGX gpgx => gpgx.GetSettings(),
 			LibsnesCore snes => snes.GetSettings(),

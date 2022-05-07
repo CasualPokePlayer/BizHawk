@@ -8,6 +8,8 @@ using BizHawk.Emulation.Cores.Consoles.Nintendo.Gameboy;
 using System.Runtime.InteropServices;
 using System.Collections.Generic;
 
+using BizHawk.Common.ReflectionExtensions;
+
 // TODO: mode1_disableint_gbc.gbc behaves differently between GBC and GBA, why?
 // TODO: Window Position A6 behaves differently
 // TODO: Verify open bus behaviour for bad SRAM accesses for other MBCs
@@ -128,7 +130,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.GBHawk
 
 		[CoreConstructor(VSystemID.Raw.GB)]
 		[CoreConstructor(VSystemID.Raw.GBC)]
-		public GBHawk(CoreComm comm, GameInfo game, byte[] rom, /*string gameDbFn,*/ GBSettings settings, GBSyncSettings syncSettings)
+		public GBHawk(CoreComm comm, GameInfo game, byte[] rom, /*string gameDbFn,*/ GBSettings settings, GBSyncSettings syncSettings, bool subframe = false)
 		{
 			var ser = new BasicServiceProvider(this);
 
@@ -195,15 +197,10 @@ namespace BizHawk.Emulation.Cores.Nintendo.GBHawk
 			var mppr = Setup_Mapper(romHashMD5, romHashSHA1);
 			if (cart_RAM != null) { cart_RAM_vbls = new byte[cart_RAM.Length]; }
 
-			if (mppr == "MBC7")
-			{
-				_controllerDeck = new GBHawkControllerDeck(_syncSettings.Port1);
-			}
-			else
-			{
-				_controllerDeck = new GBHawkControllerDeck(GBHawkControllerDeck.DefaultControllerName);
-			}
-			
+			_controllerDeck = new(mppr is "MBC7"
+				? typeof(StandardTilt).DisplayName()
+				: GBHawkControllerDeck.DefaultControllerName, subframe);
+
 			timer.Core = this;
 			audio.Core = this;
 			ppu.Core = this;
@@ -231,7 +228,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.GBHawk
 
 		public bool IsCGBMode() => is_GBC;
 
-		public bool IsGBInGBCMode() => is_GB_in_GBC;
+		public bool IsCGBDMGMode() => is_GB_in_GBC;
 
 		/// <summary>
 		/// Produces a palette in the form that certain frontend inspection tools.
