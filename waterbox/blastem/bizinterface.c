@@ -54,7 +54,7 @@ static blip_t* blip_r;
 
 void init_code_buffer(void);
 
-EXPORT bool Init(u8* rom, u32 sz)
+EXPORT bool Init(u8* rom, u32 sz, u32 region)
 {
 	init_code_buffer();
 	biz_started = false;
@@ -64,7 +64,7 @@ EXPORT bool Init(u8* rom, u32 sz)
 	memcpy(media.buffer, rom, sz);
 	media.size = sz;
 	stype = detect_system_type(&media);
-	current_system = alloc_config_system(stype, &media, 0, 0);
+	current_system = alloc_config_system(stype, &media, 0, region);
 	if (current_system) {
 		const u32 sample_rate = (video_standard == VID_NTSC ? 53693175 : 53203395) / (7 * 6 * 24);
 		render_audio_initialized(RENDER_AUDIO_S16, sample_rate, 2, 4, sizeof(s16));
