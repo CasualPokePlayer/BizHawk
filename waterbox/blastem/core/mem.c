@@ -21,11 +21,19 @@
 #define MAP_32BIT 0
 #endif
 
+_Alignas(PAGE_SIZE) static uint8_t fixedBuffer[16384 * 1024];
+static int markedExec = 0;
+
 void * alloc_code(size_t *size)
 {
+	if (!markedExec) {
+		mprotect((void*)fixedBuffer, sizeof (fixedBuffer), PROT_READ | PROT_WRITE | PROT_EXEC);
+		markedExec = 1;
+	}
+
 	//start at the 1GB mark to allow plenty of room for sbrk based malloc implementations
 	//while still keeping well within 32-bit displacement range for calling code compiled into the executable
-	static uint8_t *next = (uint8_t *)0x36F10000000;
+	static uint8_t *next = (uint8_t *)fixedBuffer;
 	uint8_t *ret = try_alloc_arena();
 	if (ret) {
 		return ret;
@@ -33,11 +41,12 @@ void * alloc_code(size_t *size)
 	if (*size & (PAGE_SIZE -1)) {
 		*size += PAGE_SIZE - (*size & (PAGE_SIZE - 1));
 	}
-	ret = mmap(next, *size, PROT_EXEC | PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+	/*ret = mmap(next, *size, PROT_EXEC | PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
 	if (ret == MAP_FAILED) {
 		perror("alloc_code");
 		return NULL;
-	}
+	}*/
+	ret = next;
 	track_block(ret);
 	next = ret + *size;
 	return ret;
