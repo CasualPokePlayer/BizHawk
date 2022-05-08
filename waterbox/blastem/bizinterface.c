@@ -178,6 +178,11 @@ EXPORT void SetInputCallback(void (*callback)())
 	InputCallback = callback;
 }
 
+EXPORT bool IsPal()
+{
+	return video_standard == VID_PAL; 
+}
+
 const system_media *current_media(void)
 {
 	return &media;
