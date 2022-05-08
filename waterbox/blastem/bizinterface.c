@@ -54,7 +54,7 @@ static blip_t* blip_r;
 
 void init_code_buffer(void);
 
-EXPORT bool Init(u8* rom, size_t sz)
+EXPORT bool Init(u8* rom, u32 sz)
 {
 	init_code_buffer();
 	biz_started = false;
@@ -90,8 +90,8 @@ typedef struct
 	s64 Time;
 	u32 P1Keys;
 	u32 P2Keys;
-	u32 Reset;
-	u32 Overscan;
+	bool Reset;
+	bool Overscan;
 } MyFrameInfo;
 
 static u32 fb[LINEBUF_SIZE * 294 * 2];
