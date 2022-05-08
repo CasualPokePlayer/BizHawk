@@ -24,7 +24,7 @@
 
 _Alignas(PAGE_SIZE) static uint8_t fixed_buffer[16384 * 1024];
 
-static void __attribute__((constructor)) init_buffer(void)
+void init_code_buffer(void)
 {
 	int err = mprotect((void*)fixed_buffer, sizeof (fixed_buffer), PROT_READ | PROT_WRITE | PROT_EXEC);
 	if (err) {
