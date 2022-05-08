@@ -67,8 +67,8 @@ EXPORT bool Init(u8* rom, size_t sz)
 		render_audio_initialized(RENDER_AUDIO_S16, sample_rate, 2, 4, sizeof(s16));
 		blip_l = blip_new(2048);
 		blip_r = blip_new(2048);
-		blip_set_rates(blip_l, sample_rate, 44100);
-		blip_set_rates(blip_r, sample_rate, 44100);
+		blip_set_rates(blip_l, sample_rate * 2, 44100);
+		blip_set_rates(blip_r, sample_rate * 2, 44100);
 		current_system->set_speed_percent(current_system, 100);
 	}
 	return !current_system;
