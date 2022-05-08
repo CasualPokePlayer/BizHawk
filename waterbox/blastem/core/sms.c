@@ -196,10 +196,10 @@ uint8_t debug_commands(system_header *system, char *input_buf)
 }
 
 static memmap_chunk io_map[] = {
-	{0x00, 0x40, 0xFF, 0, 0, 0, NULL, NULL, NULL, NULL,     memory_io_write},
-	{0x40, 0x80, 0xFF, 0, 0, 0, NULL, NULL, NULL, hv_read,  sms_psg_write},
-	{0x80, 0xC0, 0xFF, 0, 0, 0, NULL, NULL, NULL, vdp_read, vdp_write},
-	{0xC0, 0x100,0xFF, 0, 0, 0, NULL, NULL, NULL, io_read,  NULL}
+	{0x00, 0x40, 0xFF, .write_8 = memory_io_write},
+	{0x40, 0x80, 0xFF, .read_8 = hv_read, .write_8 = sms_psg_write},
+	{0x80, 0xC0, 0xFF, .read_8 = vdp_read, .write_8 = vdp_write},
+	{0xC0, 0x100,0xFF, .read_8 = io_read}
 };
 
 static void set_speed_percent(system_header * system, uint32_t percent)
@@ -216,33 +216,33 @@ void sms_serialize(sms_context *sms, serialize_buffer *buf)
 	start_section(buf, SECTION_Z80);
 	z80_serialize(sms->z80, buf);
 	end_section(buf);
-	
+
 	start_section(buf, SECTION_VDP);
 	vdp_serialize(sms->vdp, buf);
 	end_section(buf);
-	
+
 	start_section(buf, SECTION_PSG);
 	psg_serialize(sms->psg, buf);
 	end_section(buf);
-	
+
 	start_section(buf, SECTION_SEGA_IO_1);
 	io_serialize(sms->io.ports, buf);
 	end_section(buf);
-	
+
 	start_section(buf, SECTION_SEGA_IO_2);
 	io_serialize(sms->io.ports + 1, buf);
 	end_section(buf);
-	
+
 	start_section(buf, SECTION_MAIN_RAM);
 	save_int8(buf, sizeof(sms->ram) / 1024);
 	save_buffer8(buf, sms->ram, sizeof(sms->ram));
 	end_section(buf);
-	
+
 	start_section(buf, SECTION_MAPPER);
 	save_int8(buf, 1);//mapper type, 1 for Sega mapper
 	save_buffer8(buf, sms->bank_regs, sizeof(sms->bank_regs));
 	end_section(buf);
-	
+
 	start_section(buf, SECTION_CART_RAM);
 	save_int8(buf, SMS_CART_RAM_SIZE / 1024);
 	save_buffer8(buf, sms->cart_ram, SMS_CART_RAM_SIZE);
@@ -364,7 +364,7 @@ static uint8_t load_state(system_header *system, uint8_t slot)
 			system->delayed_load_slot = slot + 1;
 		}
 		goto done;
-		
+
 	}
 #endif
 	ret = load_state_path(sms, statepath);
@@ -381,19 +381,19 @@ static void run_sms(system_header *system)
 	render_set_video_standard(VID_NTSC);
 	while (!sms->should_return)
 	{
-#ifndef NEW_CORE
 		if (system->delayed_load_slot) {
 			load_state(system, system->delayed_load_slot - 1);
 			system->delayed_load_slot = 0;
-			
+
 		}
 		if (system->enter_debugger && sms->z80->pc) {
 			system->enter_debugger = 0;
 			zdebugger(sms->z80, sms->z80->pc);
 		}
-		if (sms->z80->nmi_start == CYCLE_NEVER) {
-#else
+#ifdef NEW_CORE
 		if (sms->z80->nmi_cycle == CYCLE_NEVER) {
+#else
+		if (sms->z80->nmi_start == CYCLE_NEVER) {
 #endif
 			uint32_t nmi = vdp_next_nmi(sms->vdp);
 			if (nmi != CYCLE_NEVER) {
@@ -407,8 +407,7 @@ static void run_sms(system_header *system)
 		target_cycle = sms->z80->Z80_CYCLE;
 		vdp_run_context(sms->vdp, target_cycle);
 		psg_run(sms->psg, target_cycle);
-		
-#ifndef NEW_CORE
+
 		if (system->save_state) {
 			while (!sms->z80->pc) {
 				//advance Z80 to an instruction boundary
@@ -417,8 +416,7 @@ static void run_sms(system_header *system)
 			save_state(sms, system->save_state - 1);
 			system->save_state = 0;
 		}
-#endif
-		
+
 		target_cycle += 3420*16;
 		if (target_cycle > 0x10000000) {
 			uint32_t adjust = sms->z80->Z80_CYCLE - 3420*262*2;
@@ -453,21 +451,19 @@ static void resume_sms(system_header *system)
 static void start_sms(system_header *system, char *statefile)
 {
 	sms_context *sms = (sms_context *)system;
-	
+
 	z80_assert_reset(sms->z80, 0);
 	z80_clear_reset(sms->z80, 128*15);
-	
+
 	if (statefile) {
 		load_state_path(sms, statefile);
 	}
-	
-#ifndef NEW_CORE
+
 	if (system->enter_debugger) {
 		system->enter_debugger = 0;
 		zinsert_breakpoint(sms->z80, sms->z80->pc, (uint8_t *)zdebugger);
 	}
-#endif
-	
+
 	run_sms(system);
 }
 
@@ -476,7 +472,7 @@ static void soft_reset(system_header *system)
 	sms_context *sms = (sms_context *)system;
 	z80_assert_reset(sms->z80, sms->z80->Z80_CYCLE);
 #ifndef NEW_CORE
-	sms->z80->target_cycle = sms->z80->sync_cycle = sms->z80->current_cycle;
+	sms->z80->target_cycle = sms->z80->sync_cycle = sms->z80->Z80_CYCLE;
 #endif
 }
 
@@ -596,16 +592,16 @@ sms_context *alloc_configure_sms(system_media *media, uint32_t opts, uint8_t for
 	if (media->size > 0xC000)  {
 		sms->header.info.map_chunks = 6;
 		uint8_t *ram_reg_overlap = sms->ram + sizeof(sms->ram) - 4;
-		memory_map[0] = (memmap_chunk){0x0000, 0x0400,  0xFFFF,             0, 0, MMAP_READ,                        media->buffer, NULL, NULL, NULL, NULL};
-		memory_map[1] = (memmap_chunk){0x0400, 0x4000,  0xFFFF,             0, 0, MMAP_READ|MMAP_PTR_IDX|MMAP_CODE, NULL,     NULL, NULL, NULL, NULL};
-		memory_map[2] = (memmap_chunk){0x4000, 0x8000,  0x3FFF,             0, 1, MMAP_READ|MMAP_PTR_IDX|MMAP_CODE, NULL,     NULL, NULL, NULL, NULL};
-		memory_map[3] = (memmap_chunk){0x8000, 0xC000,  0x3FFF,             0, 2, MMAP_READ|MMAP_PTR_IDX|MMAP_CODE, NULL,     NULL, NULL, NULL, cart_ram_write};
-		memory_map[4] = (memmap_chunk){0xC000, 0xFFFC,  sizeof(sms->ram)-1, 0, 0, MMAP_READ|MMAP_WRITE|MMAP_CODE,   sms->ram, NULL, NULL, NULL, NULL};
-		memory_map[5] = (memmap_chunk){0xFFFC, 0x10000, 0x0003,             0, 0, MMAP_READ,                        ram_reg_overlap, NULL, NULL, NULL, mapper_write};
+		memory_map[0] = (memmap_chunk){0x0000, 0x0400,  0xFFFF, .flags = MMAP_READ, .buffer = media->buffer};
+		memory_map[1] = (memmap_chunk){0x0400, 0x4000,  0xFFFF, .ptr_index = 0, .flags = MMAP_READ|MMAP_PTR_IDX|MMAP_CODE};
+		memory_map[2] = (memmap_chunk){0x4000, 0x8000,  0x3FFF, .ptr_index = 1, .flags = MMAP_READ|MMAP_PTR_IDX|MMAP_CODE};
+		memory_map[3] = (memmap_chunk){0x8000, 0xC000,  0x3FFF, .ptr_index = 2, .flags = MMAP_READ|MMAP_PTR_IDX|MMAP_CODE, .write_8 = cart_ram_write};
+		memory_map[4] = (memmap_chunk){0xC000, 0xFFFC,  sizeof(sms->ram)-1, .ptr_index = 0, .flags = MMAP_READ|MMAP_WRITE|MMAP_CODE, .buffer = sms->ram};
+		memory_map[5] = (memmap_chunk){0xFFFC, 0x10000, 0x0003, .ptr_index = 0, .flags = MMAP_READ, .buffer = ram_reg_overlap, .write_8 = mapper_write};
 	} else {
 		sms->header.info.map_chunks = 2;
-		memory_map[0] = (memmap_chunk){0x0000, 0xC000,  rom_size-1,         0, 0, MMAP_READ,                      media->buffer,  NULL, NULL, NULL, NULL};
-		memory_map[1] = (memmap_chunk){0xC000, 0x10000, sizeof(sms->ram)-1, 0, 0, MMAP_READ|MMAP_WRITE|MMAP_CODE, sms->ram, NULL, NULL, NULL, NULL};
+		memory_map[0] = (memmap_chunk){0x0000, 0xC000,  rom_size-1,         0, 0, .flags = MMAP_READ, .buffer = media->buffer};
+		memory_map[1] = (memmap_chunk){0xC000, 0x10000, sizeof(sms->ram)-1, 0, 0, .flags = MMAP_READ|MMAP_WRITE|MMAP_CODE, .buffer = sms->ram};
 	};
 	sms->header.info.map = malloc(sizeof(memmap_chunk) * sms->header.info.map_chunks);
 	memcpy(sms->header.info.map, memory_map, sizeof(memmap_chunk) * sms->header.info.map_chunks);
@@ -614,7 +610,7 @@ sms_context *alloc_configure_sms(system_media *media, uint32_t opts, uint8_t for
 	sms->z80 = init_z80_context(zopts);
 	sms->z80->system = sms;
 	sms->z80->Z80_OPTS->gen.debug_cmd_handler = debug_commands;
-	
+
 	sms->rom = media->buffer;
 	sms->rom_size = rom_size;
 	if (sms->header.info.map_chunks > 2) {
@@ -625,24 +621,24 @@ sms_context *alloc_configure_sms(system_media *media, uint32_t opts, uint8_t for
 		sms->bank_regs[2] = 0x4000 >> 14;
 		sms->bank_regs[3] = 0x8000 >> 14;
 	}
-	
+
 	//TODO: Detect region and pick master clock based off of that
 	sms->normal_clock = sms->master_clock = 53693175;
-	
+
 	sms->psg = malloc(sizeof(psg_context));
 	psg_init(sms->psg, sms->master_clock, 15*16);
-	
+
 	set_gain_config(sms);
-	
+
 	sms->vdp = init_vdp_context(0, 0);
 	sms->vdp->system = &sms->header;
-	
+
 	sms->header.info.save_type = SAVE_NONE;
 	sms->header.info.name = strdup(media->name);
-	
+
 	setup_io_devices(config, &sms->header.info, &sms->io);
 	sms->header.has_keyboard = io_has_keyboard(&sms->io);
-	
+
 	sms->header.set_speed_percent = set_speed_percent;
 	sms->header.start_context = start_sms;
 	sms->header.resume_context = resume_sms;
@@ -666,6 +662,6 @@ sms_context *alloc_configure_sms(system_media *media, uint32_t opts, uint8_t for
 	sms->header.serialize = serialize;
 	sms->header.deserialize = deserialize;
 	sms->header.type = SYSTEM_SMS;
-	
+
 	return sms;
 }

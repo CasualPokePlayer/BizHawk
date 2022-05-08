@@ -11,6 +11,7 @@
 #include "nor.h"
 #include "sega_mapper.h"
 #include "multi_game.h"
+#include "megawifi.h"
 #include "jcart.h"
 #include "blastem.h"
 
@@ -37,11 +38,14 @@ char const *save_type_name(uint8_t save_type)
 	return "SRAM";
 }
 
-tern_node *load_rom_db()
+tern_node *get_rom_db()
 {
-	tern_node *db = parse_bundled_config("rom.db");
+	static tern_node *db;
 	if (!db) {
-		fatal_error("Failed to load ROM DB\n");
+		db = parse_bundled_config("rom.db");
+		if (!db) {
+			fatal_error("Failed to load ROM DB\n");
+		}
 	}
 	return db;
 }
@@ -79,6 +83,7 @@ void cart_serialize(system_header *sys, serialize_buffer *buf)
 	{
 	case MAPPER_SEGA:
 	case MAPPER_SEGA_SRAM:
+	case MAPPER_SEGA_MED_V2:
 		sega_mapper_serialize(gen, buf);
 		break;
 	case MAPPER_REALTEC:
@@ -125,7 +130,7 @@ char *get_header_name(uint8_t *rom)
 	//TODO: Should probably prefer the title field that corresponds to the user's region preference
 	uint8_t *last = rom + TITLE_END - 1;
 	uint8_t *src = rom + TITLE_START;
-	
+
 	for (;;)
 	{
 		while (last > src && (*last <=  0x20 || *last >= 0x80))
@@ -168,7 +173,7 @@ char *region_chars = "JUEW";
 uint8_t region_bits[] = {REGION_J, REGION_U, REGION_E, REGION_J|REGION_U|REGION_E};
 
 uint8_t translate_region_char(uint8_t c)
-{	
+{
 	for (int i = 0; i < sizeof(region_bits); i++)
 	{
 		if (c == region_chars[i]) {
@@ -225,7 +230,7 @@ uint32_t calc_mask(uint32_t src_size, uint32_t start, uint32_t end)
 
 uint8_t has_ram_header(uint8_t *rom, uint32_t rom_size)
 {
-	return rom_size >= (RAM_END + 4) && rom[RAM_ID] == 'R' && rom[RAM_ID + 1] == 'A'; 
+	return rom_size >= (RAM_END + 4) && rom[RAM_ID] == 'R' && rom[RAM_ID + 1] == 'A';
 }
 
 uint32_t read_ram_header(rom_info *info, uint8_t *rom)
@@ -252,50 +257,132 @@ uint32_t read_ram_header(rom_info *info, uint8_t *rom)
 void add_memmap_header(rom_info *info, uint8_t *rom, uint32_t size, memmap_chunk const *base_map, int base_chunks)
 {
 	uint32_t rom_end = get_u32be(rom + ROM_END) + 1;
+	uint32_t rom_end_raw = rom_end;
 	if (size > rom_end) {
 		rom_end = size;
 	} else if (rom_end > nearest_pow2(size)) {
 		rom_end = nearest_pow2(size);
 	}
 	info->save_type = SAVE_NONE;
-	if (size >= 0x80000 && !memcmp("SEGA SSF", rom + 0x100, 8)) {
+	uint8_t is_med_ssf = size >= 0x108 && !memcmp("SEGA SSF", rom + 0x100, 8);
+	if (is_med_ssf || (size > 0x400000 && rom_end_raw <= 0x400000)) {
+		if (is_med_ssf && rom_end < 16*1024*1024) {
+			info->rom = rom = realloc(rom, 16*1024*1024);
+		}
 		info->mapper_start_index = 0;
-		info->mapper_type = MAPPER_SEGA;
+		info->mapper_type = is_med_ssf ? MAPPER_SEGA_MED_V2 : MAPPER_SEGA;
 		info->map_chunks = base_chunks + 9;
 		info->map = malloc(sizeof(memmap_chunk) * info->map_chunks);
 		memset(info->map, 0, sizeof(memmap_chunk)*9);
 		memcpy(info->map+9, base_map, sizeof(memmap_chunk) * base_chunks);
-		
-		info->map[0].start = 0;
-		info->map[0].end = 0x80000;
-		info->map[0].mask = 0xFFFFFF;
-		info->map[0].flags = MMAP_READ;
-		info->map[0].buffer = rom;
-		
-		if (has_ram_header(rom, size)){
-			read_ram_header(info, rom);
+
+		int i;
+		uint16_t map_flags;
+		if (is_med_ssf) {
+			i = 0;
+			map_flags = info->map[i].flags = MMAP_READ | MMAP_PTR_IDX | MMAP_CODE;
+			info->save_type = RAM_FLAG_BOTH;
+			info->save_size = 256*1024;
+			info->save_mask = info->save_size - 1;
+			info->save_buffer = rom + 16*1024*1024 - 256*1024;
+		} else {
+			i = 1;
+			map_flags = info->map[i].flags = MMAP_READ | MMAP_PTR_IDX | MMAP_CODE | MMAP_FUNC_NULL;
+			info->map[0].start = 0;
+			info->map[0].end = 0x80000;
+			info->map[0].mask = 0xFFFFFF;
+			info->map[0].flags = MMAP_READ;
+			info->map[0].buffer = rom;
+
+			if (has_ram_header(rom, size)){
+				read_ram_header(info, rom);
+			}
 		}
-		
-		for (int i = 1; i < 8; i++)
+		static const write_8_fun med_w8[] = {
+			write_med_ram0_b,
+			write_med_ram1_b,
+			write_med_ram2_b,
+			write_med_ram3_b,
+			write_med_ram4_b,
+			write_med_ram5_b,
+			write_med_ram6_b,
+			write_med_ram7_b,
+		};
+		static const write_16_fun med_w16[] = {
+			write_med_ram0_w,
+			write_med_ram1_w,
+			write_med_ram2_w,
+			write_med_ram3_w,
+			write_med_ram4_w,
+			write_med_ram5_w,
+			write_med_ram6_w,
+			write_med_ram7_w,
+		};
+
+		for (; i < 8; i++)
 		{
 			info->map[i].start = i * 0x80000;
 			info->map[i].end = (i + 1) * 0x80000;
 			info->map[i].mask = 0x7FFFF;
 			info->map[i].buffer = (i + 1) * 0x80000 <= size ? rom + i * 0x80000 : rom;
 			info->map[i].ptr_index = i;
-			info->map[i].flags = MMAP_READ | MMAP_PTR_IDX | MMAP_CODE | MMAP_FUNC_NULL;
-			
-			info->map[i].read_16 = (read_16_fun)read_sram_w;//these will only be called when mem_pointers[i] == NULL
-			info->map[i].read_8 = (read_8_fun)read_sram_b;
-			info->map[i].write_16 = (write_16_fun)write_sram_area_w;//these will be called all writes to the area
-			info->map[i].write_8 = (write_8_fun)write_sram_area_b;
-			
+			info->map[i].flags = map_flags;
+
+			info->map[i].read_16 = is_med_ssf ? NULL : (read_16_fun)read_sram_w;//these will only be called when mem_pointers[i] == NULL
+			info->map[i].read_8 = is_med_ssf ? NULL : (read_8_fun)read_sram_b;
+			if (is_med_ssf) {
+				info->map[i].write_16 = med_w16[i];
+				info->map[i].write_8 = med_w8[i];
+			} else {
+				info->map[i].write_16 = (write_16_fun)write_sram_area_w;//these will be called all writes to the area
+				info->map[i].write_8 = (write_8_fun)write_sram_area_b;
+			}
 		}
 		info->map[8].start = 0xA13000;
 		info->map[8].end = 0xA13100;
 		info->map[8].mask = 0xFF;
 		info->map[8].write_16 = (write_16_fun)write_bank_reg_w;
 		info->map[8].write_8 = (write_8_fun)write_bank_reg_b;
+		return;
+	} else if(!memcmp("SEGA MEGAWIFI", rom + 0x100, strlen("SEGA MEGAWIFI"))) {
+		info->mapper_type = MAPPER_NONE;
+		info->map_chunks = base_chunks + 2;
+		info->map = malloc(sizeof(memmap_chunk) * info->map_chunks);
+		memset(info->map, 0, sizeof(memmap_chunk)*2);
+		memcpy(info->map+2, base_map, sizeof(memmap_chunk) * base_chunks);
+		info->save_size = 0x400000;
+		info->save_bus = RAM_FLAG_BOTH;
+		info->save_type = SAVE_NOR;
+		info->map[0].start = 0;
+		info->map[0].end = 0x400000;
+		info->map[0].mask = 0xFFFFFF;
+		info->map[0].write_16 = nor_flash_write_w;
+		info->map[0].write_8 = nor_flash_write_b;
+		info->map[0].read_16 = nor_flash_read_w;
+		info->map[0].read_8 = nor_flash_read_b;
+		info->map[0].flags = MMAP_READ_CODE | MMAP_CODE;
+		info->map[0].buffer = info->save_buffer = calloc(info->save_size, 1);
+		uint32_t init_size = size < info->save_size ? size : info->save_size;
+		memcpy(info->save_buffer, rom, init_size);
+		byteswap_rom(info->save_size, (uint16_t *)info->save_buffer);
+		info->nor = calloc(1, sizeof(nor_state));
+		nor_flash_init(info->nor, info->save_buffer, info->save_size, 128, 0xDA45, RAM_FLAG_BOTH);
+		info->nor->cmd_address1 = 0xAAB;
+		info->nor->cmd_address2 = 0x555;
+		info->map[1].start = 0xA130C0;
+		info->map[1].end = 0xA130D0;
+		info->map[1].mask = 0xFFFFFF;
+		if (!strcmp(
+			"on",
+			tern_find_path_default(config, "system\0megawifi\0", (tern_val){.ptrval="off"}, TVAL_PTR).ptrval)
+		) {
+			info->map[1].write_16 = megawifi_write_w;
+			info->map[1].write_8 = megawifi_write_b;
+			info->map[1].read_16 = megawifi_read_w;
+			info->map[1].read_8 = megawifi_read_b;
+		} else {
+			warning("ROM uses MegaWiFi, but it is disabled\n");
+		}
 		return;
 	} else if (has_ram_header(rom, size)) {
 		uint32_t ram_start = read_ram_header(info, rom);
@@ -347,7 +434,7 @@ void add_memmap_header(rom_info *info, uint8_t *rom, uint32_t size, memmap_chunk
 				info->map[1].write_16 = (write_16_fun)write_sram_area_w;//these will be called all writes to the area
 				info->map[1].write_8 = (write_8_fun)write_sram_area_b;
 				info->map[1].buffer = rom + 0x200000;
-				
+
 				//Last entry in the base map is a catch all one that needs to be
 				//after all the other entries
 				memmap_chunk *unused = info->map + info->map_chunks - 2;
@@ -364,7 +451,7 @@ void add_memmap_header(rom_info *info, uint8_t *rom, uint32_t size, memmap_chunk
 			return;
 		}
 	}
-	
+
 	info->map_chunks = base_chunks + 1;
 	info->map = malloc(sizeof(memmap_chunk) * info->map_chunks);
 	memset(info->map, 0, sizeof(memmap_chunk));
@@ -386,8 +473,21 @@ rom_info configure_rom_heuristics(uint8_t *rom, uint32_t rom_size, memmap_chunk 
 	info.is_save_lock_on = 0;
 	info.rom = rom;
 	info.rom_size = rom_size;
+	info.wants_cd = 0;
+	for (uint32_t offset = 0x190; offset < rom_size && offset < 0x1A0; offset++)
+	{
+		if (rom[offset] == 'F') {
+			// probably a codemasters game with a garbage header
+			break;
+		}
+		if (rom[offset] == 'C') {
+			info.wants_cd = 1;
+			break;
+		}
+	}
 	add_memmap_header(&info, rom, rom_size, base_map, base_chunks);
 	info.port1_override = info.port2_override = info.ext_override = info.mouse_mode = NULL;
+
 	return info;
 }
 
@@ -595,8 +695,12 @@ void map_iter_fun(char *key, tern_val val, uint8_t valtype, void *data)
 	map->start = start;
 	map->end = end + 1;
 	if (!strcmp(dtype, "ROM")) {
+		uint32_t expanded_size = nearest_pow2(state->rom_size);
+		if (offset >= expanded_size) {
+			fatal_error("offset of %X is invalid for ROM size of %X in map entry %d with addess %s\n", offset, state->rom_size, state->index, key);
+		}
 		map->buffer = state->rom + offset;
-		map->mask = calc_mask(state->rom_size - offset, start, end);
+		map->mask = calc_mask(nearest_pow2(state->rom_size) - offset, start, end);
 		if (strcmp(tern_find_ptr_default(node, "writeable", "no"), "yes")) {
 			map->flags = MMAP_READ;
 		} else {
@@ -676,33 +780,38 @@ void map_iter_fun(char *key, tern_val val, uint8_t valtype, void *data)
 		process_sram_def(key, state);
 		map->buffer = state->info->save_buffer + offset;
 		map->flags = MMAP_READ | MMAP_WRITE;
+		uint32_t save_size_mask = state->info->save_size;
 		if (state->info->save_type == RAM_FLAG_ODD) {
 			map->flags |= MMAP_ONLY_ODD;
+			save_size_mask *= 2;
 		} else if(state->info->save_type == RAM_FLAG_EVEN) {
 			map->flags |= MMAP_ONLY_EVEN;
+			save_size_mask *= 2;
 		} else {
 			map->flags |= MMAP_CODE;
 		}
-		map->mask = calc_mask(state->info->save_size, start, end);
+		map->mask = calc_mask(save_size_mask, start, end);
 	} else if (!strcmp(dtype, "RAM")) {
 		uint32_t size = strtol(tern_find_ptr_default(node, "size", "0"), NULL, 16);
 		if (!size || size > map->end - map->start) {
 			size = map->end - map->start;
 		}
 		map->buffer = calloc(size, 1);
-		map->mask = calc_mask(size, start, end);
 		map->flags = MMAP_READ | MMAP_WRITE;
 		char *bus = tern_find_ptr_default(node, "bus", "both");
 		if (!strcmp(bus, "odd")) {
 			map->flags |= MMAP_ONLY_ODD;
+			size *= 2;
 		} else if (!strcmp(bus, "even")) {
 			map->flags |= MMAP_ONLY_EVEN;
+			size *= 2;
 		} else {
 			map->flags |= MMAP_CODE;
 		}
+		map->mask = calc_mask(size, start, end);
 	} else if (!strcmp(dtype, "NOR")) {
 		process_nor_def(key, state);
-		
+
 		map->write_16 = nor_flash_write_w;
 		map->write_8 = nor_flash_write_b;
 		map->read_16 = nor_flash_read_w;
@@ -825,6 +934,20 @@ void map_iter_fun(char *key, tern_val val, uint8_t valtype, void *data)
 		map->mask = 0xFF;
 		map->write_16 = write_multi_game_w;
 		map->write_8 = write_multi_game_b;
+	} else if (!strcmp(dtype, "megawifi")) {
+		if (!strcmp(
+			"on",
+			tern_find_path_default(config, "system\0megawifi\0", (tern_val){.ptrval="off"}, TVAL_PTR).ptrval)
+		) {
+			map->write_16 = megawifi_write_w;
+			map->write_8 = megawifi_write_b;
+			map->read_16 = megawifi_read_w;
+			map->read_8 = megawifi_read_b;
+			map->mask = 0xFFFFFF;
+		} else {
+			warning("ROM uses MegaWiFi, but it is disabled\n");
+			return;
+		}
 	} else if (!strcmp(dtype, "jcart")) {
 		state->info->mapper_type = MAPPER_JCART;
 		map->write_16 = jcart_write_w;
@@ -842,6 +965,16 @@ rom_info configure_rom(tern_node *rom_db, void *vrom, uint32_t rom_size, void *l
 {
 	uint8_t product_id[GAME_ID_LEN+1];
 	uint8_t *rom = vrom;
+	uint32_t expanded_size = nearest_pow2(rom_size);
+	if (expanded_size > rom_size) {
+		//generally carts with odd-sized ROMs have 2 power of 2 sized ROMs with the larger one first
+		//TODO: Handle cases in which the 2nd ROM/part is a maller power of 2 than just half the first one
+		uint32_t mirror_start = expanded_size >> 1;
+		uint32_t mirror_size = expanded_size >> 2;
+		if (mirror_start + mirror_size >= rom_size) {
+			memcpy(rom + mirror_start + mirror_size, rom + mirror_start, mirror_size);
+		}
+	}
 	product_id[GAME_ID_LEN] = 0;
 	for (int i = 0; i < GAME_ID_LEN; i++)
 	{
@@ -910,14 +1043,14 @@ rom_info configure_rom(tern_node *rom_db, void *vrom, uint32_t rom_size, void *l
 			info.num_eeprom = 0;
 			memset(info.map, 0, sizeof(memmap_chunk) * info.map_chunks);
 			map_iter_state state = {
-				.info = &info, 
-				.rom = rom, 
+				.info = &info,
+				.rom = rom,
 				.lock_on = lock_on,
 				.root = entry,
 				.rom_db = rom_db,
-				.rom_size = rom_size, 
+				.rom_size = rom_size,
 				.lock_on_size = lock_on_size,
-				.index = 0, 
+				.index = 0,
 				.num_els = info.map_chunks - base_chunks,
 				.ptr_index = 0
 			};
@@ -954,6 +1087,7 @@ rom_info configure_rom(tern_node *rom_db, void *vrom, uint32_t rom_size, void *l
 		info.port1_override = info.port2_override = info.ext_override = NULL;
 	}
 	info.mouse_mode = tern_find_ptr(entry, "mouse_mode");
+	info.wants_cd = !strcmp(tern_find_ptr_default(entry, "wants_cd", "no"), "yes");
 
 	return info;
 }

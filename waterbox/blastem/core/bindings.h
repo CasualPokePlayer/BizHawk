@@ -28,4 +28,3 @@ void bindings_reacquire_capture(void);
 void set_content_binding_state(uint8_t enabled);
 
 #endif //BINDINGS_H_
-

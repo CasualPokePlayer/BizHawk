@@ -58,21 +58,28 @@ enum {
 	CMD_DAC_STREAM_START,
 	CMD_DAC_STREAM_STOP,
 	CMD_DAC_STREAM_STARTFAST,
+	CMD_PCM68_REG = 0xB0,
+	CMD_PCM164_REG,
+	CMD_PCM68_RAM = 0xC1,
+	CMD_PCM164_RAM = 0xC2,
 	CMD_DATA_SEEK = 0xE0
 };
 
 enum {
-	DATA_YM2612_PCM = 0
+	DATA_YM2612_PCM = 0,
+	DATA_RF5C68,
+	DATA_RF5C164,
 };
 
 #pragma pack(pop)
 
-typedef struct {
-	struct data_block *next;
-	uint8_t           *data;
-	uint32_t          size;
-	uint8_t           type;
-} data_block;
+typedef struct data_block data_block;
+struct data_block {
+	data_block  *next;
+	uint8_t     *data;
+	uint32_t    size;
+	uint8_t     type;
+};
 
 typedef struct {
 	vgm_header header;

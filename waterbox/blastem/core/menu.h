@@ -17,4 +17,3 @@ uint16_t menu_read_w(uint32_t address, void * context);
 void * menu_write_w(uint32_t address, void * context, uint16_t value);
 
 #endif // MENU_H_
-

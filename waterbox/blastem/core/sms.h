@@ -4,10 +4,10 @@
 #include "system.h"
 #include "vdp.h"
 #include "psg.h"
-#ifndef NEW_CORE
-#include "z80_to_x86.h"
-#else
+#ifdef NEW_CORE
 #include "z80.h"
+#else
+#include "z80_to_x86.h"
 #endif
 #include "io.h"
 

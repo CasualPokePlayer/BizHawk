@@ -25,6 +25,8 @@ struct m68kinst;
 #define M68K_STATUS_TRACE 0x80
 
 typedef void (*start_fun)(uint8_t * addr, void * context);
+typedef struct m68k_context m68k_context;
+typedef m68k_context *(*sync_fun)(m68k_context * context, uint32_t address);
 
 typedef struct {
 	code_ptr impl;
@@ -36,13 +38,11 @@ typedef struct {
 
 typedef struct {
 	cpu_options     gen;
-#ifndef NEW_CORE
+
 	int8_t          dregs[8];
 	int8_t          aregs[8];
 	int8_t			flag_regs[5];
-#endif
 	FILE            *address_log;
-#ifndef NEW_CORE
 	code_ptr        read_16;
 	code_ptr        write_16;
 	code_ptr        read_8;
@@ -61,15 +61,14 @@ typedef struct {
 	code_ptr		set_sr;
 	code_ptr		set_ccr;
 	code_ptr        bp_stub;
+	sync_fun        sync_components;
 	code_info       extra_code;
 	movem_fun       *big_movem;
 	uint32_t        num_movem;
 	uint32_t        movem_storage;
 	code_word       prologue_start;
-#endif
 } m68k_options;
 
-typedef struct m68k_context m68k_context;
 typedef void (*m68k_debug_handler)(m68k_context *context, uint32_t pc);
 
 typedef struct {
@@ -109,23 +108,20 @@ typedef m68k_context *(*m68k_reset_handler)(m68k_context *context);
 void translate_m68k_stream(uint32_t address, m68k_context * context);
 void start_68k_context(m68k_context * context, uint32_t address);
 void resume_68k(m68k_context *context);
-void init_m68k_opts(m68k_options * opts, memmap_chunk * memmap, uint32_t num_chunks, uint32_t clock_divider);
+void init_m68k_opts(m68k_options * opts, memmap_chunk * memmap, uint32_t num_chunks, uint32_t clock_divider, sync_fun sync_components);
 m68k_context * init_68k_context(m68k_options * opts, m68k_reset_handler reset_handler);
 void m68k_reset(m68k_context * context);
 void m68k_options_free(m68k_options *opts);
 void insert_breakpoint(m68k_context * context, uint32_t address, m68k_debug_handler bp_handler);
 void remove_breakpoint(m68k_context * context, uint32_t address);
+m68k_context * m68k_handle_code_write(uint32_t address, m68k_context * context);
 uint32_t get_instruction_start(m68k_options *opts, uint32_t address);
 uint16_t m68k_get_ir(m68k_context *context);
 void m68k_print_regs(m68k_context * context);
 void m68k_invalidate_code_range(m68k_context *context, uint32_t start, uint32_t end);
-#ifndef NEW_CORE
-m68k_context * m68k_handle_code_write(uint32_t address, m68k_context * context);
-#else
-#define m68k_handle_code_write(A, M)
-#endif
 void m68k_serialize(m68k_context *context, uint32_t pc, serialize_buffer *buf);
 void m68k_deserialize(deserialize_buffer *buf, void *vcontext);
+uint16_t m68k_instruction_fetch(uint32_t address, void *vcontext);
 
 #endif //M68K_CORE_H_
 

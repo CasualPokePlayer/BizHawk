@@ -172,9 +172,9 @@ void ym_reset(ym2612_context *context)
 	//TODO: Confirm these on hardware
 	context->timer_a = TIMER_A_MAX;
 	context->timer_b = TIMER_B_MAX;
-	
+
 	//TODO: Reset LFO state
-	
+
 	//some games seem to expect that the LR flags start out as 1
 	for (int i = 0; i < NUM_CHANNELS; i++) {
 		context->channels[i].lr = 0xC0;
@@ -199,11 +199,11 @@ void ym_init(ym2612_context * context, uint32_t master_clock, uint32_t clock_div
 	memset(context, 0, sizeof(*context));
 	context->clock_inc = clock_div * 6;
 	context->busy_cycles = BUSY_CYCLES * context->clock_inc;
-	context->audio = render_audio_source(master_clock, context->clock_inc * NUM_OPERATORS, 2);
+	context->audio = render_audio_source("YM2612", master_clock, context->clock_inc * NUM_OPERATORS, 2);
 	//TODO: pick a randomish high initial value and lower it over time
 	context->invalid_status_decay = 225000 * context->clock_inc;
 	context->status_address_mask = (options & YM_OPT_3834) ? 0 : 3;
-	
+
 	//some games seem to expect that the LR flags start out as 1
 	for (int i = 0; i < NUM_CHANNELS; i++) {
 		if (options & YM_OPT_WAVE_LOG) {
@@ -480,7 +480,7 @@ void ym_run_envelope(ym2612_context *context, ym_channel *channel, ym_operator *
 			operator->envelope += envelope_inc << 2;
 			//clamp to max attenuation value
 			if (
-				operator->envelope > MAX_ENVELOPE 
+				operator->envelope > MAX_ENVELOPE
 				|| (operator->env_phase == PHASE_RELEASE && operator->envelope >= SSG_CENTER)
 			) {
 				operator->envelope = MAX_ENVELOPE;
@@ -524,7 +524,7 @@ void ym_run_phase(ym2612_context *context, uint32_t channel, uint32_t op)
 					phase = operator->phase_counter = 0;
 				}
 				if (
-					(operator->env_phase == PHASE_DECAY || operator->env_phase == PHASE_SUSTAIN) 
+					(operator->env_phase == PHASE_DECAY || operator->env_phase == PHASE_SUSTAIN)
 					&& !(operator->ssg & SSG_HOLD)
 				) {
 					start_envelope(operator, chan);
@@ -665,7 +665,7 @@ void ym_run(ym2612_context * context, uint32_t to_cycle)
 			context->current_op = 0;
 			ym_output_sample(context);
 		}
-		
+
 	}
 	//printf("Done running YM2612 at cycle %d\n", context->current_cycle, to_cycle);
 }
@@ -799,7 +799,7 @@ void ym_vgm_log(ym2612_context *context, uint32_t master_clock, vgm_writer *vgm)
 		}
 		vgm_ym2612_part1_write(context->vgm, context->current_cycle, reg, context->part1_regs[reg - YM_PART1_START]);
 	}
-	
+
 	for (uint8_t reg = YM_PART2_START; reg < YM_REG_END; reg++) {
 		if ((reg & 3) == 3 || (reg >= REG_FNUM_LOW_CH3 && reg < REG_ALG_FEEDBACK)) {
 			//skip invalid registers
@@ -813,7 +813,7 @@ void ym_data_write(ym2612_context * context, uint8_t value)
 {
 	context->write_cycle = context->current_cycle;
 	context->busy_start = context->current_cycle + context->clock_inc;
-	
+
 	if (context->selected_reg >= YM_REG_END) {
 		return;
 	}
@@ -912,7 +912,7 @@ void ym_data_write(ym2612_context * context, uint8_t value)
 				if (channel > 2) {
 					channel--;
 				}
-				uint8_t changes = channel == 2 
+				uint8_t changes = channel == 2
 					? (value | context->csm_keyon) ^  (context->channels[channel].keyon | context->csm_keyon)
 					: value ^ context->channels[channel].keyon;
 				context->channels[channel].keyon = value & 0xF0;
@@ -1037,10 +1037,10 @@ void ym_data_write(ym2612_context * context, uint8_t value)
 					//result from op2 when op3 starts executing
 					context->operators[channel*4+1].mod_src[0] = &context->operators[channel*4+2].output;
 					context->operators[channel*4+1].mod_src[1] = NULL;
-					
+
 					//operator 2 modulated by operator 1
 					context->operators[channel*4+2].mod_src[0] = &context->operators[channel*4+0].output;
-					
+
 					//operator 4 modulated by operator 3
 					context->operators[channel*4+3].mod_src[0] = &context->operators[channel*4+1].output;
 					context->operators[channel*4+3].mod_src[1] = NULL;
@@ -1053,10 +1053,10 @@ void ym_data_write(ym2612_context * context, uint8_t value)
 					//this uses a special op2 result reg on HW, but that reg will have the most recent
 					//result from op2 when op3 starts executing
 					context->operators[channel*4+1].mod_src[1] = &context->operators[channel*4+2].output;
-					
+
 					//operator 2 unmodulated
 					context->operators[channel*4+2].mod_src[0] = NULL;
-					
+
 					//operator 4 modulated by operator 3
 					context->operators[channel*4+3].mod_src[0] = &context->operators[channel*4+1].output;
 					context->operators[channel*4+3].mod_src[1] = NULL;
@@ -1067,10 +1067,10 @@ void ym_data_write(ym2612_context * context, uint8_t value)
 					//result from op2 when op3 starts executing
 					context->operators[channel*4+1].mod_src[0] = &context->operators[channel*4+2].output;
 					context->operators[channel*4+1].mod_src[1] = NULL;
-					
+
 					//operator 2 unmodulated
 					context->operators[channel*4+2].mod_src[0] = NULL;
-					
+
 					//operator 4 modulated by operator 1+3
 					//this uses a special op1 result reg on HW, but that reg will have the most recent
 					//result from op1 when op4 starts executing
@@ -1081,10 +1081,10 @@ void ym_data_write(ym2612_context * context, uint8_t value)
 					//operator 3 unmodulated
 					context->operators[channel*4+1].mod_src[0] = NULL;
 					context->operators[channel*4+1].mod_src[1] = NULL;
-					
+
 					//operator 2 modulated by operator 1
 					context->operators[channel*4+2].mod_src[0] = &context->operators[channel*4+0].output;
-					
+
 					//operator 4 modulated by operator 2+3
 					//op2 starts executing before this, but due to pipeline length the most current result is
 					//not available and instead the previous result is used
@@ -1095,10 +1095,10 @@ void ym_data_write(ym2612_context * context, uint8_t value)
 					//operator 3 unmodulated
 					context->operators[channel*4+1].mod_src[0] = NULL;
 					context->operators[channel*4+1].mod_src[1] = NULL;
-					
+
 					//operator 2 modulated by operator 1
 					context->operators[channel*4+2].mod_src[0] = &context->operators[channel*4+0].output;
-					
+
 					//operator 4 modulated by operator 3
 					context->operators[channel*4+3].mod_src[0] = &context->operators[channel*4+1].output;
 					context->operators[channel*4+3].mod_src[1] = NULL;
@@ -1109,10 +1109,10 @@ void ym_data_write(ym2612_context * context, uint8_t value)
 					//not available and instead the previous result is used
 					context->operators[channel*4+1].mod_src[0] = &context->channels[channel].op1_old;
 					context->operators[channel*4+1].mod_src[1] = NULL;
-					
+
 					//operator 2 modulated by operator 1
 					context->operators[channel*4+2].mod_src[0] = &context->operators[channel*4+0].output;
-					
+
 					//operator 4 modulated by operator 1
 					//this uses a special op1 result reg on HW, but that reg will have the most recent
 					//result from op1 when op4 starts executing
@@ -1123,10 +1123,10 @@ void ym_data_write(ym2612_context * context, uint8_t value)
 					//operator 3 unmodulated
 					context->operators[channel*4+1].mod_src[0] = NULL;
 					context->operators[channel*4+1].mod_src[1] = NULL;
-					
+
 					//operator 2 modulated by operator 1
 					context->operators[channel*4+2].mod_src[0] = &context->operators[channel*4+0].output;
-					
+
 					//operator 4 unmodulated
 					context->operators[channel*4+3].mod_src[0] = NULL;
 					context->operators[channel*4+3].mod_src[1] = NULL;
@@ -1135,9 +1135,9 @@ void ym_data_write(ym2612_context * context, uint8_t value)
 					//everything is an output so no modulation (except for op 1 feedback)
 					context->operators[channel*4+1].mod_src[0] = NULL;
 					context->operators[channel*4+1].mod_src[1] = NULL;
-					
+
 					context->operators[channel*4+2].mod_src[0] = NULL;
-					
+
 					context->operators[channel*4+3].mod_src[0] = NULL;
 					context->operators[channel*4+3].mod_src[1] = NULL;
 					break;
@@ -1182,7 +1182,7 @@ uint8_t ym_read_status(ym2612_context * context, uint32_t cycle, uint32_t port)
 		context->last_status_cycle = cycle;
 	}
 	return status;
-		
+
 }
 
 void ym_print_channel_info(ym2612_context *context, int channel)

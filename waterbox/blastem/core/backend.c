@@ -6,7 +6,6 @@
 #include "backend.h"
 #include <stdlib.h>
 
-#ifndef NEW_CORE
 deferred_addr * defer_address(deferred_addr * old_head, uint32_t address, uint8_t *dest)
 {
 	deferred_addr * new_head = malloc(sizeof(deferred_addr));
@@ -51,21 +50,18 @@ void process_deferred(deferred_addr ** head_ptr, void * context, native_addr_fun
 		}
 	}
 }
-#endif
 
 memmap_chunk const *find_map_chunk(uint32_t address, cpu_options *opts, uint16_t flags, uint32_t *size_sum)
 {
 	if (size_sum) {
 		*size_sum = 0;
 	}
-#ifndef NEW_CORE
-	uint32_t minsize;
+	uint32_t size_round_mask;
 	if (flags == MMAP_CODE) {
-		minsize = 1 << (opts->ram_flags_shift + 3);
+		size_round_mask = (1 << (opts->ram_flags_shift + 3)) - 1;
 	} else {
-		minsize = 0;
+		size_round_mask = 0;
 	}
-#endif
 	address &= opts->address_mask;
 	for (memmap_chunk const *cur = opts->memmap, *end = opts->memmap + opts->memmap_chunks; cur != end; cur++)
 	{
@@ -73,11 +69,12 @@ memmap_chunk const *find_map_chunk(uint32_t address, cpu_options *opts, uint16_t
 			return cur;
 		} else if (size_sum && (cur->flags & flags) == flags) {
 			uint32_t size = chunk_size(opts, cur);
-#ifndef NEW_CORE
-			if (size < minsize) {
-				size = minsize;
+			if (size_round_mask) {
+				if (size & size_round_mask) {
+					size &= ~size_round_mask;
+					size += size_round_mask + 1;
+				}
 			}
-#endif
 			*size_sum += size;
 		}
 	}
@@ -99,11 +96,23 @@ void * get_native_pointer(uint32_t address, void ** mem_pointers, cpu_options * 
 				: memmap[chunk].buffer;
 			if (!base) {
 				if (memmap[chunk].flags & MMAP_AUX_BUFF) {
-					return ((uint8_t *)memmap[chunk].buffer) + (address & memmap[chunk].aux_mask);
+					address &= memmap[chunk].aux_mask;
+					if (memmap[chunk].shift > 0) {
+						address <<= memmap[chunk].shift;
+					} else if (memmap[chunk].shift < 0) {
+						address >>= -memmap[chunk].shift;
+					}
+					return ((uint8_t *)memmap[chunk].buffer) + address;
 				}
 				return NULL;
 			}
-			return base + (address & memmap[chunk].mask);
+			address &= memmap[chunk].mask;
+			if (memmap[chunk].shift > 0) {
+				address <<= memmap[chunk].shift;
+			} else if (memmap[chunk].shift < 0) {
+				address >>= -memmap[chunk].shift;
+			}
+			return base + address;
 		}
 	}
 	return NULL;
@@ -124,11 +133,23 @@ void * get_native_write_pointer(uint32_t address, void ** mem_pointers, cpu_opti
 				: memmap[chunk].buffer;
 			if (!base) {
 				if (memmap[chunk].flags & MMAP_AUX_BUFF) {
-					return ((uint8_t *)memmap[chunk].buffer) + (address & memmap[chunk].aux_mask);
+					address &= memmap[chunk].aux_mask;
+					if (memmap[chunk].shift > 0) {
+						address <<= memmap[chunk].shift;
+					} else if (memmap[chunk].shift < 0) {
+						address >>= -memmap[chunk].shift;
+					}
+					return ((uint8_t *)memmap[chunk].buffer) + address;
 				}
 				return NULL;
 			}
-			return base + (address & memmap[chunk].mask);
+			address &= memmap[chunk].mask;
+			if (memmap[chunk].shift > 0) {
+				address <<= memmap[chunk].shift;
+			} else if (memmap[chunk].shift < 0) {
+				address >>= -memmap[chunk].shift;
+			}
+			return base + address;
 		}
 	}
 	return NULL;
@@ -150,6 +171,11 @@ uint16_t read_word(uint32_t address, void **mem_pointers, cpu_options *opts, voi
 		}
 		if (base) {
 			uint16_t val;
+			if (chunk->shift > 0) {
+				offset <<= chunk->shift;
+			} else if (chunk->shift < 0){
+				offset >>= chunk->shift;
+			}
 			if ((chunk->flags & MMAP_ONLY_ODD) || (chunk->flags & MMAP_ONLY_EVEN)) {
 				offset /= 2;
 				val = base[offset];
@@ -185,6 +211,11 @@ void write_word(uint32_t address, uint16_t value, void **mem_pointers, cpu_optio
 			base = chunk->buffer;
 		}
 		if (base) {
+			if (chunk->shift > 0) {
+				offset <<= chunk->shift;
+			} else if (chunk->shift < 0){
+				offset >>= chunk->shift;
+			}
 			if ((chunk->flags & MMAP_ONLY_ODD) || (chunk->flags & MMAP_ONLY_EVEN)) {
 				offset /= 2;
 				if (chunk->flags & MMAP_ONLY_EVEN) {
@@ -217,6 +248,11 @@ uint8_t read_byte(uint32_t address, void **mem_pointers, cpu_options *opts, void
 			base = chunk->buffer;
 		}
 		if (base) {
+			if (chunk->shift > 0) {
+				offset <<= chunk->shift;
+			} else if (chunk->shift < 0){
+				offset >>= chunk->shift;
+			}
 			if ((chunk->flags & MMAP_ONLY_ODD) || (chunk->flags & MMAP_ONLY_EVEN)) {
 				if (address & 1) {
 					if (chunk->flags & MMAP_ONLY_EVEN) {
@@ -253,6 +289,11 @@ void write_byte(uint32_t address, uint8_t value, void **mem_pointers, cpu_option
 			base = chunk->buffer;
 		}
 		if (base) {
+			if (chunk->shift > 0) {
+				offset <<= chunk->shift;
+			} else if (chunk->shift < 0){
+				offset >>= chunk->shift;
+			}
 			if ((chunk->flags & MMAP_ONLY_ODD) || (chunk->flags & MMAP_ONLY_EVEN)) {
 				if (address & 1) {
 					if (chunk->flags & MMAP_ONLY_EVEN) {
@@ -285,22 +326,16 @@ uint32_t chunk_size(cpu_options *opts, memmap_chunk const *chunk)
 uint32_t ram_size(cpu_options *opts)
 {
 	uint32_t size = 0;
-#ifndef NEW_CORE
 	uint32_t minsize = 1 << (opts->ram_flags_shift + 3);
-#endif
 	for (int i = 0; i < opts->memmap_chunks; i++)
 	{
 		if (opts->memmap[i].flags & MMAP_CODE) {
 			uint32_t cursize = chunk_size(opts, opts->memmap + i);
-#ifndef NEW_CORE
 			if (cursize < minsize) {
 				size += minsize;
 			} else {
-#endif
 				size += cursize;
-#ifndef NEW_CORE
 			}
-#endif
 		}
 	}
 	return size;

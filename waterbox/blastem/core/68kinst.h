@@ -334,8 +334,9 @@ typedef enum {
 } m68k_vector;
 
 typedef int (*format_label_fun)(char * dst, uint32_t address, void * data);
+typedef uint16_t (*m68k_fetch_fun)(uint32_t address, void *data);
 
-uint16_t * m68k_decode(uint16_t * istream, m68kinst * dst, uint32_t address);
+uint32_t m68k_decode(m68k_fetch_fun fetch, void *data, m68kinst * dst, uint32_t address);
 uint32_t m68k_branch_target(m68kinst * inst, uint32_t *dregs, uint32_t *aregs);
 uint8_t m68k_is_branch(m68kinst * inst);
 uint8_t m68k_is_noncall_branch(m68kinst * inst);

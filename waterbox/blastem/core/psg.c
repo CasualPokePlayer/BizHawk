@@ -13,7 +13,7 @@
 void psg_init(psg_context * context, uint32_t master_clock, uint32_t clock_div)
 {
 	memset(context, 0, sizeof(*context));
-	context->audio = render_audio_source(master_clock, clock_div, 1);
+	context->audio = render_audio_source("PSG", master_clock, clock_div, 1);
 	context->clock_inc = clock_div;
 	for (int i = 0; i < 4; i++) {
 		context->volume[i] = 0xF;
@@ -111,7 +111,7 @@ void psg_run(psg_context * context, uint32_t cycles)
 		}
 
 		int16_t accum = 0;
-		
+
 		for (int i = 0; i < 3; i++) {
 			if (context->output_state[i]) {
 				accum += volume_table[context->volume[i]];
@@ -120,7 +120,7 @@ void psg_run(psg_context * context, uint32_t cycles)
 		if (context->noise_out) {
 			accum += volume_table[context->volume[3]];
 		}
-		
+
 		render_put_mono_sample(context->audio, accum);
 
 		context->cycles += context->clock_inc;

@@ -1,6 +1,8 @@
 #include "debug.h"
 #include "genesis.h"
 #include "68kinst.h"
+#include "segacd.h"
+#include "blastem.h"
 #include <stdlib.h>
 #include <string.h>
 #ifndef _WIN32
@@ -17,10 +19,28 @@
 #define Z80_OPTS options
 #endif
 
-static bp_def * breakpoints = NULL;
-static bp_def * zbreakpoints = NULL;
-static uint32_t bp_index = 0;
-static uint32_t zbp_index = 0;
+
+
+static debug_root roots[5];
+static uint32_t num_roots;
+#define MAX_DEBUG_ROOTS (sizeof(roots)/sizeof(*roots))
+
+debug_root *find_root(void *cpu)
+{
+	for (uint32_t i = 0; i < num_roots; i++)
+	{
+		if (roots[i].cpu_context == cpu) {
+			return roots + i;
+		}
+	}
+	if (num_roots < MAX_DEBUG_ROOTS) {
+		num_roots++;
+		memset(roots + num_roots - 1, 0, sizeof(debug_root));
+		roots[num_roots-1].cpu_context = cpu;
+		return roots + num_roots - 1;
+	}
+	return NULL;
+}
 
 bp_def ** find_breakpoint(bp_def ** cur, uint32_t address)
 {

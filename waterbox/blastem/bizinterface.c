@@ -6,8 +6,8 @@
 #include "genesis.h"
 #include "sms.h"
 
-#include "../emulibc/emulibc.h"
-#include "../emulibc/waterboxcore.h"
+#include <emulibc.h>
+#include <waterboxcore.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -148,6 +148,11 @@ void (*InputCallback)();
 EXPORT void SetInputCallback(void (*callback)())
 {
 	InputCallback = callback;
+}
+
+const system_media *current_media(void)
+{
+	return &media;
 }
 
 u32 render_map_color(u8 r, u8 g, u8 b)

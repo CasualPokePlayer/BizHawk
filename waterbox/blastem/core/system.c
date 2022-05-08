@@ -13,7 +13,11 @@ uint8_t safe_cmp(char *str, long offset, uint8_t *buffer, long filesize)
 system_type detect_system_type(system_media *media)
 {
 	if (safe_cmp("SEGA", 0x100, media->buffer, media->size)) {
-		//TODO: Differentiate between vanilla Genesis and Sega CD/32X games
+		//TODO: support other bootable identifiers
+		if (safe_cmp("SEGADISCSYSTEM", 0, media->buffer, media->size)) {
+			return SYSTEM_SEGACD;
+		}
+		//TODO: Differentiate between vanilla Genesis and 32X games
 		return SYSTEM_GENESIS;
 	}
 	if (safe_cmp("TMR SEGA", 0x1FF0, media->buffer, media->size)
@@ -71,6 +75,8 @@ system_header *alloc_config_system(system_type stype, system_media *media, uint3
 		return &(alloc_config_genesis(media->buffer, media->size, lock_on, lock_on_size, opts, force_region))->header;
 	case SYSTEM_GENESIS_PLAYER:
 		return &(alloc_config_gen_player(media->buffer, media->size))->header;
+	case SYSTEM_SEGACD:
+		return &(alloc_config_genesis_cdboot(media, opts, force_region))->header;
 #ifndef NO_Z80
 	case SYSTEM_SMS:
 		return &(alloc_configure_sms(media, opts, force_region))->header;

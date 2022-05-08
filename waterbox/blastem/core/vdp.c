@@ -527,7 +527,7 @@ void vdp_print_reg_explain(vdp_context * context)
 	       context->regs[REG_MODE_1], context->regs[REG_MODE_1] & BIT_HINT_EN ? "enabled" : "disabled", (context->regs[REG_MODE_1] & BIT_PAL_SEL) != 0,
 	           context->regs[REG_MODE_1] & BIT_HVC_LATCH ? "enabled" : "disabled", context->regs[REG_MODE_1] & BIT_DISP_DIS ? "disabled" : "enabled",
 	       context->regs[REG_MODE_2], context->regs[REG_MODE_2] & BIT_DISP_EN ? "enabled" : "disabled", context->regs[REG_MODE_2] & BIT_VINT_EN ? "enabled" : "disabled",
-	           context->regs[REG_MODE_2] & BIT_PAL ? 30 : 28, context->regs[REG_MODE_2] & BIT_MODE_5 ? 5 : 4, context->regs[REG_MODE_1] & BIT_128K_VRAM ? 128 : 64, 
+	           context->regs[REG_MODE_2] & BIT_PAL ? 30 : 28, context->regs[REG_MODE_2] & BIT_MODE_5 ? 5 : 4, context->regs[REG_MODE_1] & BIT_128K_VRAM ? 128 : 64,
 	       context->regs[REG_MODE_3], context->regs[REG_MODE_3] & BIT_EINT_EN ? "enabled" : "disabled", context->regs[REG_MODE_3] & BIT_VSCROLL ? "2 cell" : "full",
 	           hscroll[context->regs[REG_MODE_3] & 0x3],
 	       context->regs[REG_MODE_4], context->regs[REG_MODE_4] & BIT_H40 ? 40 : 32, context->regs[REG_MODE_4] & BIT_HILIGHT ? "enabled" : "disabled");
@@ -555,7 +555,7 @@ void vdp_print_reg_explain(vdp_context * context)
 			   context->regs[REG_STILE_BASE], (context->regs[REG_STILE_BASE] & 2) << 11,
 			   context->regs[REG_X_SCROLL], context->regs[REG_X_SCROLL],
 			   context->regs[REG_Y_SCROLL], context->regs[REG_Y_SCROLL]);
-			   
+
 	}
 	char * sizes[] = {"32", "64", "invalid", "128"};
 	printf("\n**Misc Group**\n"
@@ -592,11 +592,11 @@ void vdp_print_reg_explain(vdp_context * context)
 		   "VINT Pending: %s\n"
 		   "HINT Pending: %s\n"
 		   "Status: %X\n",
-	       context->address, context->cd, cd_name(context->cd), 
+	       context->address, context->cd, cd_name(context->cd),
 		   (context->flags & FLAG_PENDING) ? "word" : (context->flags2 & FLAG2_BYTE_PENDING) ? "byte" : "none",
 		   context->vcounter, context->hslot*2, (context->flags2 & FLAG2_VINT_PENDING) ? "true" : "false",
 		   (context->flags2 & FLAG2_HINT_PENDING) ? "true" : "false", vdp_control_port_read(context));
-	printf("\nDebug Register: %X | Output disabled: %s, Force Layer: %d\n", context->test_port, 
+	printf("\nDebug Register: %X | Output disabled: %s, Force Layer: %d\n", context->test_port,
 		(context->test_port & TEST_BIT_DISABLE)  ? "true" : "false", context->test_port >> 7 & 3
 	);
 	//restore flags as calling vdp_control_port_read can change them
@@ -673,11 +673,11 @@ static void scan_sprite_table_mode4(vdp_context * context)
 	if (context->sprite_index < MAX_SPRITES_FRAME_H32) {
 		uint32_t line = context->vcounter;
 		line &= 0xFF;
-		
+
 		uint32_t sat_address = mode4_address_map[(context->regs[REG_SAT] << 7 & 0x3F00) + context->sprite_index];
 		uint32_t y = context->vdpmem[sat_address+1];
 		uint32_t size = (context->regs[REG_MODE_2] & BIT_SPRITE_SZ) ? 16 : 8;
-		
+
 		if (y == 0xd0) {
 			context->sprite_index = MAX_SPRITES_FRAME_H32;
 			return;
@@ -694,7 +694,7 @@ static void scan_sprite_table_mode4(vdp_context * context)
 			}
 			context->sprite_index++;
 		}
-		
+
 		if (context->sprite_index < MAX_SPRITES_FRAME_H32) {
 			y = context->vdpmem[sat_address];
 			if (y == 0xd0) {
@@ -714,7 +714,7 @@ static void scan_sprite_table_mode4(vdp_context * context)
 				context->sprite_index++;
 			}
 		}
-		
+
 	}
 }
 
@@ -824,9 +824,9 @@ static void write_cram(vdp_context * context, uint16_t address, uint16_t value)
 		value = (value << 1 & 0xE) | (value << 2 & 0xE0) | (value & 0xE00);
 	}
 	write_cram_internal(context, addr, value);
-	
+
 	if (context->output && context->hslot >= BG_START_SLOT && (
-		context->vcounter < context->inactive_start + context->border_bot 
+		context->vcounter < context->inactive_start + context->border_bot
 		|| context->vcounter > 0x200 - context->border_top
 	)) {
 		uint8_t bg_end_slot = BG_START_SLOT + (context->regs[REG_MODE_4] & BIT_H40) ? LINEBUF_SIZE/2 : (256+HORIZ_BORDER)/2;
@@ -984,14 +984,14 @@ static void external_slot(vdp_context * context)
 	} else if ((context->flags & FLAG_DMA_RUN) && (context->regs[REG_DMASRC_H] & DMA_TYPE_MASK) == DMA_COPY) {
 		if (context->flags & FLAG_READ_FETCHED) {
 			write_vram_byte(context, context->address ^ 1, context->prefetch);
-			
+
 			//Update DMA state
 			vdp_advance_dma(context);
-			
+
 			context->flags &= ~FLAG_READ_FETCHED;
 		} else {
 			context->prefetch = context->vdpmem[(context->regs[REG_DMASRC_M] << 8) | context->regs[REG_DMASRC_L] ^ 1];
-			
+
 			context->flags |= FLAG_READ_FETCHED;
 		}
 	} else if (!(context->cd & 1) && !(context->flags & FLAG_READ_FETCHED)) {
@@ -1289,7 +1289,7 @@ static void fetch_map_mode4(uint16_t col, uint32_t line, vdp_context *context)
 	if (context->col_1 & 0x400) {
 		vscroll = 7 - vscroll;
 	}
-	
+
 	uint32_t address = mode4_address_map[((context->col_1 & 0x1FF) * 32) + vscroll * 4];
 	context->fetch_tmp[0] = context->vdpmem[address];
 	context->fetch_tmp[1] = context->vdpmem[address+1];
@@ -1480,7 +1480,7 @@ static void render_testreg(vdp_context *context, int32_t col, uint8_t *dst, uint
 					}
 					break;
 				}
-				
+
 				*(dst++) = pixel;
 				*(debug_dst++) = src;
 			}
@@ -1554,7 +1554,7 @@ static void render_testreg_highlight(vdp_context *context, int32_t col, uint8_t 
 				}
 				break;
 			}
-			
+
 			*(dst++) = SHADOW_OFFSET + pixel;
 			*(debug_dst++) = src;
 		}
@@ -1637,8 +1637,8 @@ static void render_map_output(uint32_t line, int32_t col, vdp_context * context)
 		col-=2;
 		dst = context->compositebuf + BORDER_LEFT + col * 8;
 		debug_dst = context->layer_debug_buf + BORDER_LEFT + col * 8;
-		
-		
+
+
 		uint8_t a_src, src;
 		uint8_t *buf_a;
 		int plane_a_mask;
@@ -1698,7 +1698,7 @@ static void render_map_output(uint32_t line, int32_t col, vdp_context * context)
 				int i;
 				i = 0;
 				uint8_t buf_off = context->buf_a_off - context->hscroll_a_fine + (16 - BORDER_LEFT);
-				//uint8_t *src = context->tmp_buf_a + ((context->buf_a_off + (i ? 0 : (16 - BORDER_LEFT) - (context->hscroll_a & 0xF))) & SCROLL_BUFFER_MASK); 
+				//uint8_t *src = context->tmp_buf_a + ((context->buf_a_off + (i ? 0 : (16 - BORDER_LEFT) - (context->hscroll_a & 0xF))) & SCROLL_BUFFER_MASK);
 				for (; i < BORDER_LEFT; buf_off++, i++, dst++, debug_dst++)
 				{
 					*dst = context->tmp_buf_a[buf_off & SCROLL_BUFFER_MASK];
@@ -1711,7 +1711,7 @@ static void render_map_output(uint32_t line, int32_t col, vdp_context * context)
 				int i;
 				i = 0;
 				uint8_t buf_off = context->buf_b_off - context->hscroll_b_fine + (16 - BORDER_LEFT);
-				//uint8_t *src = context->tmp_buf_b + ((context->buf_b_off + (i ? 0 : (16 - BORDER_LEFT) - (context->hscroll_b & 0xF))) & SCROLL_BUFFER_MASK); 
+				//uint8_t *src = context->tmp_buf_b + ((context->buf_b_off + (i ? 0 : (16 - BORDER_LEFT) - (context->hscroll_b & 0xF))) & SCROLL_BUFFER_MASK);
 				for (; i < BORDER_LEFT; buf_off++, i++, dst++, debug_dst++)
 				{
 					*dst = context->tmp_buf_b[buf_off & SCROLL_BUFFER_MASK];
@@ -1745,14 +1745,14 @@ static void render_map_mode4(uint32_t line, int32_t col, vdp_context * context)
 		//vflip
 		vscroll = 7 - vscroll;
 	}
-	
+
 	uint32_t pixels = planar_to_chunky[context->fetch_tmp[0]] << 1;
 	pixels |=  planar_to_chunky[context->fetch_tmp[1]];
-	
+
 	uint32_t address = mode4_address_map[((context->col_1 & 0x1FF) * 32) + vscroll * 4 + 2];
 	pixels |= planar_to_chunky[context->vdpmem[address]] << 3;
 	pixels |= planar_to_chunky[context->vdpmem[address+1]] << 2;
-	
+
 	int i, i_inc, i_limit;
 	if (context->col_1 & 0x200) {
 		//hflip
@@ -1770,7 +1770,7 @@ static void render_map_mode4(uint32_t line, int32_t col, vdp_context * context)
 		*dst = (pixels >> i & 0xF) | pal_priority;
 	}
 	context->buf_a_off = (context->buf_a_off + 8) & 15;
-	
+
 	uint8_t *dst = context->compositebuf + col * 8 + BORDER_LEFT;
 	uint8_t *debug_dst = context->layer_debug_buf + col * 8 + BORDER_LEFT;
 	if (context->state == PREPARING) {
@@ -1779,7 +1779,7 @@ static void render_map_mode4(uint32_t line, int32_t col, vdp_context * context)
 		context->done_composite = dst + 8;
 		return;
 	}
-	
+
 	if (col || !(context->regs[REG_MODE_1] & BIT_COL0_MASK)) {
 		uint8_t *sprite_src = context->linebuf + col * 8;
 		if (context->regs[REG_MODE_1] & BIT_SPRITE_8PX) {
@@ -1850,7 +1850,7 @@ static void vdp_advance_line(vdp_context *context)
 			line -= jump_end - jump_start;
 		}
 		uint32_t total_lines = (context->flags2 & FLAG2_REGION_PAL) ? 313 : 262;
-		
+
 		if (total_lines - line <= context->border_top) {
 			line -= total_lines - context->border_top;
 		} else {
@@ -1887,7 +1887,7 @@ static void vdp_advance_line(vdp_context *context)
 			}
 		}
 	}
-	
+
 	context->vcounter++;
 	if (context->vcounter == jump_start) {
 		context->vcounter = jump_end;
@@ -1974,7 +1974,7 @@ static void vdp_update_per_frame_debug(vdp_context *context)
 				//
 				uint16_t entry = context->vdpmem[address] << 8 | context->vdpmem[address + 1];
 				uint8_t pal = entry >> 9 & 0x30;
-				
+
 				uint32_t *dst = fb + (row * pitch * 8 / sizeof(uint32_t)) + col * 8;
 				address = (entry & 0x7FF) * 32;
 				int y_diff = 4;
@@ -2013,11 +2013,11 @@ static void vdp_update_per_frame_debug(vdp_context *context)
 		}
 		render_framebuffer_updated(context->debug_fb_indices[VDP_DEBUG_PLANE], 1024);
 	}
-	
+
 	if (context->enabled_debuggers & (1 << VDP_DEBUG_VRAM)) {
 		uint32_t pitch;
 		uint32_t *fb = render_get_framebuffer(context->debug_fb_indices[VDP_DEBUG_VRAM], &pitch);
-		
+
 		uint8_t pal = (context->debug_modes[VDP_DEBUG_VRAM] % 4) << 4;
 		for (int y = 0; y < 512; y++)
 		{
@@ -2039,13 +2039,13 @@ static void vdp_update_per_frame_debug(vdp_context *context)
 				}
 			}
 		}
-		
+
 		render_framebuffer_updated(context->debug_fb_indices[VDP_DEBUG_VRAM], 1024);
 	}
-	
+
 	if (context->enabled_debuggers & (1 << VDP_DEBUG_CRAM)) {
 		uint32_t starting_line = 512 - 32*4;
-		uint32_t *line = context->debug_fbs[VDP_DEBUG_CRAM] 
+		uint32_t *line = context->debug_fbs[VDP_DEBUG_CRAM]
 			+ context->debug_fb_pitch[VDP_DEBUG_CRAM]  * starting_line / sizeof(uint32_t);
 		if (context->regs[REG_MODE_2] & BIT_MODE_5) {
 			for (int pal = 0; pal < 4; pal ++)
@@ -2102,7 +2102,7 @@ static void vdp_update_per_frame_debug(vdp_context *context)
 	if (context->enabled_debuggers & (1 << VDP_DEBUG_COMPOSITE)) {
 		render_framebuffer_updated(context->debug_fb_indices[VDP_DEBUG_COMPOSITE], LINEBUF_SIZE);
 		context->debug_fbs[VDP_DEBUG_COMPOSITE] = render_get_framebuffer(context->debug_fb_indices[VDP_DEBUG_COMPOSITE], &context->debug_fb_pitch[VDP_DEBUG_COMPOSITE]);
-	}		
+	}
 }
 
 void vdp_force_update_framebuffer(vdp_context *context)
@@ -2111,7 +2111,7 @@ void vdp_force_update_framebuffer(vdp_context *context)
 		return;
 	}
 	uint16_t lines_max = context->inactive_start + context->border_bot + context->border_top;
-			
+
 	uint16_t to_fill = lines_max - context->output_lines;
 	memset(
 		((char *)context->fb) + context->output_pitch * context->output_lines,
@@ -2131,8 +2131,8 @@ static void advance_output_line(vdp_context *context)
 	if (!(context->regs[REG_MODE_2] & BIT_MODE_5)) {
 		//vcounter increment occurs much later in Mode 4
 		output_line++;
-	} 
-	
+	}
+
 	if (context->output_lines >= lines_max || (!context->pushed_frame && output_line == context->inactive_start + context->border_top)) {
 		//we've either filled up a full frame or we're at the bottom of screen in the current defined mode + border crop
 		if (!headless) {
@@ -2150,7 +2150,7 @@ static void advance_output_line(vdp_context *context)
 		context->frame++;
 		context->output_lines = 0;
 	}
-	
+
 	if (output_line < context->inactive_start + context->border_bot) {
 		if (context->output_lines) {
 			output_line = context->output_lines++;//context->border_top + context->vcounter;
@@ -2184,7 +2184,7 @@ static void advance_output_line(vdp_context *context)
 	{
 		context->output[i] = 0xFFFF00FF;
 	}
-#endif	
+#endif
 	if (context->output && (context->regs[REG_MODE_4] & BIT_H40)) {
 		context->h40_lines++;
 	}
@@ -2241,7 +2241,7 @@ static void draw_right_border(vdp_context *context)
 				int i;
 				i = 0;
 				uint8_t buf_off = context->buf_a_off - context->hscroll_a_fine;
-				//uint8_t *src = context->tmp_buf_a + ((context->buf_a_off + (i ? 0 : (16 - BORDER_LEFT) - (context->hscroll_a & 0xF))) & SCROLL_BUFFER_MASK); 
+				//uint8_t *src = context->tmp_buf_a + ((context->buf_a_off + (i ? 0 : (16 - BORDER_LEFT) - (context->hscroll_a & 0xF))) & SCROLL_BUFFER_MASK);
 				for (; i < BORDER_RIGHT; buf_off++, i++, dst++)
 				{
 					*dst = context->tmp_buf_a[buf_off & SCROLL_BUFFER_MASK] & 0x3F;
@@ -2253,7 +2253,7 @@ static void draw_right_border(vdp_context *context)
 				int i;
 				i = 0;
 				uint8_t buf_off = context->buf_b_off - (context->hscroll_b & 0xF);
-				//uint8_t *src = context->tmp_buf_b + ((context->buf_b_off + (i ? 0 : (16 - BORDER_LEFT) - (context->hscroll_b & 0xF))) & SCROLL_BUFFER_MASK); 
+				//uint8_t *src = context->tmp_buf_b + ((context->buf_b_off + (i ? 0 : (16 - BORDER_LEFT) - (context->hscroll_b & 0xF))) & SCROLL_BUFFER_MASK);
 				for (; i < BORDER_RIGHT; buf_off++, i++, dst++)
 				{
 					*dst = context->tmp_buf_b[buf_off & SCROLL_BUFFER_MASK] & 0x3F;
@@ -2286,7 +2286,7 @@ static void draw_right_border(vdp_context *context)
 			*(dst++) = context->colors[(*(src++) & 0xC0) | bgindex];\
 		}\
 	}
-	
+
 #define OUTPUT_PIXEL_H40(slot) if (slot <= (BG_START_SLOT + LINEBUF_SIZE/2)) {\
 		uint8_t *src = context->compositebuf + (slot - BG_START_SLOT) *2;\
 		uint32_t *dst = context->output + (slot - BG_START_SLOT) *2;\
@@ -2303,7 +2303,7 @@ static void draw_right_border(vdp_context *context)
 			}\
 		}\
 	}
-	
+
 #define OUTPUT_PIXEL_H32(slot) if (slot <= (BG_START_SLOT + (256+HORIZ_BORDER)/2)) {\
 		uint8_t *src = context->compositebuf + (slot - BG_START_SLOT) *2;\
 		uint32_t *dst = context->output + (slot - BG_START_SLOT) *2;\
@@ -2320,7 +2320,7 @@ static void draw_right_border(vdp_context *context)
 			}\
 		}\
 	}
-	
+
 //BG_START_SLOT => dst = 0, src = border
 //BG_START_SLOT + 13/2=6, dst = 6, src = border + comp + 13
 #define OUTPUT_PIXEL_MODE4(slot) if ((slot) >= BG_START_SLOT) {\
@@ -2414,7 +2414,7 @@ static void draw_right_border(vdp_context *context)
 		OUTPUT_PIXEL((startcyc+7)&0xFF)\
 		render_map_output(context->vcounter, column, context);\
 		CHECK_LIMIT
-		
+
 #define COLUMN_RENDER_BLOCK_MODE4(column, startcyc) \
 	case startcyc:\
 		OUTPUT_PIXEL_MODE4(startcyc)\
@@ -2436,7 +2436,7 @@ static void draw_right_border(vdp_context *context)
 		OUTPUT_PIXEL_MODE4((startcyc+3)&0xFF)\
 		render_map_mode4(context->vcounter, column, context);\
 		CHECK_LIMIT
-		
+
 #define CHECK_LIMIT_HSYNC(slot) \
 	if (context->flags & FLAG_DMA_RUN) { run_dma_src(context, -1); } \
 	if (slot >= HSYNC_SLOT_H40 && slot < HSYNC_END_H40) {\
@@ -2523,7 +2523,7 @@ static void draw_right_border(vdp_context *context)
 		}\
 		context->cycles += slot_cycles;\
 		CHECK_ONLY
-		
+
 #define MODE4_CHECK_SLOT_LINE(slot) \
 		if (context->flags & FLAG_DMA_RUN) { run_dma_src(context, -1); } \
 		if ((slot) == BG_START_SLOT + (256+HORIZ_BORDER)/2) {\
@@ -2547,7 +2547,7 @@ static void draw_right_border(vdp_context *context)
 		CHECK_ONLY
 
 #define CALC_SLOT(slot, increment) ((slot+increment) > 147 && (slot+increment) < 233 ? (slot+increment-148+233): (slot+increment))
-		
+
 #define SPRITE_RENDER_H32_MODE4(slot) \
 	case slot:\
 		OUTPUT_PIXEL_MODE4(slot)\
@@ -2582,7 +2582,7 @@ static void vdp_h40_line(vdp_context * context)
 	uint32_t const slot_cycles = MCLKS_SLOT_H40;
 	uint8_t bgindex = context->regs[REG_BG_COLOR] & 0x3F;
 	uint8_t test_layer = context->test_port >> 7 & 3;
-	
+
 	//165
 	if (!(context->regs[REG_MODE_3] & BIT_VSCROLL)) {
 		//TODO: Develop some tests on hardware to see when vscroll latch actually happens for full plane mode
@@ -2614,21 +2614,24 @@ static void vdp_h40_line(vdp_context * context)
 		context->buf_b_off + 8,
 		context->col_2
 	);
+
 	//Do palette lookup for end of previous line
 	uint8_t *src = context->compositebuf + (LINE_CHANGE_H40 - BG_START_SLOT) *2;
 	uint32_t *dst = context->output + (LINE_CHANGE_H40 - BG_START_SLOT) *2;
-	if (test_layer) {
-		for (int i = 0; i < LINEBUF_SIZE - (LINE_CHANGE_H40 - BG_START_SLOT) * 2; i++)
-		{
-			*(dst++) = context->colors[*(src++)];
-		}
-	} else {
-		for (int i = 0; i < LINEBUF_SIZE - (LINE_CHANGE_H40 - BG_START_SLOT) * 2; i++)
-		{
-			if (*src & 0x3F) {
+	if (context->output) {
+		if (test_layer) {
+			for (int i = 0; i < LINEBUF_SIZE - (LINE_CHANGE_H40 - BG_START_SLOT) * 2; i++)
+			{
 				*(dst++) = context->colors[*(src++)];
-			} else {
-				*(dst++) = context->colors[(*(src++) & 0xC0) | bgindex];
+			}
+		} else {
+			for (int i = 0; i < LINEBUF_SIZE - (LINE_CHANGE_H40 - BG_START_SLOT) * 2; i++)
+			{
+				if (*src & 0x3F) {
+					*(dst++) = context->colors[*(src++)];
+				} else {
+					*(dst++) = context->colors[(*(src++) & 0xC0) | bgindex];
+				}
 			}
 		}
 	}
@@ -2752,6 +2755,9 @@ static void vdp_h40_line(vdp_context * context)
 	context->cycles += MCLKS_LINE;
 	vdp_advance_line(context);
 	src = context->compositebuf;
+	if (!context->output) {
+		return;
+	}
 	dst = context->output;
 	if (test_layer) {
 		for (int i = 0; i < (LINE_CHANGE_H40 - BG_START_SLOT) * 2; i++)
@@ -2792,6 +2798,11 @@ static void vdp_h40(vdp_context * context, uint32_t target_cycles)
 				vdp_h40_line(context);
 			}
 			CHECK_ONLY
+			if (!context->output) {
+				//This shouldn't happen normally, but it can theoretically
+				//happen when doing border busting
+				context->output = dummy_buffer;
+			}
 		}
 		OUTPUT_PIXEL(165)
 		if (!(context->regs[REG_MODE_3] & BIT_VSCROLL)) {
@@ -3405,7 +3416,7 @@ static void vdp_inactive(vdp_context *context, uint32_t target_cycles, uint8_t i
 	uint8_t buf_clear_slot, index_reset_slot, bg_end_slot, vint_slot, line_change, jump_start, jump_dest, latch_slot;
 	uint8_t index_reset_value, max_draws, max_sprites;
 	uint16_t vint_line, active_line;
-	
+
 	if (mode_5) {
 		if (is_h40) {
 			latch_slot = 165;
@@ -3465,9 +3476,9 @@ static void vdp_inactive(vdp_context *context, uint32_t target_cycles, uint8_t i
 	} else {
 		dst = NULL;
 	}
-		
+
 	uint8_t test_layer = context->test_port >> 7 & 3;
-	
+
 	while(context->cycles < target_cycles)
 	{
 		check_switch_inactive(context, is_h40);
@@ -3478,7 +3489,7 @@ static void vdp_inactive(vdp_context *context, uint32_t target_cycles, uint8_t i
 			advance_output_line(context);
 			dst = NULL;
 		}
-		//this will need some tweaking to properly interact with 128K mode, 
+		//this will need some tweaking to properly interact with 128K mode,
 		//but this should be good enough for now
 		context->serial_address += 1024;
 		if (test_layer) {
@@ -3501,7 +3512,7 @@ static void vdp_inactive(vdp_context *context, uint32_t target_cycles, uint8_t i
 				break;
 			}
 		}
-		
+
 		if (context->hslot == buf_clear_slot) {
 			if (mode_5) {
 				context->cur_slot = max_draws;
@@ -3515,7 +3526,7 @@ static void vdp_inactive(vdp_context *context, uint32_t target_cycles, uint8_t i
 			context->slot_counter = mode_5 ? 0 : max_sprites;
 		} else if (context->hslot == latch_slot) {
 			//it seems unlikely to me that vscroll actually gets latched when the display is off
-			//but it's the only straightforward way to reconcile what I'm seeing between Skitchin 
+			//but it's the only straightforward way to reconcile what I'm seeing between Skitchin
 			//(which seems to expect vscroll to be latched early) and the intro of Gunstar Heroes
 			//(which disables the display and ends up with garbage if vscroll is latched during that period)
 			//without it. Some more tests are definitely needed
@@ -3527,7 +3538,7 @@ static void vdp_inactive(vdp_context *context, uint32_t target_cycles, uint8_t i
 		} else if (context->vcounter == context->inactive_start && context->hslot == 1 && (context->regs[REG_MODE_4] & BIT_INTERLACE)) {
 			context->flags2 ^= FLAG2_EVEN_FIELD;
 		}
-		
+
 		if (dst) {
 			uint8_t bg_index;
 			uint32_t bg_color;
@@ -3568,7 +3579,7 @@ static void vdp_inactive(vdp_context *context, uint32_t target_cycles, uint8_t i
 				*(dst++) = bg_color;
 				*(debug_dst++) = DBG_SRC_BG;
 			}
-			
+
 			if (context->hslot == (bg_end_slot-1)) {
 				if (context->done_composite) {
 					uint8_t pixel = context->compositebuf[dst-context->output];
@@ -3586,14 +3597,14 @@ static void vdp_inactive(vdp_context *context, uint32_t target_cycles, uint8_t i
 				}
 			}
 		}
-		
+
 		if (!is_refresh(context, context->hslot)) {
 			external_slot(context);
 			if (context->flags & FLAG_DMA_RUN && !is_refresh(context, context->hslot)) {
 				run_dma_src(context, context->hslot);
 			}
 		}
-		
+
 		if (is_h40) {
 			if (context->hslot >= HSYNC_SLOT_H40 && context->hslot < HSYNC_END_H40) {
 				context->cycles += h40_hsync_cycles[context->hslot - HSYNC_SLOT_H40];
@@ -3625,7 +3636,7 @@ void vdp_run_context_full(vdp_context * context, uint32_t target_cycles)
 	while(context->cycles < target_cycles)
 	{
 		check_switch_inactive(context, is_h40);
-		
+
 		if (is_active(context)) {
 			if (mode_5) {
 				if (is_h40) {
@@ -3671,7 +3682,7 @@ void vdp_run_dma_done(vdp_context * context, uint32_t target_cycles)
 		}
 		uint32_t min_dma_complete = dmalen * (context->regs[REG_MODE_4] & BIT_H40 ? 16 : 20);
 		if (
-			(context->regs[REG_DMASRC_H] & DMA_TYPE_MASK) == DMA_COPY 
+			(context->regs[REG_DMASRC_H] & DMA_TYPE_MASK) == DMA_COPY
 			|| (((context->cd & 0xF) == VRAM_WRITE) && !(context->regs[REG_MODE_2] & BIT_128K_VRAM))) {
 			//DMA copies take twice as long to complete since they require a read and a write
 			//DMA Fills and transfers to VRAM also take twice as long as it requires 2 writes for a single word
@@ -3724,7 +3735,7 @@ uint16_t vdp_hv_counter_read(vdp_context * context)
 		hv = context->hv_latch & 0xFF;
 	}
 	hv |= get_ext_vcounter(context);
-	
+
 	return hv;
 }
 
@@ -3732,7 +3743,7 @@ static void clear_pending(vdp_context *context)
 {
 	context->flags &= ~FLAG_PENDING;
 	context->address = context->address_latch;
-	//It seems like the DMA enable bit doesn't so much enable DMA so much 
+	//It seems like the DMA enable bit doesn't so much enable DMA so much
 	//as it enables changing CD5 from control port writes
 	if (context->regs[REG_MODE_2] & BIT_DMA_ENABLE) {
 		context->cd = context->cd_latch;
@@ -4048,7 +4059,7 @@ uint8_t vdp_data_port_read_pbc(vdp_context * context)
 	}
 	context->flags &= ~FLAG_READ_FETCHED;
 	context->flags2 &= ~FLAG2_BYTE_PENDING;
-		
+
 	context->cd = VRAM_READ8;
 	return context->prefetch;
 }
@@ -4266,7 +4277,7 @@ uint32_t vdp_next_vint_z80(vdp_context * context)
 						if (context->hslot < 183) {
 							cycles += (183 - context->hslot) * MCLKS_SLOT_H40;
 						}
-						
+
 						if (context->hslot < HSYNC_SLOT_H40) {
 							cycles += (HSYNC_SLOT_H40 - (context->hslot >= 229 ? context->hslot : 229)) * MCLKS_SLOT_H40;
 						}
@@ -4276,7 +4287,7 @@ uint32_t vdp_next_vint_z80(vdp_context * context)
 						}
 						cycles += (256 - (context->hslot > HSYNC_END_H40 ? context->hslot : HSYNC_END_H40)) * MCLKS_SLOT_H40;
 					}
-					
+
 					cycles += (VINT_SLOT_H40 - (context->hslot >= LINE_CHANGE_H40 ? 0 : context->hslot)) * MCLKS_SLOT_H40;
 					return cycles;
 				}
@@ -4331,7 +4342,7 @@ void vdp_int_ack(vdp_context * context)
 	//CPU interrupt acknowledge is only used in Mode 5
 	if (context->regs[REG_MODE_2] & BIT_MODE_5) {
 		//Apparently the VDP interrupt controller is not very smart
-		//Instead of paying attention to what interrupt is being acknowledged it just 
+		//Instead of paying attention to what interrupt is being acknowledged it just
 		//clears the pending flag for whatever interrupt it is currently asserted
 		//which may be different from the interrupt it was asserting when the 68k
 		//started the interrupt process. The window for this is narrow and depends
@@ -4421,7 +4432,7 @@ void vdp_serialize(vdp_context *context, serialize_buffer *buf)
 		save_int16(buf, info->y);
 	}
 	save_buffer8(buf, context->linebuf, LINEBUF_SIZE);
-	
+
 	save_int32(buf, context->cycles);
 	save_int32(buf, context->pending_vint_start);
 	save_int32(buf, context->pending_hint_start);
@@ -4517,12 +4528,12 @@ void vdp_deserialize(deserialize_buffer *buf, void *vcontext)
 				draw->h_flip = load_int8(buf);
 				draw->width = 1;
 				draw->height = 8;
-				
+
 				if (last && last->width < 4 && last->h_flip == draw->h_flip && last->pal_priority == draw->pal_priority) {
 					int adjust_x = draw->x_pos + draw->h_flip ? -8 : 8;
 					int height = draw->address - last->address /4;
 					if (last->x_pos == adjust_x && (
-						(last->width > 1 && height == last->height) || 
+						(last->width > 1 && height == last->height) ||
 						(last->width == 1 && (height == 8 || height == 16 || height == 24 || height == 32))
 					)) {
 						//current draw appears to be part of the same sprite as the last one, combine it
@@ -4557,7 +4568,7 @@ void vdp_deserialize(deserialize_buffer *buf, void *vcontext)
 		info->y = load_int16(buf);
 	}
 	load_buffer8(buf, context->linebuf, LINEBUF_SIZE);
-	
+
 	context->cycles = load_int32(buf);
 	context->pending_vint_start = load_int32(buf);
 	context->pending_hint_start = load_int32(buf);
@@ -4682,7 +4693,7 @@ void vdp_replay_event(vdp_context *context, uint8_t event, event_reader *reader)
 		address = load_int8(buffer);
 		break;
 	}
-	
+
 	switch (event)
 	{
 	case EVENT_VDP_REG: {

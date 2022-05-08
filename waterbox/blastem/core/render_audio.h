@@ -9,6 +9,7 @@ typedef enum {
 } render_audio_format;
 
 typedef struct {
+	const char *name;
 	void     *opaque;
 	int16_t  *front;
 	int16_t  *back;
@@ -28,7 +29,7 @@ typedef struct {
 } audio_source;
 
 //public interface
-audio_source *render_audio_source(uint64_t master_clock, uint64_t sample_divider, uint8_t channels);
+audio_source *render_audio_source(const char *name, uint64_t master_clock, uint64_t sample_divider, uint8_t channels);
 void render_audio_source_gaindb(audio_source *src, float gain);
 void render_audio_adjust_clock(audio_source *src, uint64_t master_clock, uint64_t sample_divider);
 void render_put_mono_sample(audio_source *src, int16_t value);

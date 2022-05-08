@@ -3,10 +3,10 @@
 
 #include <stdint.h>
 #include "m68k_core.h"
-#ifndef NEW_CORE
-#include "z80_to_x86.h"
-#else
+#ifdef NEW_CORE
 #include "z80.h"
+#else
+#include "z80_to_x86.h"
 #endif
 
 typedef struct disp_def {
@@ -23,6 +23,17 @@ typedef struct bp_def {
 	uint32_t      index;
 } bp_def;
 
+typedef struct {
+	void     *cpu_context;
+	bp_def   *breakpoints;
+	disp_def *displays;
+	uint32_t bp_index;
+	uint32_t disp_index;
+	uint32_t branch_t;
+	uint32_t branch_f;
+} debug_root;
+
+debug_root *find_root(void *cpu);
 bp_def ** find_breakpoint(bp_def ** cur, uint32_t address);
 bp_def ** find_breakpoint_idx(bp_def ** cur, uint32_t index);
 void add_display(disp_def ** head, uint32_t *index, char format_char, char * param);
