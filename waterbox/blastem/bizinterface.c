@@ -65,8 +65,8 @@ EXPORT bool Init(u8* rom, size_t sz)
 	if (current_system) {
 		const u32 sample_rate = (video_standard == VID_NTSC ? 53693175 : 53203395) / (7 * 6 * 24);
 		render_audio_initialized(RENDER_AUDIO_S16, sample_rate, 2, 4, sizeof(s16));
-		blip_l = blip_new(2048);
-		blip_r = blip_new(2048);
+		blip_l = blip_new(1024);
+		blip_r = blip_new(1024);
 		blip_set_rates(blip_l, sample_rate, 44100);
 		blip_set_rates(blip_r, sample_rate, 44100);
 		current_system->set_speed_percent(current_system, 100);

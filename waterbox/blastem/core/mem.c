@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdio.h>
+#include <assert.h>
 
 #include "mem.h"
 #include "arena.h"
@@ -21,23 +22,22 @@
 #define MAP_32BIT 0
 #endif
 
-_Alignas(PAGE_SIZE) static uint8_t fixedBuffer[16384 * 1024];
-static int markedExec = 0;
+_Alignas(PAGE_SIZE) static uint8_t fixed_buffer[16384 * 1024];
+
+static void __attribute__((constructor)) init_buffer(void)
+{
+	int err = mprotect((void*)fixed_buffer, sizeof (fixed_buffer), PROT_READ | PROT_WRITE | PROT_EXEC);
+	if (err) {
+		perror("alloc_code");
+		assert(0);
+	}
+}
 
 void * alloc_code(size_t *size)
 {
-	if (!markedExec) {
-		int err = mprotect((void*)fixedBuffer, sizeof (fixedBuffer), PROT_READ | PROT_WRITE | PROT_EXEC);
-		if (err) {
-			perror("alloc_code");
-			return NULL;
-		}
-		markedExec = 1;
-	}
-
 	//start at the 1GB mark to allow plenty of room for sbrk based malloc implementations
 	//while still keeping well within 32-bit displacement range for calling code compiled into the executable
-	static uint8_t *next = (uint8_t *)fixedBuffer;
+	static uint8_t *next = (uint8_t *)fixed_buffer;
 	uint8_t *ret = try_alloc_arena();
 	if (ret) {
 		return ret;
@@ -50,6 +50,7 @@ void * alloc_code(size_t *size)
 		perror("alloc_code");
 		return NULL;
 	}*/
+	assert((next + *size) < (fixed_buffer + sizeof (fixed_buffer)));
 	ret = next;
 	track_block(ret);
 	next = ret + *size;
