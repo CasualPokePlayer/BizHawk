@@ -6,8 +6,9 @@
 #include "genesis.h"
 #include "sms.h"
 
-#include <emulibc.h>
-#include <waterboxcore.h>
+#include "emulibc.h"
+#include "waterboxcore.h"
+#include "blip_buf.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -48,9 +49,11 @@ static vid_std video_standard;
 static s32 last_width, last_height;
 static s32 overscan_top, overscan_bot, overscan_left, overscan_right;
 
+static blip_t* blip_l;
+static blip_t* blip_r;
+
 EXPORT bool Init(u8* rom, size_t sz)
 {
-	render_audio_initialized(RENDER_AUDIO_S16, 53693175 / (7 * 6 * 4), 2, 4, sizeof(s16));
 	biz_started = false;
 	biz_time = 0;
 	media.buffer = alloc_sealed(sz);
@@ -58,6 +61,12 @@ EXPORT bool Init(u8* rom, size_t sz)
 	media.size = sz;
 	stype = detect_system_type(&media);
 	current_system = alloc_config_system(stype, &media, 0, 0);
+	const u32 sample_rate = (video_standard == VID_NTSC ? 53693175 : 53203395) / (7 * 6 * 24);
+	render_audio_initialized(RENDER_AUDIO_S16, sample_rate, 2, 4, sizeof(s16));
+	blip_l = blip_new(1024);
+	blip_r = blip_new(1024);
+	blip_set_rates(blip_l, sample_rate, 44100);
+	blip_set_rates(blip_r, sample_rate, 44100);
 	RtcCallback = BizRtcCallback;
 	return !current_system;
 }
@@ -81,6 +90,8 @@ typedef struct
 
 static u32 fb[LINEBUF_SIZE * 294 * 2];
 static u8 last_fb;
+
+static u32 nsamps = 0;
 
 EXPORT void FrameAdvance(MyFrameInfo* f)
 {
@@ -122,6 +133,7 @@ EXPORT void FrameAdvance(MyFrameInfo* f)
 
 	biz_lag = true;
 	biz_time = f->Time;
+	nsamps = 0;
 
 	if (biz_started)
 	{
@@ -137,8 +149,9 @@ EXPORT void FrameAdvance(MyFrameInfo* f)
 
 	f->b.Width = last_width;
 	f->b.Height = last_height;
-	f->b.Samples = 0;
-	//f->b.SoundBuffer
+	f->b.Samples = blip_samples_avail(blip_l);
+	blip_read_samples(blip_l, f->b.SoundBuffer + 0, f->b.Samples, 1);
+	blip_read_samples(blip_r, f->b.SoundBuffer + 1, f->b.Samples, 1);
 	f->b.Cycles = 0;
 	f->b.Lagged = biz_lag;
 }
@@ -288,19 +301,35 @@ void render_audio_created(audio_source* src)
 {
 }
 
+static s16 latch_l = 0;
+static s16 latch_r = 0;
+
 void render_do_audio_ready(audio_source* src)
 {
 	s16* tmp = src->front;
 	src->front = src->back;
 	src->back = tmp;
 	src->front_populated = 1;
-	src->buffer_pos = 0;/*
+	src->buffer_pos = 0;
 	if (all_sources_ready()) {
 		s16 buffer[8];
 		s32 min_remaining_out;
 		mix_and_convert((u8*)buffer, sizeof(buffer), &min_remaining_out);
-		retro_audio_sample_batch(buffer, sizeof(buffer)/(2*sizeof(*buffer)));
-	}*/
+		for (int i = 0; i < 4; i++)
+		{
+			if (buffer[i * 2] != latch_l)
+			{
+				blip_add_delta(blip_l, nsamps, latch_l - buffer[i * 2]);
+			}
+
+			if (buffer[i * 2 + 1] != latch_r)
+			{
+				blip_add_delta(blip_r, nsamps, latch_r - buffer[i * 2 + 1]);
+			}
+
+			nsamps++;
+		}
+	}
 }
 
 void render_source_paused(audio_source* src, u8 remaining_sources)
