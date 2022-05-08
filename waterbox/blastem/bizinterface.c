@@ -323,11 +323,13 @@ void render_do_audio_ready(audio_source* src)
 			if (buffer[i * 2] != latch_l)
 			{
 				blip_add_delta(blip_l, nsamps, latch_l - buffer[i * 2]);
+				latch_l = buffer[i * 2];
 			}
 
 			if (buffer[i * 2 + 1] != latch_r)
 			{
 				blip_add_delta(blip_r, nsamps, latch_r - buffer[i * 2 + 1]);
+				latch_r = buffer[i * 2 + 1];
 			}
 
 			nsamps++;
