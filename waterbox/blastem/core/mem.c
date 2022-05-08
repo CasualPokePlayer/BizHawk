@@ -27,7 +27,11 @@ static int markedExec = 0;
 void * alloc_code(size_t *size)
 {
 	if (!markedExec) {
-		mprotect((void*)fixedBuffer, sizeof (fixedBuffer), PROT_READ | PROT_WRITE | PROT_EXEC);
+		int err = mprotect((void*)fixedBuffer, sizeof (fixedBuffer), PROT_READ | PROT_WRITE | PROT_EXEC);
+		if (err) {
+			perror("alloc_code");
+			return NULL;
+		}
 		markedExec = 1;
 	}
 
