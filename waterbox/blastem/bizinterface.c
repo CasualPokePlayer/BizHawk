@@ -154,8 +154,14 @@ EXPORT void FrameAdvance(MyFrameInfo* f)
 	blip_end_frame(blip_r, nsamps);
 	nsamps = 0;
 
-	memcpy(f->b.VideoBuffer, fb, sizeof fb);
-
+	u32* src = fb + overscan_left + LINEBUF_SIZE * overscan_top;
+	u32* dst = f->b.VideoBuffer;
+	for (int i = 0; i < last_height; i++)
+	{
+		memcpy(dst, src, last_width * sizeof(u32));
+		src += LINEBUF_SIZE;
+		dst += last_width;
+	}
 	f->b.Width = last_width;
 	f->b.Height = last_height;
 	f->b.Samples = blip_samples_avail(blip_l);
