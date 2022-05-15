@@ -24,6 +24,7 @@ namespace BizHawk.Emulation.Common
 			public const string GBA = "GBA";
 			public const string GBC = "GBC";
 			public const string GBL = "GBL";
+			public const string GC = "GC";
 			public const string GEN = "GEN";
 			public const string GG = "GG";
 			public const string GGL = "GGL";

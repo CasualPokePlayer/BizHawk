@@ -54,3 +54,7 @@
 	path = libmupen64plus/mupen64plus-video-angrylion-rdp
 	url = https://github.com/TASEmulators/angrylion-rdp.git
 	branch = biz_mupen64plus
+[submodule "libdolphin"]
+	path = libdolphin
+	url = https://github.com/CasualPokePlayer/dolphin
+	branch = biz

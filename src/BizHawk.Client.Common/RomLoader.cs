@@ -23,6 +23,7 @@ namespace BizHawk.Client.Common
 			public Disc DiscData { get; set; }
 			public DiscType DiscType { get; set; }
 			public string DiscName { get; set; }
+			public string DiscPath { get; set; }
 		}
 		private class RomAsset : IRomAsset
 		{
@@ -260,6 +261,9 @@ namespace BizHawk.Client.Common
 					case DiscType.PCFX:
 						game.System = VSystemID.Raw.PCFX;
 						break;
+					case DiscType.GameCube:
+						game.System = VSystemID.Raw.GC;
+						break;
 
 					case DiscType.TurboGECD:
 					case DiscType.TurboCD:
@@ -269,11 +273,9 @@ namespace BizHawk.Client.Common
 					case DiscType.Amiga:
 					case DiscType.CDi:
 					case DiscType.Dreamcast:
-					case DiscType.GameCube:
 					case DiscType.NeoGeoCD:
 					case DiscType.Panasonic3DO:
 					case DiscType.Playdia:
-					case DiscType.Wii:
 						// no supported emulator core for these (yet)
 						game.System = discType.ToString();
 						throw new NoAvailableCoreException(discType.ToString());
@@ -315,7 +317,8 @@ namespace BizHawk.Client.Common
 						{
 							DiscData = disc,
 							DiscType = new DiscIdentifier(disc).DetectDiscType(),
-							DiscName = Path.GetFileNameWithoutExtension(path)
+							DiscName = Path.GetFileNameWithoutExtension(path),
+							DiscPath = path
 						}
 					},
 			};
@@ -345,7 +348,8 @@ namespace BizHawk.Client.Common
 				{
 					DiscData = a.d,
 					DiscType = new DiscIdentifier(a.d).DetectDiscType(),
-					DiscName = Path.GetFileNameWithoutExtension(a.p)
+					DiscName = Path.GetFileNameWithoutExtension(a.p),
+					DiscPath = a.p
 				})
 				.ToList();
 			if (m3u.Entries.Count == 0)
@@ -550,7 +554,8 @@ namespace BizHawk.Client.Common
 						{
 							DiscData = a.d,
 							DiscType = new DiscIdentifier(a.d).DetectDiscType(),
-							DiscName = Path.GetFileNameWithoutExtension(a.p)
+							DiscName = Path.GetFileNameWithoutExtension(a.p),
+							DiscPath = a.p
 						})
 						.ToList(),
 				};

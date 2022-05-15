@@ -34,7 +34,8 @@ namespace BizHawk.Emulation.Common
 			new(VSystemID.Raw.O2, "Odyssey2"),
 			new(VSystemID.Raw.VEC, "Vectrex"),
 			new(VSystemID.Raw.MSX, "MSX"),
-			new(VSystemID.Raw.NDS, "Nintendo DS")
+			new(VSystemID.Raw.NDS, "Nintendo DS"),
+			new(VSystemID.Raw.GC, "Nintendo GameCube")
 		};
 
 		public SystemInfo this[string systemId]
