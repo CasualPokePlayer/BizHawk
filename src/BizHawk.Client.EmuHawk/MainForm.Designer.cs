@@ -266,6 +266,8 @@ namespace BizHawk.Client.EmuHawk
 			this.N64CircularAnalogRangeMenuItem = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
 			this.MupenStyleLagMenuItem = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
 			this.N64ExpansionSlotMenuItem = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
+			this.DolphinSubMenu = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
+			this.DolphinSettingsToolStripMenuItem = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
 			this.GBLSubMenu = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
 			this.GBLsettingsToolStripMenuItem = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
 			this.AppleSubMenu = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
@@ -394,6 +396,7 @@ namespace BizHawk.Client.EmuHawk
 			this.SNESSubMenu,
 			this.ColecoSubMenu,
 			this.N64SubMenu,
+			this.DolphinSubMenu,
 			this.GBLSubMenu,
 			this.AppleSubMenu,
 			this.C64SubMenu,
@@ -1746,6 +1749,16 @@ namespace BizHawk.Client.EmuHawk
 			this.N64ExpansionSlotMenuItem.Text = "&Use Expansion Slot";
 			this.N64ExpansionSlotMenuItem.Click += new System.EventHandler(this.N64ExpansionSlotMenuItem_Click);
 			// 
+			// DolphinSubMenu
+			// 
+			this.DolphinSubMenu.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+			this.DolphinSettingsToolStripMenuItem});
+			// 
+			// DolphinSettingsToolStripMenuItem
+			// 
+			this.DolphinSettingsToolStripMenuItem.Text = "Settings...";
+			this.DolphinSettingsToolStripMenuItem.Click += new System.EventHandler(this.DolphinSettingsMenuItem_Click);
+			// 
 			// GBLSubMenu
 			// 
 			this.GBLSubMenu.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
@@ -2630,6 +2643,8 @@ namespace BizHawk.Client.EmuHawk
 		private BizHawk.WinForms.Controls.ToolStripSeparatorEx toolStripSeparator29;
 		private BizHawk.WinForms.Controls.ToolStripMenuItemEx N64SubMenu;
 		private BizHawk.WinForms.Controls.ToolStripMenuItemEx N64PluginSettingsMenuItem;
+		private BizHawk.WinForms.Controls.ToolStripMenuItemEx DolphinSubMenu;
+		private BizHawk.WinForms.Controls.ToolStripMenuItemEx DolphinSettingsToolStripMenuItem;
 		private BizHawk.WinForms.Controls.ToolStripMenuItemEx ConfigContextMenuItem;
 		private BizHawk.WinForms.Controls.ToolStripMenuItemEx RewindOptionsMenuItem;
 		private BizHawk.WinForms.Controls.ToolStripMenuItemEx FirmwaresMenuItem;

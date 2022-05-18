@@ -27,6 +27,37 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 		[BizImport(cc)]
 		public abstract void Dolphin_FrameStep();
 
+		public enum PadButtons : ushort
+		{
+			Left = 0x0001,
+			Right = 0x0002,
+			Down = 0x0004,
+			Up = 0x0008,
+			Z = 0x0010,
+			R = 0x0020,
+			L = 0x0040,
+			A = 0x0100,
+			B = 0x0200,
+			X = 0x0400,
+			Y = 0x0800,
+			Start = 0x1000,
+		}
+
+		[StructLayout(LayoutKind.Sequential)]
+		public struct GCPadStatus
+		{
+			public PadButtons Buttons;
+			public byte StickX;
+			public byte StickY;
+			public byte SubstickX;
+			public byte SubstickY;
+			public byte TriggerLeft;
+			public byte TriggerRight;
+			public byte AnalogA;
+			public byte AnalogB;
+			public bool IsConnected;
+		}
+
 		[UnmanagedFunctionPointer(cc)]
 		public delegate void GCPadCallback(IntPtr padStatus, int controllerID);
 

@@ -660,6 +660,15 @@ namespace BizHawk.Client.Common
 				["Motion Up / Down"] = "mY",
 				["Twist | / |"] = "Twist",
 			},
+			[VSystemID.Raw.GC] = new()
+			{
+				["Main Stick X"] = "mX",
+				["Main Stick Y"] = "mY",
+				["C Stick X"] = "cX",
+				["C Stick Y"] = "cY",
+				["Analog L"] = "aL",
+				["Analog R"] = "aR",
+			},
 		};
 	}
 }

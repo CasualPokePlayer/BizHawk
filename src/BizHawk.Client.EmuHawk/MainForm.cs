@@ -1940,6 +1940,7 @@ namespace BizHawk.Client.EmuHawk
 			PSXSubMenu.Visible = false;
 			ColecoSubMenu.Visible = false;
 			N64SubMenu.Visible = false;
+			DolphinSubMenu.Visible = false;
 			GBLSubMenu.Visible = false;
 			AppleSubMenu.Visible = false;
 			C64SubMenu.Visible = false;
@@ -2008,6 +2009,10 @@ namespace BizHawk.Client.EmuHawk
 					SNESSubMenu.Text = bsnesCore.IsSGB ?  "&SGB" : "&SNES";
 					SnesGfxDebuggerMenuItem.Visible = false;
 					SNESSubMenu.Visible = true;
+					break;
+				case VSystemID.Raw.GC:
+					DolphinSubMenu.Text = $"&{Emulator.SystemId}";
+					DolphinSubMenu.Visible = true;
 					break;
 				default:
 					DisplayDefaultCoreMenu();

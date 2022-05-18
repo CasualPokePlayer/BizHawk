@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Threading;
 
 using BizHawk.BizInvoke;
 using BizHawk.Common;
 using BizHawk.Emulation.Common;
+using BizHawk.Emulation.Cores.Properties;
 
 namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 {
@@ -35,12 +37,10 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 				"BizHawk",
 				"--user=Dolphin",
 				$"--exec={gamePath}",
-				"--video_backend=Vulkan", // todo: config
-				"--audio_emulation=HLE", // todo: config
 				"--platform=headless",
 			});
 
-			_syncSettings.ApplyNativeSettings(args);
+			ApplyNativeSettings(args);
 			_core.Dolphin_Main(args.Count, args.ToArray());
 			_hostRunning = false;
 		}
@@ -56,6 +56,14 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 				Directory.Delete("Dolphin", true);
 			}
 			Directory.CreateDirectory("Dolphin");
+			if (_syncSettings.ApplyPerGameSettings)
+			{
+				using var gameSettings = new ZipArchive(new MemoryStream(Util.DecompressGzipFile(new MemoryStream(Resources.DOLPHINGAMESETTINGS.Value))), ZipArchiveMode.Read, false);
+				gameSettings.ExtractToDirectory("Dolphin");
+			}
+
+			DeterministicEmulation = lp.DeterministicEmulationRequested || _syncSettings.MainSettings.EnableCustomRTC;
+			ControllerDefinition = CreateControllerDefinition();
 
 			_hostRunning = true;
 			_hostThread = new Thread(() => ExecuteHostThread(lp.Discs[0].DiscPath)) { IsBackground = true };
@@ -80,6 +88,34 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			InitMemoryDomains();
 
 			ResetCounters();
+		}
+
+		private ControllerDefinition CreateControllerDefinition()
+		{
+			var ret = new ControllerDefinition("GameCube Front Panel");
+			var gcSlots = new[]
+			{
+				_syncSettings.MainSettings.SIDevice0,
+				_syncSettings.MainSettings.SIDevice1,
+				_syncSettings.MainSettings.SIDevice2,
+				_syncSettings.MainSettings.SIDevice3,
+			};
+			for (int i = 0; i < 4; i++)
+			{
+				if (gcSlots[i] is DolphinMainSettings.SIDevices.Controller)
+				{
+					foreach (var b in Enum.GetValues(typeof(LibDolphin.PadButtons)))
+					{
+						ret.BoolButtons.Add($"P{i + 1} {Enum.GetName(typeof(LibDolphin.PadButtons), b)}");
+					}
+
+					ret.AddXYPair($"P{i + 1} Main Stick {{0}}", AxisPairOrientation.RightAndUp, (0).RangeTo(255), 128);
+					ret.AddXYPair($"P{i + 1} C Stick {{0}}", AxisPairOrientation.RightAndUp, (0).RangeTo(255), 128);
+					ret.AddAxis($"P{i + 1} Analog L", (0).RangeTo(255), 128);
+					ret.AddAxis($"P{i + 1} Analog R", (0).RangeTo(255), 128);
+				}
+			}
+			return ret;
 		}
 	}
 }

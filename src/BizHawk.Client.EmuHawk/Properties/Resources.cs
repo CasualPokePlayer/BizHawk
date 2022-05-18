@@ -79,6 +79,8 @@ namespace BizHawk.Client.EmuHawk.Properties
 		internal static readonly Bitmap Cut = ReadEmbeddedBitmap("CutHS");
 		internal static readonly Bitmap Debugger = ReadEmbeddedBitmap("Debugger");
 		internal static readonly Bitmap Delete = ReadEmbeddedBitmap("Delete");
+		internal static readonly Bitmap Dolphin = ReadEmbeddedBitmap("dolphin");
+		internal static readonly Icon DolphinIcon = ReadEmbeddedIcon("dolphin");
 		internal static readonly Icon DualIcon = ReadEmbeddedIcon("dual");
 		internal static readonly Bitmap Duplicate = ReadEmbeddedBitmap("Duplicate");
 		internal static readonly Bitmap ENE = ReadEmbeddedBitmap("ENE");

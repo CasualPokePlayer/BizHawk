@@ -9,7 +9,7 @@ using BizHawk.Emulation.Cores.Consoles.Sega.gpgx;
 using BizHawk.Emulation.Cores.Arcades.MAME;
 using BizHawk.Emulation.Cores.Consoles.Nintendo.NDS;
 using BizHawk.Emulation.Cores.Nintendo.GBA;
-using BizHawk.Emulation.Cores.Sega.MasterSystem;
+using BizHawk.Emulation.Cores.Nintendo.Dolphin;
 
 namespace BizHawk.Client.EmuHawk.CoreExtensions
 {
@@ -34,6 +34,7 @@ namespace BizHawk.Client.EmuHawk.CoreExtensions
 				MAME => Properties.Resources.Mame,
 				MGBAHawk => Properties.Resources.Mgba,
 				NDS => Properties.Resources.MelonDS,
+				Dolphin => Properties.Resources.Dolphin,
 				_ => null
 			};
 		}

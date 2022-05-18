@@ -29,6 +29,7 @@ namespace BizHawk.Emulation.Common
 			[VSystemID.Raw.SGB] = "SGB",
 			[VSystemID.Raw.GBA] = "Gameboy Advance",
 			[VSystemID.Raw.GBC] = "Gameboy Color",
+			[VSystemID.Raw.GC] = "GameCube",
 			[VSystemID.Raw.GEN] = "Genesis",
 			[VSystemID.Raw.GG] = "Game Gear",
 			[VSystemID.Raw.INTV] = "Intellivision",

@@ -1,5 +1,4 @@
-﻿using System;
-using System.Threading;
+﻿using System.Threading;
 
 using BizHawk.Emulation.Common;
 
@@ -11,17 +10,13 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 
 		public IEmulatorServiceProvider ServiceProvider => _serviceProvider;
 
-		public ControllerDefinition ControllerDefinition => GCController;
-
-		private static readonly ControllerDefinition GCController = new ControllerDefinition("Gamecube Controller")
-		{
-		}.MakeImmutable();
+		public ControllerDefinition ControllerDefinition { get; }
 
 		public int Frame { get; set; }
 
 		public string SystemId => VSystemID.Raw.GC;
 
-		public bool DeterministicEmulation => true;
+		public bool DeterministicEmulation { get; }
 
 		public bool FrameAdvance(IController controller, bool render, bool renderSound = true)
 		{
