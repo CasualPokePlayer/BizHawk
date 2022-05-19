@@ -555,13 +555,30 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 				Null = 5,
 			}
 
+			[JsonIgnore]
+			private GFXBackends _gfxBackend;
+
 			[DisplayName("GFX Backend")]
 			[Description("")]
 			[Category("Core")]
-			[DefaultValue(GFXBackends.Vulkan)]
+			[DefaultValue(GFXBackends.D3D11)]
 			[TypeConverter(typeof(DescribableEnumConverter))]
 			[Browsable(true)]
-			public GFXBackends GFXBackend { get; set; }
+			public GFXBackends GFXBackend
+			{
+				get => _gfxBackend;
+				set
+				{
+					if (OSTailoredCode.IsUnixHost && value is GFXBackends.D3D11 or GFXBackends.D3D12)
+					{
+						_gfxBackend = GFXBackends.Vulkan;
+					}
+					else
+					{
+						_gfxBackend = value;
+					}
+				}
+			}
 
 			public enum GPUDeterminismModes : int
 			{

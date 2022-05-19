@@ -52,10 +52,36 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			p->StickY = (byte)_controller.AxisValue($"P{n} Main Stick Y");
 			p->SubstickX = (byte)_controller.AxisValue($"P{n} C Stick X");
 			p->SubstickY = (byte)_controller.AxisValue($"P{n} C Stick Y");
-			p->TriggerLeft = (byte)_controller.AxisValue($"P{n} Analog L");
-			p->TriggerRight = (byte)_controller.AxisValue($"P{n} Analog R");
+
+			if ((p->Buttons & LibDolphin.PadButtons.L) != 0)
+			{
+				p->TriggerLeft = 0xFF;
+			}
+			else
+			{
+				p->TriggerLeft = (byte)_controller.AxisValue($"P{n} Analog L");
+				if (p->TriggerLeft == 0xFF)
+				{
+					p->Buttons |= LibDolphin.PadButtons.L;
+				}
+			}
+
+			if ((p->Buttons & LibDolphin.PadButtons.R) != 0)
+			{
+				p->TriggerRight = 0xFF;
+			}
+			else
+			{
+				p->TriggerRight = (byte)_controller.AxisValue($"P{n} Analog R");
+				if (p->TriggerRight == 0xFF)
+				{
+					p->Buttons |= LibDolphin.PadButtons.R;
+				}
+			}
+
 			p->AnalogA = (byte)(((p->Buttons & LibDolphin.PadButtons.A) != 0) ? 0xFF : 0);
 			p->AnalogB = (byte)(((p->Buttons & LibDolphin.PadButtons.B) != 0) ? 0xFF : 0);
+
 			p->IsConnected = true;
 		}
 	}

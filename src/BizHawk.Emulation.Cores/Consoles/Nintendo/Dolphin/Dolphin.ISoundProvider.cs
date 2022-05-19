@@ -12,9 +12,8 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 
 		private void ProcessSound()
 		{
-			IntPtr data = IntPtr.Zero;
 			int sz = 0;
-			_core.Dolphin_GetAudio(ref data, ref sz);
+			IntPtr data = _core.Dolphin_GetAudio(ref sz);
 			if (sz > _sampleBuf.Length)
 			{
 				_sampleBuf = new short[sz];

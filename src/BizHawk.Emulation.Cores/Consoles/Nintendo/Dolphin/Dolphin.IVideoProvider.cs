@@ -10,8 +10,8 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 		public int VirtualHeight => BufferHeight;
 		public int BufferWidth { get; private set; } = 640;
 		public int BufferHeight { get; private set; } = 480;
-		public int VsyncNumerator => 60;
-		public int VsyncDenominator => 1;
+		public int VsyncNumerator => _core.Dolphin_GetVSyncNumerator();
+		public int VsyncDenominator => _core.Dolphin_GetVSyncDenominator();
 		public int BackgroundColor => 0;
 
 		private int[] _vbuf = new int[640 * 480];

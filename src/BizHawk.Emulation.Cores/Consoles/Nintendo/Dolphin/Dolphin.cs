@@ -111,8 +111,8 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 
 					ret.AddXYPair($"P{i + 1} Main Stick {{0}}", AxisPairOrientation.RightAndUp, (0).RangeTo(255), 128);
 					ret.AddXYPair($"P{i + 1} C Stick {{0}}", AxisPairOrientation.RightAndUp, (0).RangeTo(255), 128);
-					ret.AddAxis($"P{i + 1} Analog L", (0).RangeTo(255), 128);
-					ret.AddAxis($"P{i + 1} Analog R", (0).RangeTo(255), 128);
+					ret.AddAxis($"P{i + 1} Analog L", (0).RangeTo(255), 0);
+					ret.AddAxis($"P{i + 1} Analog R", (0).RangeTo(255), 0);
 				}
 			}
 			return ret;

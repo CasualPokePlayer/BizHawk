@@ -65,7 +65,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 		public abstract void Dolphin_SetGCPadCallback(GCPadCallback cb);
 
 		[BizImport(cc)]
-		public abstract void Dolphin_GetAudio(ref IntPtr data, ref int sz);
+		public abstract IntPtr Dolphin_GetAudio(ref int sz);
 
 		[BizImport(cc)]
 		public abstract IntPtr Dolphin_SaveState(ref int sz);
@@ -110,5 +110,11 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 
 		[BizImport(cc)]
 		public abstract void Dolphin_WriteU32(uint addr, uint val, bool bigEndian);
+
+		[BizImport(cc)]
+		public abstract int Dolphin_GetVSyncNumerator();
+
+		[BizImport(cc)]
+		public abstract int Dolphin_GetVSyncDenominator();
 	}
 }
