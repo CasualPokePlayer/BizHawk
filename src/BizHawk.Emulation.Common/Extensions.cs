@@ -54,6 +54,7 @@ namespace BizHawk.Emulation.Common
 			[VSystemID.Raw.UZE] = "Uzebox",
 			[VSystemID.Raw.VB] = "Virtual Boy",
 			[VSystemID.Raw.VEC] = "Vectrex",
+			[VSystemID.Raw.Wii] = "Wii",
 			[VSystemID.Raw.WSWAN] = "WonderSwan",
 			[VSystemID.Raw.ZXSpectrum] = "ZX Spectrum",
 		};

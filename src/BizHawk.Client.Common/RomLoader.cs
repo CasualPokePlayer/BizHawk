@@ -232,7 +232,7 @@ namespace BizHawk.Client.Common
 		private GameInfo MakeGameFromDisc(Disc disc, string ext, string name)
 		{
 			// TODO - use more sophisticated IDer
-			var discType = new DiscIdentifier(disc).DetectDiscType();
+			var discType = new DiscIdentifier(disc).DetectDiscType(ext);
 			var discHasher = new DiscHasher(disc);
 			var discHash = discType == DiscType.SonyPSX
 				? discHasher.Calculate_PSX_BizIDHash()
@@ -263,6 +263,9 @@ namespace BizHawk.Client.Common
 						break;
 					case DiscType.GameCube:
 						game.System = VSystemID.Raw.GC;
+						break;
+					case DiscType.Wii:
+						game.System = VSystemID.Raw.Wii;
 						break;
 
 					case DiscType.TurboGECD:
@@ -298,7 +301,7 @@ namespace BizHawk.Client.Common
 		private bool LoadDisc(string path, CoreComm nextComm, HawkFile file, string ext, string forcedCoreName, out IEmulator nextEmulator, out GameInfo game)
 		{
 			var disc = DiscExtensions.CreateAnyType(path, str => DoLoadErrorCallback(str, "???", LoadErrorType.DiscError));
-			if (disc == null)
+			if (disc == null && ext != ".wbfs")
 			{
 				game = null;
 				nextEmulator = null;
@@ -316,7 +319,7 @@ namespace BizHawk.Client.Common
 						new DiscAsset
 						{
 							DiscData = disc,
-							DiscType = new DiscIdentifier(disc).DetectDiscType(),
+							DiscType = new DiscIdentifier(disc).DetectDiscType(Path.GetExtension(path)),
 							DiscName = Path.GetFileNameWithoutExtension(path),
 							DiscPath = path
 						}
@@ -347,7 +350,7 @@ namespace BizHawk.Client.Common
 				.Select(a => (IDiscAsset)new DiscAsset
 				{
 					DiscData = a.d,
-					DiscType = new DiscIdentifier(a.d).DetectDiscType(),
+					DiscType = new DiscIdentifier(a.d).DetectDiscType(Path.GetExtension(a.p)),
 					DiscName = Path.GetFileNameWithoutExtension(a.p),
 					DiscPath = a.p
 				})
@@ -553,7 +556,7 @@ namespace BizHawk.Client.Common
 						.Select(a => (IDiscAsset)new DiscAsset
 						{
 							DiscData = a.d,
-							DiscType = new DiscIdentifier(a.d).DetectDiscType(),
+							DiscType = new DiscIdentifier(a.d).DetectDiscType(Path.GetExtension(a.p)),
 							DiscName = Path.GetFileNameWithoutExtension(a.p),
 							DiscPath = a.p
 						})

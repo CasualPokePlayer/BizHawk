@@ -698,15 +698,29 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 
 		public class DolphinWiiPadSettings
 		{
-			// custom since all keys are "Source"
+			// custom since keys are shared with categories being unique
 			// luckily there's few settings here
+			// NOTE: some of these settings can't be set through the CLI
+			// hacks will be used later to enforce these settings
 			public void ApplyNativeSettings(List<string> config)
 			{
-				config.Add($"--config=Wiimote.Wiimote1.Source={(int)Wiimote1}");
-				config.Add($"--config=Wiimote.Wiimote2.Source={(int)Wiimote2}");
-				config.Add($"--config=Wiimote.Wiimote3.Source={(int)Wiimote3}");
-				config.Add($"--config=Wiimote.Wiimote4.Source={(int)Wiimote4}");
-				config.Add($"--config=Wiimote.BalanceBoard.Source={(int)WiimoteSources.None}");
+				config.Add($"--config=Wiimote.Wiimote1.Source={(Wiimote1 ? 1 : 0)}");
+				//config.Add($"--config=Wiimote.Wiimote1.Extension={Enum.GetName(typeof(WiimoteExtensions), Wiimote1Extension)}");
+				//config.Add($"--config=Wiimote.Wiimote1.Extension/Attach MotionPlus={Wiimote1MotionPlus}");
+
+				config.Add($"--config=Wiimote.Wiimote2.Source={(Wiimote2 ? 1 : 0)}");
+				//config.Add($"--config=Wiimote.Wiimote2.Extension={Enum.GetName(typeof(WiimoteExtensions), Wiimote2Extension)}");
+				//config.Add($"--config=Wiimote.Wiimote2.Extension/Attach MotionPlus={Wiimote2MotionPlus}");
+
+				config.Add($"--config=Wiimote.Wiimote3.Source={(Wiimote3 ? 1 : 0)}");
+				//config.Add($"--config=Wiimote.Wiimote3.Extension={Enum.GetName(typeof(WiimoteExtensions), Wiimote3Extension)}");
+				//config.Add($"--config=Wiimote.Wiimote3.Extension/Attach MotionPlus={Wiimote3MotionPlus}");
+
+				config.Add($"--config=Wiimote.Wiimote4.Source={(Wiimote4 ? 1 : 0)}");
+				//config.Add($"--config=Wiimote.Wiimote4.Extension={Enum.GetName(typeof(WiimoteExtensions), Wiimote4Extension)}");
+				//config.Add($"--config=Wiimote.Wiimote4.Extension/Attach MotionPlus={Wiimote4MotionPlus}");
+
+				config.Add($"--config=Wiimote.BalanceBoard.Source=0");
 			}
 
 			public DolphinWiiPadSettings()
@@ -714,39 +728,96 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 				SettingsUtil.SetDefaultValues(this);
 			}
 
-			public enum WiimoteSources
+			public enum WiimoteExtensions
 			{
 				None = 0,
-				Emulated = 1,
+				Nunchuk = 1,
+				// todo
 			}
 
-			[DisplayName("Wiimote 1")]
+			[DisplayName("Wiimote Active")]
 			[Description("")]
-			[Category("Wiimotes")]
-			[DefaultValue(WiimoteSources.Emulated)]
+			[Category("Wiimote 1")]
+			[DefaultValue(true)]
 			[Browsable(true)]
-			public WiimoteSources Wiimote1 { get; set; }
+			public bool Wiimote1 { get; set; }
 
-			[DisplayName("Wiimote 2")]
+			[DisplayName("Wiimote MotionPlus Attached")]
 			[Description("")]
-			[Category("Wiimotes")]
-			[DefaultValue(WiimoteSources.None)]
+			[Category("Wiimote 1")]
+			[DefaultValue(true)]
 			[Browsable(true)]
-			public WiimoteSources Wiimote2 { get; set; }
+			public bool Wiimote1MotionPlus { get; set; }
 
-			[DisplayName("Wiimote 3")]
+			[DisplayName("Wiimote Extension")]
 			[Description("")]
-			[Category("Wiimotes")]
-			[DefaultValue(WiimoteSources.None)]
+			[Category("Wiimote 1")]
+			[DefaultValue(WiimoteExtensions.Nunchuk)]
 			[Browsable(true)]
-			public WiimoteSources Wiimote3 { get; set; }
+			public WiimoteExtensions Wiimote1Extension { get; set; }
 
-			[DisplayName("Wiimote 4")]
+			[DisplayName("Wiimote Active")]
 			[Description("")]
-			[Category("Wiimotes")]
-			[DefaultValue(WiimoteSources.None)]
+			[Category("Wiimote 2")]
+			[DefaultValue(false)]
 			[Browsable(true)]
-			public WiimoteSources Wiimote4 { get; set; }
+			public bool Wiimote2 { get; set; }
+
+			[DisplayName("Wiimote MotionPlus Attached")]
+			[Description("")]
+			[Category("Wiimote 2")]
+			[DefaultValue(false)]
+			[Browsable(true)]
+			public bool Wiimote2MotionPlus { get; set; }
+
+			[DisplayName("Wiimote Extension")]
+			[Description("")]
+			[Category("Wiimote 2")]
+			[DefaultValue(WiimoteExtensions.None)]
+			[Browsable(true)]
+			public WiimoteExtensions Wiimote2Extension { get; set; }
+
+			[DisplayName("Wiimote Active")]
+			[Description("")]
+			[Category("Wiimote 3")]
+			[DefaultValue(false)]
+			[Browsable(true)]
+			public bool Wiimote3 { get; set; }
+
+			[DisplayName("Wiimote MotionPlus Attached")]
+			[Description("")]
+			[Category("Wiimote 3")]
+			[DefaultValue(false)]
+			[Browsable(true)]
+			public bool Wiimote3MotionPlus { get; set; }
+
+			[DisplayName("Wiimote Extension")]
+			[Description("")]
+			[Category("Wiimote 3")]
+			[DefaultValue(WiimoteExtensions.None)]
+			[Browsable(true)]
+			public WiimoteExtensions Wiimote3Extension { get; set; }
+
+			[DisplayName("Wiimote Active")]
+			[Description("")]
+			[Category("Wiimote 4")]
+			[DefaultValue(false)]
+			[Browsable(true)]
+			public bool Wiimote4 { get; set; }
+
+			[DisplayName("Wiimote MotionPlus Attached")]
+			[Description("")]
+			[Category("Wiimote 4")]
+			[DefaultValue(false)]
+			[Browsable(true)]
+			public bool Wiimote4MotionPlus { get; set; }
+
+			[DisplayName("Wiimote Extension")]
+			[Description("")]
+			[Category("Wiimote 4")]
+			[DefaultValue(WiimoteExtensions.None)]
+			[Browsable(true)]
+			public WiimoteExtensions Wiimote4Extension { get; set; }
 		}
 
 		public class DolphinGFXSettings : DolphinNativeSettings

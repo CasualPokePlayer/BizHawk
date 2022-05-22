@@ -86,6 +86,9 @@ namespace BizHawk.Emulation.DiscSystem
 		//TODO - this is a very platform-specific thing. hashing the TOC may be faster and be just as effective. so, rename it appropriately
 		public string OldHash()
 		{
+			if (disc is null)
+				return "wbfs can't hash";
+
 			byte[] buffer = new byte[512 * 2352];
 			DiscSectorReader dsr = new DiscSectorReader(disc);
 			foreach (var track in disc.Session1.Tracks)

@@ -2011,6 +2011,7 @@ namespace BizHawk.Client.EmuHawk
 					SNESSubMenu.Visible = true;
 					break;
 				case VSystemID.Raw.GC:
+				case VSystemID.Raw.Wii:
 					DolphinSubMenu.Text = $"&{Emulator.SystemId}";
 					DolphinSubMenu.Visible = true;
 					break;

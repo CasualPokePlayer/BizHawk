@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 
 namespace BizHawk.Emulation.DiscSystem
 {
@@ -32,7 +33,7 @@ namespace BizHawk.Emulation.DiscSystem
 
 			var disc = discMountJob.OUT_Disc;
 
-			var discType = new DiscIdentifier(disc).DetectDiscType();
+			var discType = new DiscIdentifier(disc).DetectDiscType(Path.GetExtension(path));
 
 			if (type.HasValue && discType != type)
 			{

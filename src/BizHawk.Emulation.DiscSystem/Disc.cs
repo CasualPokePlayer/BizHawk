@@ -132,6 +132,9 @@ namespace BizHawk.Emulation.DiscSystem
 			extension == ".iso"
 			|| extension == ".cue"
 			|| extension == ".ccd"
-			|| extension == ".mds";
+			|| extension == ".mds"
+			// these extensions are only used in the context of GC or Wiis
+			// shouldn't be touched by actual disc parsing code
+			|| extension == ".wbfs";
 	}
 }

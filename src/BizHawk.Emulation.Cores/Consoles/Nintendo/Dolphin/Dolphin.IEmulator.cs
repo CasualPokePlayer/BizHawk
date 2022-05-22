@@ -14,7 +14,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 
 		public int Frame { get; set; }
 
-		public string SystemId => VSystemID.Raw.GC;
+		public string SystemId { get; }
 
 		public bool DeterministicEmulation { get; }
 

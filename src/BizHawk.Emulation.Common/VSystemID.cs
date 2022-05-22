@@ -56,6 +56,7 @@ namespace BizHawk.Emulation.Common
 			public const string UZE = "UZE";
 			public const string VB = "VB";
 			public const string VEC = "VEC";
+			public const string Wii = "Wii";
 			public const string WSWAN = "WSWAN";
 			public const string ZXSpectrum = "ZXSpectrum";
 		}

@@ -131,8 +131,11 @@ namespace BizHawk.Emulation.DiscSystem
 		/// Attempts to determine the type of the disc.
 		/// In the future, we might return a struct or a class with more detailed information
 		/// </summary>
-		public DiscType DetectDiscType()
+		public DiscType DetectDiscType(string ext)
 		{
+			if (ext == ".wbfs")
+				return DiscType.Wii;
+
 			// PCFX & TurboCD sometimes (if not alltimes) have audio on track 1 - run these before the AudioDisc detection (asni)
 			if (DetectPCFX())
 				return DiscType.PCFX;

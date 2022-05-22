@@ -47,6 +47,10 @@ namespace BizHawk.Client.Common
 				.Replace("P2 ", "")
 				.Replace("P3 ", "")
 				.Replace("P4 ", "")
+				.Replace("P5 ", "")
+				.Replace("P6 ", "")
+				.Replace("P7 ", "")
+				.Replace("P8 ", "")
 				.Replace("Key ", "");
 
 			if (AxisSystemOverrides.TryGetValue(systemId, out var overridesForSystem) && overridesForSystem.TryGetValue(key, out var s))
@@ -618,6 +622,15 @@ namespace BizHawk.Client.Common
 				["Analog"] = 'M',
 				["Offscreen Shot"] = 'o',
 			},
+			[VSystemID.Raw.Wii] = new()
+			{
+				["Plus"] = '+',
+				["Minus"] = '-',
+				["One"] = '1',
+				["Two"] = '2',
+				["Home"] = 'H',
+				["IR Pointing"] = 'P',
+			},
 		};
 
 		private static readonly Dictionary<string, string> BaseAxisLookupTable = new Dictionary<string, string>
@@ -668,6 +681,22 @@ namespace BizHawk.Client.Common
 				["C Stick Y"] = "cY",
 				["Analog L"] = "aL",
 				["Analog R"] = "aR",
+			},
+			[VSystemID.Raw.Wii] = new()
+			{
+				["Main Stick X"] = "mX",
+				["Main Stick Y"] = "mY",
+				["C Stick X"] = "cX",
+				["C Stick Y"] = "cY",
+				["Analog L"] = "aL",
+				["Analog R"] = "aR",
+
+				["Accelerometer X"] = "accX",
+				["Accelerometer Y"] = "accY",
+				["Accelerometer Z"] = "accZ",
+				["IR X"] = "irX",
+				["IR Y"] = "irY",
+				["IR Z"] = "irZ",
 			},
 		};
 	}
