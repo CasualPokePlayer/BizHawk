@@ -14,12 +14,10 @@
 
 	public enum EDispManagerAR
 	{
-		None,
-		System,
-
-		// actually, custom SIZE (fixme on major release)
-		Custom,
-		CustomRatio
+		None = 0,
+		System = 1,
+		CustomSize = 2,
+		CustomRatio = 3,
 	}
 
 	public enum SaveStateType
@@ -40,5 +38,12 @@
 	{
 		OpenTK = 0,
 		DirectInput = 1
+	}
+
+	public enum OpposingDirPolicy
+	{
+		Priority = 0,
+		Forbid = 1,
+		Allow = 2,
 	}
 }

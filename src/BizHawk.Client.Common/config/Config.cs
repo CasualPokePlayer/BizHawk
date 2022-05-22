@@ -62,7 +62,7 @@ namespace BizHawk.Client.Common
 		public void ResolveDefaults()
 		{
 			PathEntries.ResolveWithDefaults();
-			HotkeyBindings.ResolveWithDefaults();
+			HotkeyInfo.ResolveWithDefaults(HotkeyBindings);
 			PathEntries.RefreshTempPath();
 		}
 
@@ -111,7 +111,7 @@ namespace BizHawk.Client.Common
 		public bool AcceptBackgroundInputControllerOnly { get; set; }
 		public bool HandleAlternateKeyboardLayouts { get; set; }
 		public bool SingleInstanceMode { get; set; }
-		public bool AllowUdlr { get; set; }
+		public OpposingDirPolicy OpposingDirPolicy { get; set; }
 		public bool ShowContextMenu { get; set; } = true;
 		public bool HotkeyConfigAutoTab { get; set; } = true;
 		public bool InputConfigAutoTab { get; set; } = true;
@@ -300,7 +300,7 @@ namespace BizHawk.Client.Common
 		public bool PlayMovieIncludeSubDir { get; set; }
 		public bool PlayMovieMatchHash { get; set; } = true;
 
-		public BindingCollection HotkeyBindings { get; set; } = new BindingCollection();
+		public Dictionary<string, string> HotkeyBindings { get; set; } = new();
 
 		// Analog Hotkey values
 		public int AnalogLargeChange { get; set; } = 10;
