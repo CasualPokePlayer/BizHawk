@@ -12,14 +12,15 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 
 		public void SaveStateBinary(BinaryWriter writer)
 		{
-			int sz = 0;
-			IntPtr buf = _core.Dolphin_SaveState(ref sz);
+			bool compressed = _settings.UseCompressedStates;
+			int sz = _core.Dolphin_StateSize(compressed);
 			if (sz > _stateBuf.Length)
 			{
 				_stateBuf = new byte[sz];
 			}
-			Marshal.Copy(buf, _stateBuf, 0, sz);
+			_core.Dolphin_SaveState(_stateBuf, sz, compressed);
 
+			writer.Write(compressed);
 			writer.Write(sz);
 			writer.Write(_stateBuf, 0, sz);
 
@@ -31,6 +32,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 
 		public void LoadStateBinary(BinaryReader reader)
 		{
+			bool compressed = reader.ReadBoolean();
 			int len = reader.ReadInt32();
 			if (len > _stateBuf.Length)
 			{
@@ -38,8 +40,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			}
 
 			reader.Read(_stateBuf, 0, len);
-
-			_core.Dolphin_LoadState(_stateBuf, len);
+			_core.Dolphin_LoadState(_stateBuf, len, compressed);
 
 			// other variables
 			IsLagFrame = reader.ReadBoolean();

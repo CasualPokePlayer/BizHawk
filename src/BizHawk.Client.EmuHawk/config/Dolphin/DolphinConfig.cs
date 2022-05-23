@@ -8,13 +8,16 @@ namespace BizHawk.Client.EmuHawk
 	public partial class DolphinConfig : Form
 	{
 		private readonly IMainFormForConfig _mainForm;
+		private readonly Dolphin.DolphinSettings _s;
 		private readonly Dolphin.DolphinSyncSettings _ss;
 
 		public DolphinConfig(
 			IMainFormForConfig mainForm,
+			Dolphin.DolphinSettings s,
 			Dolphin.DolphinSyncSettings ss)
 		{
 			_mainForm = mainForm;
+			_s = s;
 			_ss = ss;
 
 			InitializeComponent();
@@ -30,8 +33,13 @@ namespace BizHawk.Client.EmuHawk
 
 		private void Button1_Click(object sender, EventArgs e)
 		{
+			_s.UseCompressedStates = UseCompressedStatesCB.Checked;
+			_s.DumpDTM = DumpDTMCB.Checked;
+			_mainForm.PutCoreSettings(_s);
+
 			_ss.ApplyPerGameSettings = ApplyPerGameSettingsCB.Checked;
 			_mainForm.PutCoreSyncSettings(_ss);
+
 			DialogResult = DialogResult.OK;
 			Close();
 		}
@@ -43,6 +51,8 @@ namespace BizHawk.Client.EmuHawk
 			GFXSettingsPropertyGrid.SelectedObject = _ss.GFXSettings;
 			SYSCONFSettingsPropertyGrid.SelectedObject = _ss.SYSCONFSettings;
 			ApplyPerGameSettingsCB.Checked = _ss.ApplyPerGameSettings;
+			UseCompressedStatesCB.Checked = _s.UseCompressedStates;
+			DumpDTMCB.Checked = _s.DumpDTM;
 		}
 	}
 }

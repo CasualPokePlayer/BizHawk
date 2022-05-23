@@ -41,6 +41,8 @@
             this.SaveButton = new System.Windows.Forms.Button();
             this.CancelBT = new System.Windows.Forms.Button();
             this.ApplyPerGameSettingsCB = new System.Windows.Forms.CheckBox();
+            this.UseCompressedStatesCB = new System.Windows.Forms.CheckBox();
+            this.DumpDTMCB = new System.Windows.Forms.CheckBox();
             this.DolphinConfigTabControl.SuspendLayout();
             this.MainSettingsTabPage.SuspendLayout();
             this.WiiPadSettingsTabPage.SuspendLayout();
@@ -182,6 +184,26 @@
             this.ApplyPerGameSettingsCB.Text = "Apply Per Game Settings";
             this.ApplyPerGameSettingsCB.UseVisualStyleBackColor = true;
             // 
+            // UseCompressedStatesCB
+            // 
+            this.UseCompressedStatesCB.AutoSize = true;
+            this.UseCompressedStatesCB.Location = new System.Drawing.Point(161, 373);
+            this.UseCompressedStatesCB.Name = "UseCompressedStatesCB";
+            this.UseCompressedStatesCB.Size = new System.Drawing.Size(139, 17);
+            this.UseCompressedStatesCB.TabIndex = 107;
+            this.UseCompressedStatesCB.Text = "Use Compressed States";
+            this.UseCompressedStatesCB.UseVisualStyleBackColor = true;
+            // 
+            // DumpDTMCB
+            // 
+            this.DumpDTMCB.AutoSize = true;
+            this.DumpDTMCB.Location = new System.Drawing.Point(306, 373);
+            this.DumpDTMCB.Name = "DumpDTMCB";
+            this.DumpDTMCB.Size = new System.Drawing.Size(81, 17);
+            this.DumpDTMCB.TabIndex = 108;
+            this.DumpDTMCB.Text = "Dump DTM";
+            this.DumpDTMCB.UseVisualStyleBackColor = true;
+            // 
             // DolphinConfig
             // 
             this.AcceptButton = this.SaveButton;
@@ -189,6 +211,8 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.CancelButton = this.CancelBT;
             this.ClientSize = new System.Drawing.Size(577, 401);
+            this.Controls.Add(this.DumpDTMCB);
+            this.Controls.Add(this.UseCompressedStatesCB);
             this.Controls.Add(this.ApplyPerGameSettingsCB);
             this.Controls.Add(this.CancelBT);
             this.Controls.Add(this.SaveButton);
@@ -224,5 +248,7 @@
 		private System.Windows.Forms.Button SaveButton;
 		private System.Windows.Forms.Button CancelBT;
 		private System.Windows.Forms.CheckBox ApplyPerGameSettingsCB;
+		private System.Windows.Forms.CheckBox UseCompressedStatesCB;
+		private System.Windows.Forms.CheckBox DumpDTMCB;
 	}
 }

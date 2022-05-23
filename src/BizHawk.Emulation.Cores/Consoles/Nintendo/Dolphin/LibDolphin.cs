@@ -179,10 +179,13 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 		public abstract IntPtr Dolphin_GetAudio(ref int sz);
 
 		[BizImport(cc)]
-		public abstract IntPtr Dolphin_SaveState(ref int sz);
+		public abstract int Dolphin_StateSize(bool compressed);
 
 		[BizImport(cc)]
-		public abstract int Dolphin_LoadState(byte[] buf, int sz);
+		public abstract void Dolphin_SaveState(byte[] buf, int sz, bool compressed);
+
+		[BizImport(cc)]
+		public abstract void Dolphin_LoadState(byte[] buf, int sz, bool compressed);
 
 		public enum MEMPTR_IDS
 		{
@@ -236,5 +239,8 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 
 		[BizImport(cc)]
 		public abstract void Dolphin_SetConfigCallbacks(MPlusConfigCallback mplus, ExtensionConfigCallback extension);
+
+		[BizImport(cc)]
+		public abstract ulong Dolphin_GetTicks();
 	}
 }

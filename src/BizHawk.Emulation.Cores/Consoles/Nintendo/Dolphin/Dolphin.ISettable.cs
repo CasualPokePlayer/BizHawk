@@ -11,13 +11,24 @@ using BizHawk.Emulation.Common;
 
 namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 {
-	public partial class Dolphin : ISettable<object, Dolphin.DolphinSyncSettings>
+	public partial class Dolphin : ISettable<Dolphin.DolphinSettings, Dolphin.DolphinSyncSettings>
 	{
+		private DolphinSettings _settings;
 		private DolphinSyncSettings _syncSettings;
 
-		public object GetSettings() => null;
+		public DolphinSettings GetSettings() => _settings.Clone();
 
-		public PutSettingsDirtyBits PutSettings(object o) => PutSettingsDirtyBits.None;
+		public PutSettingsDirtyBits PutSettings(DolphinSettings o)
+		{
+			if (_isDumpingDtm && !o.DumpDTM)
+			{
+				EndDtmDump();
+			}
+
+			bool ret = DolphinSettings.NeedsReboot(_settings, o);
+			_settings = o;
+			return ret ? PutSettingsDirtyBits.RebootCore : PutSettingsDirtyBits.None;
+		}
 
 		public DolphinSyncSettings GetSyncSettings() => _syncSettings.Clone();
 
@@ -28,7 +39,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			return ret ? PutSettingsDirtyBits.RebootCore : PutSettingsDirtyBits.None;
 		}
 
-		public void ApplyNativeSettings(List<string> config)
+		private void ApplyNativeSettings(List<string> config)
 		{
 			var ss = _syncSettings.Clone();
 			ss.MainSettings.EnableCustomRTC = DeterministicEmulation;
@@ -38,24 +49,53 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			ss.SYSCONFSettings.ApplyNativeSettings(config);
 		}
 
+		public class DolphinSettings
+		{
+			public bool UseCompressedStates { get; set; }
+			public bool DumpDTM { get; set; }
+
+			public DolphinSettings()
+			{
+				UseCompressedStates = true;
+				DumpDTM = false;
+			}
+
+			public DolphinSettings Clone() => MemberwiseClone() as DolphinSettings;
+
+			public static bool NeedsReboot(DolphinSettings x, DolphinSettings y)
+			{
+				return x.DumpDTM != y.DumpDTM;
+			}
+		}
+
 		public class DolphinSyncSettings
 		{
+			public bool ApplyPerGameSettings { get; set; }
 			public DolphinMainSettings MainSettings { get; set; }
 			public DolphinWiiPadSettings WiiPadSettings { get; set; }
 			public DolphinGFXSettings GFXSettings { get; set; }
 			public DolphinSYSCONFSettings SYSCONFSettings { get; set; }
-			public bool ApplyPerGameSettings { get; set; }
 
 			public DolphinSyncSettings()
 			{
+				ApplyPerGameSettings = true;
 				MainSettings = new();
 				WiiPadSettings = new();
 				GFXSettings = new();
 				SYSCONFSettings = new();
-				ApplyPerGameSettings = true;
 			}
 
-			public DolphinSyncSettings Clone() => MemberwiseClone() as DolphinSyncSettings;
+			public DolphinSyncSettings Clone()
+			{
+				return new DolphinSyncSettings
+				{
+					ApplyPerGameSettings = ApplyPerGameSettings,
+					MainSettings = MainSettings.Clone(),
+					WiiPadSettings = WiiPadSettings.Clone(),
+					GFXSettings = GFXSettings.Clone(),
+					SYSCONFSettings = SYSCONFSettings.Clone(),
+				};
+			}
 
 			public static bool NeedsReboot(DolphinSyncSettings x, DolphinSyncSettings y)
 			{
@@ -182,6 +222,8 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			{
 				SettingsUtil.SetDefaultValues(this);
 			}
+
+			public DolphinMainSettings Clone() => MemberwiseClone() as DolphinMainSettings;
 
 			[DisplayName("Skip IPL")]
 			[Description("")]
@@ -543,7 +585,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 				//OGL = 0,
 				// can't use OGL here
 				[Display(Name = "D3D")]
-				D3D11 = 1,
+				D3D = 1,
 				[Display(Name = "D3D12")]
 				D3D12 = 2,
 				[Display(Name = "Vulkan")]
@@ -561,7 +603,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			[DisplayName("GFX Backend")]
 			[Description("")]
 			[Category("Core")]
-			[DefaultValue(GFXBackends.D3D11)]
+			[DefaultValue(GFXBackends.D3D)]
 			[TypeConverter(typeof(DescribableEnumConverter))]
 			[Browsable(true)]
 			public GFXBackends GFXBackend
@@ -569,7 +611,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 				get => _gfxBackend;
 				set
 				{
-					if (OSTailoredCode.IsUnixHost && value is GFXBackends.D3D11 or GFXBackends.D3D12)
+					if (OSTailoredCode.IsUnixHost && value is GFXBackends.D3D or GFXBackends.D3D12)
 					{
 						_gfxBackend = GFXBackends.Vulkan;
 					}
@@ -728,6 +770,8 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 				SettingsUtil.SetDefaultValues(this);
 			}
 
+			public DolphinWiiPadSettings Clone() => MemberwiseClone() as DolphinWiiPadSettings;
+
 			public enum WiimoteExtensions
 			{
 				None = 0,
@@ -828,6 +872,8 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			{
 				SettingsUtil.SetDefaultValues(this);
 			}
+
+			public DolphinGFXSettings Clone() => MemberwiseClone() as DolphinGFXSettings;
 
 			[DisplayName("VSync")]
 			[Description("")]
@@ -1070,6 +1116,8 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			{
 				SettingsUtil.SetDefaultValues(this);
 			}
+
+			public DolphinSYSCONFSettings Clone() => MemberwiseClone() as DolphinSYSCONFSettings;
 
 			[DisplayName("Sreensaver")]
 			[Description("")]

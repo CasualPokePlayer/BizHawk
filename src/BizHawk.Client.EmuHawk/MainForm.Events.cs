@@ -1754,7 +1754,7 @@ namespace BizHawk.Client.EmuHawk
 		{
 			if (Emulator is Dolphin dolphin)
 			{
-				using var form = new DolphinConfig(this, dolphin.GetSyncSettings());
+				using var form = new DolphinConfig(this, dolphin.GetSettings(), dolphin.GetSyncSettings());
 				if (form.ShowDialog().IsOk())
 				{
 					AddOnScreenMessage("Settings saved");

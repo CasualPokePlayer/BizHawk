@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
+using System.Text;
 using System.Threading;
 
 using BizHawk.BizInvoke;
@@ -45,14 +47,28 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			_hostRunning = false;
 		}
 
+		private static string GetGameId(string path)
+		{
+			using var reader = new StreamReader(path, Encoding.UTF8);
+			var ret = new char[6];
+			reader.Read(ret, 0, 6);
+			return new string(ret);
+		}
+
 		[CoreConstructor(VSystemID.Raw.GC)]
 		[CoreConstructor(VSystemID.Raw.Wii)]
-		public Dolphin(CoreLoadParameters<object, DolphinSyncSettings> lp)
+		public Dolphin(CoreLoadParameters<DolphinSettings, DolphinSyncSettings> lp)
 		{
 			_serviceProvider = new(this);
+			_settings = lp.Settings ?? new();
 			_syncSettings = lp.SyncSettings ?? new();
 			SystemId = lp.Game.System;
 			IsWii = SystemId == VSystemID.Raw.Wii;
+			_isDumpingDtm = !IsWii && _settings.DumpDTM && lp.DeterministicEmulationRequested;
+			if (_isDumpingDtm)
+			{
+				InitDtmDump(lp.Game.Name, GetGameId(lp.Discs[0].DiscPath));
+			}
 
 			if (Directory.Exists("Dolphin"))
 			{
@@ -208,6 +224,149 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 		private DolphinWiiPadSettings.WiimoteExtensions ExtensionConfigCallback(int n)
 		{
 			return Wiimotes[n].Extension;
+		}
+
+		private bool _isDumpingDtm;
+
+		private BinaryWriter _dtm;
+
+		private void InitDtmDump(string gameName, string gameID)
+		{
+			_inputCount = 0;
+
+			if (!Directory.Exists("DolphinDTMs"))
+			{
+				Directory.CreateDirectory("DolphinDTMs");
+			}
+
+			_dtm = new(new FileStream($"DolphinDTMs/{gameName}_{DateTime.Now.Ticks}.dtm", FileMode.CreateNew, FileAccess.Write));
+			_dtm.Seek(0, SeekOrigin.Begin);
+
+			// https://tasvideos.org/EmulatorResources/DTM
+			_dtm.Write(Encoding.UTF8.GetBytes("DTM\u001a")); // signature
+			_dtm.Write(Encoding.UTF8.GetBytes(gameID)); // game id
+			_dtm.Write(IsWii); // wii (always false for now)
+			var controllers = 0;
+			controllers |= _syncSettings.MainSettings.SIDevice0 != DolphinMainSettings.SIDevices.None ? (1 << 0) : 0;
+			controllers |= _syncSettings.MainSettings.SIDevice1 != DolphinMainSettings.SIDevices.None ? (1 << 1) : 0;
+			controllers |= _syncSettings.MainSettings.SIDevice2 != DolphinMainSettings.SIDevices.None ? (1 << 2) : 0;
+			controllers |= _syncSettings.MainSettings.SIDevice3 != DolphinMainSettings.SIDevices.None ? (1 << 3) : 0;
+			if (IsWii) // should this be always rather?
+			{
+				controllers |= _syncSettings.WiiPadSettings.Wiimote1 ? (1 << 4) : 0;
+				controllers |= _syncSettings.WiiPadSettings.Wiimote2 ? (1 << 5) : 0;
+				controllers |= _syncSettings.WiiPadSettings.Wiimote3 ? (1 << 6) : 0;
+				controllers |= _syncSettings.WiiPadSettings.Wiimote4 ? (1 << 7) : 0;
+			}
+			_dtm.Write((byte)controllers); // controllers
+			_dtm.Write(false); // not going to be supporting starting from savestate
+			_dtm.Write(0L); // NOTE: vi count, set at end
+			_dtm.Write(0L); // NOTE: input count, set at end
+			_dtm.Write(0L); // NOTE: lag count, set at end
+			_dtm.Write(new byte[8]); // reserved
+			_dtm.Write(0); // NOTE: re-record count... don't have access to that, so user can set it manually if they want
+			_dtm.Write(Encoding.UTF8.GetBytes("BizHawk")); // author name...
+			_dtm.Write(new byte[32 - 7]); // 0 pad author name
+			var videoBackend = Enum.GetName(typeof(DolphinMainSettings.GFXBackends), _syncSettings.MainSettings.GFXBackend);
+			_dtm.Write(Encoding.UTF8.GetBytes(videoBackend)); // video backend name...
+			_dtm.Write(new byte[16 - videoBackend.Length]); // 0 pad video backend name
+			_dtm.Write(new byte[16]); // audio emulator, not actually implemented in upstream
+			_dtm.Write(new byte[16]); // md5 of iso... probably don't want to implement this yet
+			// dolphin only supports UNIX timestamps with 4 bytes of width, although the movie header has it with 8 bytes...
+			_dtm.Write((long)(uint)(_syncSettings.MainSettings.CustomRTCValue - new DateTime(1970, 1, 1, 0, 0, 0)).TotalSeconds);
+			_dtm.Write(true); // yes, these are valid sync settings
+			// well, maybe, game specific settings aren't set here
+			// if these are problematic, they are probably easy enough to set manually
+			_dtm.Write(true); // skip idle (legacy setting)
+			_dtm.Write(false); // dual core (always false)
+			_dtm.Write(_syncSettings.SYSCONFSettings.PGS); // progressive scan
+			_dtm.Write(_syncSettings.MainSettings.DSPHLE); // DSP HLE
+			_dtm.Write(false); // fast disc speed (always false)
+			_dtm.Write((byte)_syncSettings.MainSettings.CPUCore); // cpu core
+			_dtm.Write(_syncSettings.GFXSettings.EFBAccessEnable); // efb access enable
+			_dtm.Write(true); // efb copy enable (legacy setting)
+			_dtm.Write(_syncSettings.GFXSettings.EFBToTextureEnable); // skip efb copy to ram
+			_dtm.Write(false); // efb copy cache enable (legacy setting)
+			_dtm.Write(_syncSettings.GFXSettings.EFBEmulateFormatChanges); // efb emulate format changes
+			_dtm.Write(_syncSettings.GFXSettings.ImmediateXFBEnable); // immediate xfb enable
+			_dtm.Write(_syncSettings.GFXSettings.XFBToTextureEnable); // skip xfb copy to ram
+			var memcards = 0;
+			memcards |= _syncSettings.MainSettings.SlotA == DolphinMainSettings.EXIDeviceType.MemoryCardFolder ? (1 << 0) : 0;
+			memcards |= _syncSettings.MainSettings.SlotB == DolphinMainSettings.EXIDeviceType.MemoryCardFolder ? (1 << 1) : 0;
+			_dtm.Write((byte)memcards); // memcards
+			_dtm.Write(true); // not supporting starting from SRAM
+			_dtm.Write((byte)0); // bongos (not supported)
+			_dtm.Write(true); // sync GPU (this is more useless, since it only matters in dual core)
+			_dtm.Write(false); // netplay (wtf?)
+			_dtm.Write(_syncSettings.SYSCONFSettings.E60); // pal60
+			_dtm.Write(IsWii ? (byte)_syncSettings.SYSCONFSettings.LNG : (byte)_syncSettings.MainSettings.SelectedLanguage); // language
+			_dtm.Write(new byte[1]); // reserved
+			_dtm.Write(_syncSettings.MainSettings.JITFollowBranch); // jit follow branch
+			_dtm.Write(true); // use FMA (probably a safe bet this is enabled, it rolled out around 2012-2013, disable manually if needed)
+			_dtm.Write((byte)0); // gba controllers (not even built in so...)
+			_dtm.Write(new byte[7]); // reserved
+			_dtm.Write(new byte[40]); // name of second iso for double disc game... not sure how to support this yet
+			_dtm.Write(new byte[20]
+			{
+				0x7B, 0x8E, 0x6C, 0x5B, 0x36, 0x43, 0xBB, 0x3E, 0xC0, 0x9D, 0xE3, 0xBE, 0x55, 0x98, 0xD5, 0xE3, 0x5C, 0xAA, 0x39, 0x86,
+			}); // hash of revision this fork is based on
+			_dtm.Write(0); // dsp pirom hash... not actually hooked up atm
+			_dtm.Write(0); // dsp coef hash... not actually hooked up atm
+			_dtm.Write(0L); // NOTE: tick count, set at end
+			_dtm.Write(new byte[11]); // reserved
+			Debug.Assert(_dtm.BaseStream.Position == 256);
+		}
+
+		private void EndDtmDump()
+		{
+			// finish header
+			_dtm.Seek(0x0D, SeekOrigin.Begin);
+			_dtm.Write((long)Frame);
+			_dtm.Write(_inputCount);
+			_dtm.Write((long)LagCount);
+			_dtm.Seek(0xED, SeekOrigin.Begin);
+			_dtm.Write(_core.Dolphin_GetTicks());
+
+			// cleanup
+			_dtm.Flush();
+			_dtm.Close();
+			_dtm.Dispose();
+			_dtm = null;
+			_isDumpingDtm = false;
+		}
+
+		private long _inputCount;
+
+		private unsafe void DumpGCPadToDtm(LibDolphin.GCPadStatus* p)
+		{
+			byte buttons = 0;
+			buttons |= (byte)(((p->Buttons & LibDolphin.PadButtons.Start) != 0) ? (1 << 0) : 0);
+			buttons |= (byte)(((p->Buttons & LibDolphin.PadButtons.A) != 0) ? (1 << 1) : 0);
+			buttons |= (byte)(((p->Buttons & LibDolphin.PadButtons.B) != 0) ? (1 << 2) : 0);
+			buttons |= (byte)(((p->Buttons & LibDolphin.PadButtons.X) != 0) ? (1 << 3) : 0);
+			buttons |= (byte)(((p->Buttons & LibDolphin.PadButtons.Y) != 0) ? (1 << 4) : 0);
+			buttons |= (byte)(((p->Buttons & LibDolphin.PadButtons.Z) != 0) ? (1 << 5) : 0);
+			buttons |= (byte)(((p->Buttons & LibDolphin.PadButtons.Up) != 0) ? (1 << 6) : 0);
+			buttons |= (byte)(((p->Buttons & LibDolphin.PadButtons.Down) != 0) ? (1 << 7) : 0);
+			_dtm.Write(buttons);
+
+			buttons = 0;
+			buttons |= (byte)(((p->Buttons & LibDolphin.PadButtons.Left) != 0) ? (1 << 0) : 0);
+			buttons |= (byte)(((p->Buttons & LibDolphin.PadButtons.Right) != 0) ? (1 << 1) : 0);
+			buttons |= (byte)(((p->Buttons & LibDolphin.PadButtons.L) != 0) ? (1 << 2) : 0);
+			buttons |= (byte)(((p->Buttons & LibDolphin.PadButtons.R) != 0) ? (1 << 3) : 0);
+			buttons |= false ? (1 << 4) : 0; // change disc (not supported)
+			buttons |= false ? (1 << 5) : 0; // reset (not supported)
+			buttons |= (byte)(p->IsConnected ? (1 << 6) : 0); // is connected (this is always true)
+			buttons |= true ? (1 << 7) : 0; // use origin (this is always true)
+			_dtm.Write(buttons);
+
+			_dtm.Write(p->TriggerLeft);
+			_dtm.Write(p->TriggerRight);
+			_dtm.Write(p->StickX);
+			_dtm.Write(p->StickY);
+			_dtm.Write(p->SubstickX);
+			_dtm.Write(p->SubstickY);
 		}
 	}
 }

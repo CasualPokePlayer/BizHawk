@@ -50,12 +50,29 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 		{
 			if (_hostRunning)
 			{
+				if (_isDumpingDtm)
+				{
+					EndDtmDump();
+				}
+
 				_core.Dolphin_Shutdown();
 				while (_hostRunning)
 				{
 					Thread.Sleep(1);
 				}
 				_hostThread = null;
+			}
+			else
+			{
+				if (_isDumpingDtm)
+				{
+					// uh oh
+					_dtm?.Flush();
+					_dtm?.Close();
+					_dtm?.Dispose();
+					_isDumpingDtm = false;
+					_dtm = null;
+				}
 			}
 		}
 	}

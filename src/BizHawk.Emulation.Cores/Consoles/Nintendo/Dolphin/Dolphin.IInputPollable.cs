@@ -23,6 +23,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			var n = controllerID + 1;
 
 			p->Buttons = 0;
+			p->Buttons |= (LibDolphin.PadButtons)0x0080; // PAD_USE_ORIGIN
 			if (_controller.IsPressed($"P{n} Left"))
 				p->Buttons |= LibDolphin.PadButtons.Left;
 			if (_controller.IsPressed($"P{n} Right"))
@@ -83,6 +84,11 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			p->AnalogB = (byte)(((p->Buttons & LibDolphin.PadButtons.B) != 0) ? 0xFF : 0);
 
 			p->IsConnected = true;
+
+			if (_isDumpingDtm)
+			{
+				DumpGCPadToDtm(p);
+			}
 		}
 
 		private readonly LibDolphin.WiiPadCallback _wiipadcb;
@@ -222,6 +228,10 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 				{
 					IsLagFrame = false;
 					InputCallbacks.Call();
+					if (_isDumpingDtm)
+					{
+						// todo...
+					}
 					break;
 				}
 			}
