@@ -20,12 +20,8 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 
 		static Dolphin()
 		{
-			if (OSTailoredCode.IsUnixHost)
-			{
-				throw new NotImplementedException();
-			}
-
-			var resolver = new DynamicLibraryImportResolver("dolphin-emu-nogui.dll", hasLimitedLifetime: false);
+			var resolver = new DynamicLibraryImportResolver(
+				OSTailoredCode.IsUnixHost ? "libdolphin-emu-nogui.so" : "dolphin-emu-nogui.dll", hasLimitedLifetime: false);
 			_core = BizInvoker.GetInvoker<LibDolphin>(resolver, CallingConventionAdapters.Native);
 		}
 
@@ -37,7 +33,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			List<string> args = new(new[]
 			{
 				"BizHawk",
-				"--user=Dolphin",
+				"--user=DolphinUserFolder",
 				$"--exec={gamePath}",
 				"--platform=headless",
 			});
@@ -70,11 +66,11 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 				InitDtmDump(lp.Game.Name, GetGameId(lp.Discs[0].DiscPath));
 			}
 
-			if (Directory.Exists("Dolphin"))
+			if (Directory.Exists("DolphinUserFolder"))
 			{
-				Directory.Delete("Dolphin", true);
+				Directory.Delete("DolphinUserFolder", true);
 			}
-			Directory.CreateDirectory("Dolphin");
+			Directory.CreateDirectory("DolphinUserFolder");
 			if (_syncSettings.ApplyPerGameSettings)
 			{
 				using var gameSettings = new ZipArchive(new MemoryStream(Util.DecompressGzipFile(new MemoryStream(Resources.DOLPHINGAMESETTINGS.Value))), ZipArchiveMode.Read, false);
@@ -308,8 +304,8 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			_dtm.Write(new byte[40]); // name of second iso for double disc game... not sure how to support this yet
 			_dtm.Write(new byte[20]
 			{
-				0x7B, 0x8E, 0x6C, 0x5B, 0x36, 0x43, 0xBB, 0x3E, 0xC0, 0x9D, 0xE3, 0xBE, 0x55, 0x98, 0xD5, 0xE3, 0x5C, 0xAA, 0x39, 0x86,
-			}); // hash of revision this fork is based on
+				0xC4, 0x14, 0x67, 0xA8, 0xEB, 0x07, 0x60, 0x45, 0xE2, 0xA1, 0x4C, 0x7C, 0x0A, 0x15, 0xD5, 0x0F, 0x74, 0xD2, 0x6E, 0xC2,
+			}); // hash of revision this fork is based on (5.0-16426)
 			_dtm.Write(0); // dsp pirom hash... not actually hooked up atm
 			_dtm.Write(0); // dsp coef hash... not actually hooked up atm
 			_dtm.Write(0L); // NOTE: tick count, set at end
