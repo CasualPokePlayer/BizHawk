@@ -296,7 +296,6 @@ namespace BizHawk.Client.EmuHawk
 			this.amstradCPCCoreEmulationSettingsToolStripMenuItem = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
 			this.AmstradCPCAudioSettingsToolStripMenuItem = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
 			this.AmstradCPCNonSyncSettingsToolStripMenuItem = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
-			this.AmstradCPCPokeMemoryToolStripMenuItem = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
 			this.AmstradCPCMediaToolStripMenuItem = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
 			this.AmstradCPCTapesSubMenu = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
 			this.cpct1ToolStripMenuItem = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
@@ -1321,7 +1320,7 @@ namespace BizHawk.Client.EmuHawk
 			// 
 			// CoresSubMenu
 			// 
-			this.CoresSubMenu.Text = "Cores";
+			this.CoresSubMenu.Text = "Preferred Cores";
 			// 
 			// SaveConfigMenuItem
 			// 
@@ -1898,7 +1897,6 @@ namespace BizHawk.Client.EmuHawk
 			this.amstradCPCCoreEmulationSettingsToolStripMenuItem,
 			this.AmstradCPCAudioSettingsToolStripMenuItem,
 			this.AmstradCPCNonSyncSettingsToolStripMenuItem,
-			this.AmstradCPCPokeMemoryToolStripMenuItem,
 			this.AmstradCPCMediaToolStripMenuItem});
 			this.amstradCPCToolStripMenuItem.Text = "Amstrad CPC";
 			// 
@@ -1916,11 +1914,6 @@ namespace BizHawk.Client.EmuHawk
 			// 
 			this.AmstradCPCNonSyncSettingsToolStripMenuItem.Text = "Non-Sync Settings";
 			this.AmstradCPCNonSyncSettingsToolStripMenuItem.Click += new System.EventHandler(this.AmstradCpcNonSyncSettingsMenuItem_Click);
-			// 
-			// AmstradCPCPokeMemoryToolStripMenuItem
-			// 
-			this.AmstradCPCPokeMemoryToolStripMenuItem.Text = "POKE Memory";
-			this.AmstradCPCPokeMemoryToolStripMenuItem.Click += new System.EventHandler(this.AmstradCpcPokeMemoryMenuItem_Click);
 			// 
 			// AmstradCPCMediaToolStripMenuItem
 			// 
@@ -2770,7 +2763,6 @@ namespace BizHawk.Client.EmuHawk
 		private BizHawk.WinForms.Controls.ToolStripMenuItemEx amstradCPCToolStripMenuItem;
 		private BizHawk.WinForms.Controls.ToolStripMenuItemEx amstradCPCCoreEmulationSettingsToolStripMenuItem;
 		private BizHawk.WinForms.Controls.ToolStripMenuItemEx AmstradCPCAudioSettingsToolStripMenuItem;
-		private BizHawk.WinForms.Controls.ToolStripMenuItemEx AmstradCPCPokeMemoryToolStripMenuItem;
 		private BizHawk.WinForms.Controls.ToolStripMenuItemEx AmstradCPCMediaToolStripMenuItem;
 		private BizHawk.WinForms.Controls.ToolStripMenuItemEx AmstradCPCTapesSubMenu;
 		private BizHawk.WinForms.Controls.ToolStripMenuItemEx cpct1ToolStripMenuItem;

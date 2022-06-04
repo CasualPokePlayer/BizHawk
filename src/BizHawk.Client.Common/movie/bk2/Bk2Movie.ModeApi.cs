@@ -1,10 +1,23 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 
 namespace BizHawk.Client.Common
 {
 	public partial class Bk2Movie
 	{
-		public MovieMode Mode { get; protected set; } = MovieMode.Inactive;
+		private MovieMode _mode = MovieMode.Inactive;
+
+		public MovieMode Mode
+		{
+			get => _mode;
+			protected set
+			{
+				OnModeChange?.Invoke(_mode, value);
+				_mode = value;
+			}
+		}
+
+		public event Action<MovieMode, MovieMode> OnModeChange;
 
 		public virtual void StartNewRecording()
 		{

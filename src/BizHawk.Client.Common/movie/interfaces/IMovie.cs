@@ -37,6 +37,12 @@ namespace BizHawk.Client.Common
 		/// </summary>
 		MovieMode Mode { get; }
 
+		/// <summary>
+		/// Should be called whenever movie mode changes
+		/// passes old and new movie modes
+		/// </summary>
+		event Action<MovieMode, MovieMode> OnModeChange;
+
 		bool IsCountingRerecords { get; set; }
 
 		bool Changes { get; }
@@ -266,7 +272,6 @@ namespace BizHawk.Client.Common
 		/// but no further frames have been emulated.
 		/// </summary>
 		public static bool IsAtEnd(this IMovie movie) => movie != null && movie.Emulator?.Frame == movie.InputLogLength;
-
 
 		/// <summary>
 		/// If the given movie contains a savestate it will be loaded if

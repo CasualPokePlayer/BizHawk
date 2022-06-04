@@ -74,7 +74,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			if (_syncSettings.ApplyPerGameSettings)
 			{
 				using var gameSettings = new ZipArchive(new MemoryStream(Util.DecompressGzipFile(new MemoryStream(Resources.DOLPHINGAMESETTINGS.Value))), ZipArchiveMode.Read, false);
-				gameSettings.ExtractToDirectory("Dolphin");
+				gameSettings.ExtractToDirectory("DolphinUserFolder");
 			}
 
 			DeterministicEmulation = lp.DeterministicEmulationRequested || _syncSettings.MainSettings.EnableCustomRTC;
@@ -354,7 +354,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			buttons |= false ? (1 << 4) : 0; // change disc (not supported)
 			buttons |= false ? (1 << 5) : 0; // reset (not supported)
 			buttons |= (byte)(p->IsConnected ? (1 << 6) : 0); // is connected (this is always true)
-			buttons |= true ? (1 << 7) : 0; // use origin (this is always true)
+			buttons |= false ? (1 << 7) : 0; // PAD_GET_ORIGIN (this is always false due to how the code works)
 			_dtm.Write(buttons);
 
 			_dtm.Write(p->TriggerLeft);
@@ -363,6 +363,8 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			_dtm.Write(p->StickY);
 			_dtm.Write(p->SubstickX);
 			_dtm.Write(p->SubstickY);
+
+			_inputCount++;
 		}
 	}
 }

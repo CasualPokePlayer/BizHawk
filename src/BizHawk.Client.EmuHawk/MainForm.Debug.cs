@@ -152,7 +152,7 @@ namespace BizHawk.Client.EmuHawk
 					var ss = ((N64) Emulator!).GetSyncSettings();
 					var glidenSS = ss.GLideN64Plugin;
 					foreach (var pi in props) pi.SetValue(obj: glidenSS, value: RandomElem(propDict[pi], rng));
-					((MainForm) MainForm).PutCoreSyncSettings(ss);
+					((MainForm) MainForm).GetSettingsAdapterForLoadedCore<N64>().PutCoreSyncSettings(ss);
 				}
 				SzButtonEx btnLightFuzz = new() { Size = new(200, 23), Text = "--> randomise some props" };
 				btnLightFuzz.Click += (_, _) => Fuzz(limit: true);

@@ -42,55 +42,101 @@ using BizHawk.Client.EmuHawk.ToolExtensions;
 using BizHawk.Client.EmuHawk.CoreExtensions;
 using BizHawk.Client.EmuHawk.CustomControls;
 using BizHawk.Common.CollectionExtensions;
+using BizHawk.WinForms.Controls;
 
 namespace BizHawk.Client.EmuHawk
 {
-	public partial class MainForm : FormBase, IDialogParent, IMainFormForApi, IMainFormForConfig, IMainFormForTools
+	public partial class MainForm : FormBase, IDialogParent, IMainFormForApi, IMainFormForTools
 	{
 		private void MainForm_Load(object sender, EventArgs e)
 		{
 			SetWindowText();
 
-			foreach (var (appliesTo, coreNames) in Config.CorePickerUIData)
+			foreach (var (groupLabel, appliesTo, coreNames) in Config.CorePickerUIData.Select(static tuple => (GroupLabel: tuple.AppliesTo[0], tuple.AppliesTo, tuple.CoreNames))
+				.OrderBy(static tuple => tuple.GroupLabel))
 			{
-				var groupLabel = appliesTo[0];
 				var submenu = new ToolStripMenuItem { Text = groupLabel };
 				void ClickHandler(object clickSender, EventArgs clickArgs)
 				{
 					var coreName = ((ToolStripMenuItem) clickSender).Text;
-					foreach (var system in appliesTo) Config.PreferredCores[system] = coreName;
-					if (appliesTo.Contains(Emulator.SystemId)) FlagNeedsReboot(); //TODO don't alert if the loaded core was the one selected
+					foreach (var system in appliesTo)
+					{
+						if (Emulator.SystemId == system && Emulator.Attributes().CoreName != coreName) FlagNeedsReboot();
+						Config.PreferredCores[system] = coreName;
+					}
 				}
 				submenu.DropDownItems.AddRange(coreNames.Select(coreName => {
 					var entry = new ToolStripMenuItem { Text = coreName };
 					entry.Click += ClickHandler;
 					return (ToolStripItem) entry;
 				}).ToArray());
-				submenu.DropDownOpened += (openedSender, openedArgs) =>
+				submenu.DropDownOpened += (openedSender, _) =>
 				{
 					Config.PreferredCores.TryGetValue(groupLabel, out var preferred);
 					foreach (ToolStripMenuItem entry in ((ToolStripMenuItem) openedSender).DropDownItems) entry.Checked = entry.Text == preferred;
 				};
 				CoresSubMenu.DropDownItems.Add(submenu);
 			}
-
+			CoresSubMenu.DropDownItems.Add(new ToolStripSeparator { AutoSize = true });
 			var GBInSGBMenuItem = new ToolStripMenuItem { Text = "GB in SGB" };
-			GBInSGBMenuItem.Click += (clickSender, clickArgs) =>
+			GBInSGBMenuItem.Click += (_, _) =>
 			{
 				Config.GbAsSgb ^= true;
-				if (!Emulator.IsNull()) FlagNeedsReboot(); //TODO only alert if a GB or SGB core is loaded
+				if (Emulator.SystemId is VSystemID.Raw.GB or VSystemID.Raw.GBC or VSystemID.Raw.SGB) FlagNeedsReboot();
 			};
-			var N64VideoPluginSettingsMenuItem = new ToolStripMenuItem { Image = Properties.Resources.Monitor, Text = "N64 Video Plugin Settings..." };
-			N64VideoPluginSettingsMenuItem.Click += N64PluginSettingsMenuItem_Click;
+			CoresSubMenu.DropDownItems.Add(GBInSGBMenuItem);
 			var setLibretroCoreToolStripMenuItem = new ToolStripMenuItem { Text = "Set Libretro Core..." };
-			setLibretroCoreToolStripMenuItem.Click += (clickSender, clickArgs) => RunLibretroCoreChooser();
-			CoresSubMenu.DropDownItems.AddRange(new ToolStripItem[] {
-				GBInSGBMenuItem,
-				new ToolStripSeparator { AutoSize = true },
-				N64VideoPluginSettingsMenuItem,
-				setLibretroCoreToolStripMenuItem
-			});
-			CoresSubMenu.DropDownOpened += (openedSender, openedArgs) => GBInSGBMenuItem.Checked = Config.GbAsSgb;
+			setLibretroCoreToolStripMenuItem.Click += (_, _) => RunLibretroCoreChooser();
+			CoresSubMenu.DropDownItems.Add(setLibretroCoreToolStripMenuItem);
+			CoresSubMenu.DropDownOpened += (_, _) => GBInSGBMenuItem.Checked = Config.GbAsSgb;
+
+			ToolStripMenuItemEx recentCoreSettingsSubmenu = new() { Text = "Recent" };
+			recentCoreSettingsSubmenu.DropDownItems.AddRange(CreateCoreSettingsSubmenus().ToArray());
+			ToolStripMenuItemEx noRecentsItem = new() { Enabled = false, Text = "(N/A)" };
+			recentCoreSettingsSubmenu.DropDownItems.Add(noRecentsItem);
+			recentCoreSettingsSubmenu.DropDownOpened += (_, _) =>
+			{
+				foreach (ToolStripItem submenu in recentCoreSettingsSubmenu.DropDownItems) submenu.Visible = Config.RecentCores.Contains(submenu.Text);
+				noRecentsItem.Visible = Config.RecentCores.Count is 0;
+			};
+			ToolStripMenuItemEx consolesCoreSettingsSubmenu = new() { Text = "For Consoles" };
+			ToolStripMenuItemEx handheldsCoreSettingsSubmenu = new() { Text = "For Handhelds" };
+			ToolStripMenuItemEx pcsCoreSettingsSubmenu = new() { Text = "For PCs" };
+			ToolStripMenuItemEx otherCoreSettingsSubmenu = new() { Text = "Other" };
+			foreach (var submenu in CreateCoreSettingsSubmenus(includeDupes: true).OrderBy(submenu => submenu.Text))
+			{
+				var parentMenu = (VSystemCategory) submenu.Tag switch
+				{
+					VSystemCategory.Consoles => consolesCoreSettingsSubmenu,
+					VSystemCategory.Handhelds => handheldsCoreSettingsSubmenu,
+					VSystemCategory.PCs => pcsCoreSettingsSubmenu,
+					_ => otherCoreSettingsSubmenu
+				};
+				parentMenu.DropDownItems.Add(submenu);
+			}
+			foreach (var submenu in new[] { consolesCoreSettingsSubmenu, handheldsCoreSettingsSubmenu, pcsCoreSettingsSubmenu, otherCoreSettingsSubmenu })
+			{
+				if (submenu.DropDownItems.Count is 0)
+				{
+					submenu.DropDownItems.Add(new ToolStripMenuItemEx { Text = "(none)" });
+					submenu.Enabled = false;
+				}
+			}
+			ConfigSubMenu.DropDownItems.Insert(
+				ConfigSubMenu.DropDownItems.IndexOf(CoresSubMenu) + 1,
+				new ToolStripMenuItemEx
+				{
+					DropDownItems =
+					{
+						recentCoreSettingsSubmenu,
+						new ToolStripSeparatorEx { AutoSize = true },
+						consolesCoreSettingsSubmenu,
+						handheldsCoreSettingsSubmenu,
+						pcsCoreSettingsSubmenu,
+						otherCoreSettingsSubmenu,
+					},
+					Text = "Core Settings",
+				});
 
 			// Hide Status bar icons and general StatusBar prep
 			MainStatusBar.Padding = new Padding(MainStatusBar.Padding.Left, MainStatusBar.Padding.Top, MainStatusBar.Padding.Left, MainStatusBar.Padding.Bottom); // Workaround to remove extra padding on right
@@ -297,7 +343,10 @@ namespace BizHawk.Client.EmuHawk
 			}
 
 			//do this threaded stuff early so it has plenty of time to run in background
-			Database.InitializeDatabase(Path.Combine(PathUtils.ExeDirectoryPath, "gamedb", "gamedb.txt"), silent: true);
+			Database.InitializeDatabase(
+				bundledRoot: Path.Combine(PathUtils.ExeDirectoryPath, "gamedb"),
+				userRoot: Path.Combine(PathUtils.DataDirectoryPath, "gamedb"),
+				silent: true);
 			BootGodDb.Initialize(Path.Combine(PathUtils.ExeDirectoryPath, "gamedb"));
 
 			_argParser = cliFlags;
@@ -2414,41 +2463,42 @@ namespace BizHawk.Client.EmuHawk
 			e.Settings = Config.GetCoreSettings(e.Core, e.SettingsType);
 		}
 
-		/// <summary>
-		/// send core settings to emu, setting reboot flag if needed
-		/// </summary>
-		public void PutCoreSettings(object o)
+		private void HandlePutCoreSettings(PutSettingsDirtyBits dirty)
 		{
-			var settable = new SettingsAdapter(Emulator);
-			if (!settable.HasSettings)
-				return;
-			var dirty = settable.PutSettings(o);
-			if(dirty.HasFlag(PutSettingsDirtyBits.RebootCore))
-				FlagNeedsReboot();
-			if (dirty.HasFlag(PutSettingsDirtyBits.ScreenLayoutChanged))
-				FrameBufferResized();
+			if (dirty.HasFlag(PutSettingsDirtyBits.RebootCore)) FlagNeedsReboot();
+			if (dirty.HasFlag(PutSettingsDirtyBits.ScreenLayoutChanged)) FrameBufferResized();
 		}
 
-		// TODO: Get/Put settings/sync settings methods could become a service we instantiate and use and pass to other forms
-		/// <summary>
-		/// send core sync settings to emu, setting reboot flag if needed
-		/// </summary>
-		public void PutCoreSyncSettings(object o)
+		private bool MayPutCoreSyncSettings()
 		{
-			var settable = new SettingsAdapter(Emulator);
 			if (MovieSession.Movie.IsActive())
 			{
 				AddOnScreenMessage("Attempt to change sync-relevant settings while recording BLOCKED.");
+				return false;
 			}
-			else
-			{
-				if (!settable.HasSyncSettings)
-					return;
-				var dirty = settable.PutSyncSettings(o);
-				if(dirty.HasFlag(PutSettingsDirtyBits.RebootCore))
-					FlagNeedsReboot();
-			}
+			return true;
 		}
+
+		private void HandlePutCoreSyncSettings(PutSettingsDirtyBits dirty)
+		{
+			if (dirty.HasFlag(PutSettingsDirtyBits.RebootCore)) FlagNeedsReboot();
+		}
+
+		public ISettingsAdapter GetSettingsAdapterFor<T>()
+			where T : IEmulator
+			=> Emulator is T
+				? GetSettingsAdapterForLoadedCoreUntyped()
+				: new ConfigSettingsAdapter<T>(Config);
+
+		public ISettingsAdapter GetSettingsAdapterForLoadedCore<T>()
+			where T : IEmulator
+		{
+			if (Emulator is not T) throw new InvalidOperationException();
+			return GetSettingsAdapterForLoadedCoreUntyped();
+		}
+
+		public SettingsAdapter GetSettingsAdapterForLoadedCoreUntyped()
+			=> new(Emulator, static () => true, HandlePutCoreSettings, MayPutCoreSyncSettings, HandlePutCoreSyncSettings);
 
 		private void SaveConfig(string path = "")
 		{
@@ -3803,6 +3853,8 @@ namespace BizHawk.Client.EmuHawk
 					string openAdvancedArgs = $"*{OpenAdvancedSerializer.Serialize(ioa)}";
 					Emulator.Dispose();
 					Emulator = loader.LoadedEmulator;
+					Config.RecentCores.Enqueue(Emulator.Attributes().CoreName);
+					while (Config.RecentCores.Count > 5) Config.RecentCores.Dequeue();
 					InputManager.SyncControls(Emulator, MovieSession, Config);
 
 					if (oaOpenrom != null && Path.GetExtension(oaOpenrom.Path.Replace("|", "")).ToLowerInvariant() == ".xml" && !(Emulator is LibsnesCore))
@@ -3981,7 +4033,7 @@ namespace BizHawk.Client.EmuHawk
 		{
 			// save settings object
 			var t = Emulator.GetType();
-			var settable = new SettingsAdapter(Emulator);
+			var settable = GetSettingsAdapterForLoadedCoreUntyped();
 
 			if (settable.HasSettings)
 			{

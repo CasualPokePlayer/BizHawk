@@ -2,38 +2,33 @@
 using System.ComponentModel;
 using System.Windows.Forms;
 
+using BizHawk.Client.Common;
 using BizHawk.Emulation.Common;
 
 namespace BizHawk.Client.EmuHawk
 {
 	public partial class GenericCoreConfig : Form
 	{
-		private readonly IMainFormForConfig _mainForm;
+		private readonly ISettingsAdapter _settable;
+
 		private object _s;
 		private object _ss;
 		private bool _syncSettingsChanged;
 		private bool _settingsChanged;
 
 		private GenericCoreConfig(
-			IMainFormForConfig mainForm,
+			ISettingsAdapter settable,
 			bool isMovieActive,
 			bool ignoreSettings = false,
 			bool ignoreSyncSettings = false)
 		{
 			InitializeComponent();
-			_mainForm = mainForm;
 
-			var settable = new SettingsAdapter(_mainForm.Emulator);
+			_settable = settable;
 
-			if (settable.HasSettings && !ignoreSettings)
-			{
-				_s = settable.GetSettings();
-			}
+			if (_settable.HasSettings && !ignoreSettings) _s = _settable.GetSettings();
 
-			if (settable.HasSyncSettings && !ignoreSyncSettings)
-			{
-				_ss = settable.GetSyncSettings();
-			}
+			if (_settable.HasSyncSettings && !ignoreSyncSettings) _ss = _settable.GetSyncSettings();
 
 			if (_s != null)
 			{
@@ -65,21 +60,21 @@ namespace BizHawk.Client.EmuHawk
 		{
 			if (_s != null && _settingsChanged)
 			{
-				_mainForm.PutCoreSettings(_s);
+				_settable.PutCoreSettings(_s);
 			}
 
 			if (_ss != null && _syncSettingsChanged)
 			{
-				_mainForm.PutCoreSyncSettings(_ss);
+				_settable.PutCoreSyncSettings(_ss);
 			}
 
 			DialogResult = DialogResult.OK;
 			Close();
 		}
 
-		public static void DoDialog(IMainFormForConfig owner, string title, bool isMovieActive)
+		public static DialogResult DoDialog(IEmulator emulator, IDialogParent owner, string title, bool isMovieActive)
 		{
-			if (owner.Emulator is Emulation.Cores.Waterbox.NymaCore core)
+			if (emulator is Emulation.Cores.Waterbox.NymaCore core)
 			{
 				var desc = new Emulation.Cores.Waterbox.NymaTypeDescriptorProvider(core.SettingsInfo);
 				try
@@ -87,7 +82,7 @@ namespace BizHawk.Client.EmuHawk
 					// OH GOD THE HACKS WHY
 					TypeDescriptor.AddProvider(desc, typeof(Emulation.Cores.Waterbox.NymaCore.NymaSettings));
 					TypeDescriptor.AddProvider(desc, typeof(Emulation.Cores.Waterbox.NymaCore.NymaSyncSettings));
-					DoDialog(owner, "Nyma Core", isMovieActive, !core.SettingsInfo.HasSettings, !core.SettingsInfo.HasSyncSettings);
+					return DoDialog(owner, "Nyma Core", isMovieActive, !core.SettingsInfo.HasSettings, !core.SettingsInfo.HasSyncSettings);
 				}
 				finally
 				{
@@ -95,13 +90,13 @@ namespace BizHawk.Client.EmuHawk
 					TypeDescriptor.RemoveProvider(desc, typeof(Emulation.Cores.Waterbox.NymaCore.NymaSyncSettings));
 				}
 			}
-			else if(owner.Emulator is Emulation.Cores.Arcades.MAME.MAME mame)
+			else if (emulator is Emulation.Cores.Arcades.MAME.MAME mame)
 			{
 				var desc = new Emulation.Cores.Arcades.MAME.MAMETypeDescriptorProvider(mame.CurrentDriverSettings);
 				try
 				{
 					TypeDescriptor.AddProvider(desc, typeof(Emulation.Cores.Arcades.MAME.MAME.MAMESyncSettings));
-					DoDialog(owner, "MAME", isMovieActive, true, false);
+					return DoDialog(owner, "MAME", isMovieActive, true, false);
 				}
 				finally
 				{
@@ -110,26 +105,36 @@ namespace BizHawk.Client.EmuHawk
 			}
 			else
 			{
-				DoDialog(owner, title, isMovieActive, false, false);
+				return DoDialog(owner, title, isMovieActive, false, false);
 			}
 		}
 
-		public static void DoDialog(
-			IMainFormForConfig owner,
+		public static DialogResult DoDialog(
+			IDialogParent owner,
 			string title,
 			bool isMovieActive,
 			bool hideSettings,
 			bool hideSyncSettings)
 		{
 			using var dlg = new GenericCoreConfig(
-				owner,
+				((MainForm) owner).GetSettingsAdapterForLoadedCoreUntyped(), //HACK
 				isMovieActive: isMovieActive,
 				ignoreSettings: hideSettings,
 				ignoreSyncSettings: hideSyncSettings)
 			{
 				Text = title,
 			};
-			owner.ShowDialogAsChild(dlg);
+			return owner.ShowDialogAsChild(dlg);
+		}
+
+		public static DialogResult DoDialogFor(
+			IDialogParent owner,
+			ISettingsAdapter settable,
+			string title,
+			bool isMovieActive)
+		{
+			using GenericCoreConfig dlg = new(settable, isMovieActive) { Text = title };
+			return owner.ShowDialogAsChild(dlg);
 		}
 
 		private void PropertyGrid2_PropertyValueChanged(object s, PropertyValueChangedEventArgs e)

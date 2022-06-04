@@ -901,7 +901,6 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 				Auto,
 				AnalogWide,
 				Analog,
-				Stretch,
 			}
 
 			[DisplayName("Aspect Ratio")]

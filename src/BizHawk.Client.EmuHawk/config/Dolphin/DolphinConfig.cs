@@ -1,24 +1,22 @@
 ﻿using System;
 using System.Windows.Forms;
 
+using BizHawk.Emulation.Common;
 using BizHawk.Emulation.Cores.Nintendo.Dolphin;
 
 namespace BizHawk.Client.EmuHawk
 {
 	public partial class DolphinConfig : Form
 	{
-		private readonly IMainFormForConfig _mainForm;
+		private readonly ISettingsAdapter _settable;
 		private readonly Dolphin.DolphinSettings _s;
 		private readonly Dolphin.DolphinSyncSettings _ss;
 
-		public DolphinConfig(
-			IMainFormForConfig mainForm,
-			Dolphin.DolphinSettings s,
-			Dolphin.DolphinSyncSettings ss)
+		public DolphinConfig(ISettingsAdapter settable)
 		{
-			_mainForm = mainForm;
-			_s = s;
-			_ss = ss;
+			_settable = settable;
+			_s = _settable.GetSettings() as Dolphin.DolphinSettings;
+			_ss = _settable.GetSyncSettings() as Dolphin.DolphinSyncSettings;
 
 			InitializeComponent();
 			Icon = Properties.Resources.DolphinIcon;
@@ -35,10 +33,10 @@ namespace BizHawk.Client.EmuHawk
 		{
 			_s.UseCompressedStates = UseCompressedStatesCB.Checked;
 			_s.DumpDTM = DumpDTMCB.Checked;
-			_mainForm.PutCoreSettings(_s);
+			_settable.PutCoreSettings(_s);
 
 			_ss.ApplyPerGameSettings = ApplyPerGameSettingsCB.Checked;
-			_mainForm.PutCoreSyncSettings(_ss);
+			_settable.PutCoreSyncSettings(_ss);
 
 			DialogResult = DialogResult.OK;
 			Close();

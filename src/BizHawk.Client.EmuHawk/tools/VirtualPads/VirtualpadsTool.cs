@@ -22,6 +22,8 @@ namespace BizHawk.Client.EmuHawk
 		
 		private bool _readOnly;
 
+		private bool _modeChangeCbSet = false;
+
 		private Control _lastFocusedNUD = null;
 
 		public override bool BlocksInputWhenFocused => _lastFocusedNUD is not null;
@@ -145,6 +147,34 @@ namespace BizHawk.Client.EmuHawk
 			}
 
 			CreatePads();
+			_modeChangeCbSet = false; // movie is null at this point
+		}
+
+		private void OnMovieModeChange(MovieMode status)
+		{
+			Pads.ForEach(p => p.SetPrevious(null)); // Not the cleanest way to clear this every frame
+			Readonly = status is MovieMode.Play;
+
+			if (status is MovieMode.Play)
+			{
+				var currentInput = CurrentInput();
+				if (currentInput != null)
+				{
+					Pads.ForEach(p => p.Set(currentInput));
+				}
+			}
+			else if (status is MovieMode.Record)
+			{
+				var previousFrame = PreviousFrame();
+				Pads.ForEach(p => p.SetPrevious(previousFrame));
+			}
+
+			if (!Readonly && !StickyPads && !MouseButtons.HasFlag(MouseButtons.Left))
+			{
+				Pads.ForEach(pad => pad.Clear());
+			}
+
+			Pads.ForEach(pad => pad.UpdateValues());
 		}
 
 		protected override void UpdateAfter()
@@ -152,6 +182,12 @@ namespace BizHawk.Client.EmuHawk
 			if (!IsHandleCreated || IsDisposed)
 			{
 				return;
+			}
+
+			if (!_modeChangeCbSet && MovieSession.Movie != null)
+			{
+				MovieSession.Movie.OnModeChange += (_, status) => OnMovieModeChange(status);
+				_modeChangeCbSet = true;
 			}
 
 			Pads.ForEach(p => p.SetPrevious(null)); // Not the cleanest way to clear this every frame
