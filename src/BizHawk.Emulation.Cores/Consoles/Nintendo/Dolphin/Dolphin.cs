@@ -70,11 +70,18 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			{
 				Directory.Delete("DolphinUserFolder", true);
 			}
+
 			Directory.CreateDirectory("DolphinUserFolder");
+
 			if (_syncSettings.ApplyPerGameSettings)
 			{
 				using var gameSettings = new ZipArchive(new MemoryStream(Util.DecompressGzipFile(new MemoryStream(Resources.DOLPHINGAMESETTINGS.Value))), ZipArchiveMode.Read, false);
 				gameSettings.ExtractToDirectory("DolphinUserFolder");
+			}
+
+			{
+				using var gcFolder = new ZipArchive(new MemoryStream(Util.DecompressGzipFile(new MemoryStream(Resources.DOLPHINGCFOLDER.Value))), ZipArchiveMode.Read, false);
+				gcFolder.ExtractToDirectory("DolphinUserFolder");
 			}
 
 			DeterministicEmulation = lp.DeterministicEmulationRequested || _syncSettings.MainSettings.EnableCustomRTC;
@@ -96,6 +103,18 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 				}
 
 				Thread.Sleep(1);
+			}
+
+			if (IsWii)
+			{
+				const string msgcfgpath = "DolphinUserFolder/WiiSession/shared2/wc24/nwc24msg.cfg";
+				if (File.Exists(msgcfgpath)) // is this always true?
+				{
+					File.Delete(msgcfgpath);
+				}
+
+				using var wiiFolder = new ZipArchive(new MemoryStream(Util.DecompressGzipFile(new MemoryStream(Resources.DOLPHINWIIFOLDER.Value))), ZipArchiveMode.Read, false);
+				wiiFolder.ExtractToDirectory("DolphinUserFolder");
 			}
 
 			_framecb = FrameCallback;
