@@ -301,7 +301,7 @@ namespace BizHawk.Client.Common
 		private bool LoadDisc(string path, CoreComm nextComm, HawkFile file, string ext, string forcedCoreName, out IEmulator nextEmulator, out GameInfo game)
 		{
 			var disc = DiscExtensions.CreateAnyType(path, str => DoLoadErrorCallback(str, "???", LoadErrorType.DiscError));
-			if (disc == null && ext != ".wbfs")
+			if (disc == null && ext is not ".wbfs")
 			{
 				game = null;
 				nextEmulator = null;

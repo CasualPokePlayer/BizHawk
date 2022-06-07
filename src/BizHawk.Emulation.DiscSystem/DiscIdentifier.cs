@@ -174,10 +174,16 @@ namespace BizHawk.Emulation.DiscSystem
 				return DiscType.CDi;
 
 			if (DetectGameCube())
+			{
+				ThrowIfNkit();
 				return DiscType.GameCube;
+			}
 
 			if (DetectWii())
+			{
+				ThrowIfNkit();
 				return DiscType.Wii;
+			}
 
 			var discView = EDiscStreamView.DiscStreamView_Mode1_2048;
 			if (_disc.TOC.Session1Format == SessionFormat.Type20_CDXA)
@@ -364,6 +370,14 @@ namespace BizHawk.Emulation.DiscSystem
 		private bool DetectCDi()
 		{
 			return StringAt("CD-RTOS", 8, 16);
+		}
+
+		private void ThrowIfNkit()
+		{
+			if (StringAt("NKIT", 512, 0))
+			{
+				throw new NotSupportedException("NKit ISOs are not supported!");
+			}
 		}
 
 		private bool DetectGameCube()
