@@ -1752,6 +1752,7 @@ namespace BizHawk.Client.EmuHawk
 			// 
 			this.DolphinSubMenu.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
 			this.DolphinSettingsToolStripMenuItem});
+			this.DolphinSubMenu.Text = "&GC";
 			// 
 			// DolphinSettingsToolStripMenuItem
 			// 

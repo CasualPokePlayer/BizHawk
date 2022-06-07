@@ -2060,8 +2060,11 @@ namespace BizHawk.Client.EmuHawk
 					SNESSubMenu.Visible = true;
 					break;
 				case VSystemID.Raw.GC:
+					DolphinSubMenu.Text = "&GC";
+					DolphinSubMenu.Visible = true;
+					break;
 				case VSystemID.Raw.Wii:
-					DolphinSubMenu.Text = $"&{Emulator.SystemId}";
+					DolphinSubMenu.Text = "&Wii";
 					DolphinSubMenu.Visible = true;
 					break;
 				default:
