@@ -14,11 +14,14 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 		{
 			int sz = 0;
 			IntPtr data = _core.Dolphin_GetAudio(ref sz);
-			if (sz > _sampleBuf.Length)
+			if (sz > 0)
 			{
-				_sampleBuf = new short[sz];
+				if (sz > _sampleBuf.Length)
+				{
+					_sampleBuf = new short[sz];
+				}
+				Marshal.Copy(data, _sampleBuf, 0, sz);
 			}
-			Marshal.Copy(data, _sampleBuf, 0, sz);
 			_nsamps = sz / 2;
 		}
 

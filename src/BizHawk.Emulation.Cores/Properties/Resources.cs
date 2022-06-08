@@ -27,7 +27,6 @@ namespace BizHawk.Emulation.Cores.Properties {
 		internal static readonly Lazy<byte[]> PIF_PAL_ROM = new Lazy<byte[]>(() => ReadEmbeddedByteArray("pif.pal.rom.gz"));
 		internal static readonly Lazy<byte[]> PIF_NTSC_ROM = new Lazy<byte[]>(() => ReadEmbeddedByteArray("pif.ntsc.rom.gz"));
 		internal static readonly Lazy<byte[]> DOLPHINGAMESETTINGS = new Lazy<byte[]>(() => ReadEmbeddedByteArray("GameSettings.zip.gz"));
-		internal static readonly Lazy<byte[]> DOLPHINGCFOLDER = new Lazy<byte[]>(() => ReadEmbeddedByteArray("GC.zip.gz"));
-		internal static readonly Lazy<byte[]> DOLPHINWIIFOLDER = new Lazy<byte[]>(() => ReadEmbeddedByteArray("WiiSession.zip.gz"));
+		internal static readonly Lazy<byte[]> DOLPHINSYSFOLDER = new Lazy<byte[]>(() => ReadEmbeddedByteArray("DolphinSys.zip.gz"));
 	}
 }

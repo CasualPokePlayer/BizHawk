@@ -458,6 +458,17 @@ namespace BizHawk.Emulation.Common
 			Option("PS2", "BIOS", File("F9229FE159D0353B9F0632F3FDC66819C9030458", 4 * 1024 * 1024, "ps2-0230a-20080220.bin", "PS2 Bios"), FirmwareOptionStatus.Ideal);
 			Option("PS2", "BIOS", File("9915B5BA56798F4027AC1BD8D10ABE0C1C9C326A", 4 * 1024 * 1024, "ps2-0230e-20080220.bin", "PS2 Bios"));
 
+			Firmware("GC/Wii", "IPL", "IPL ROM");
+			Option("GC/Wii", "IPL", File("A1837968288253ED541F2B11440B68F5A9B33875", 2 * 1024 * 1024, "gc-ntsc-10.bin", "IPL ROM NTSC 1.0"));
+			Option("GC/Wii", "IPL", File("239EACD86527FF9A75AEB7282DA65797BAEEF010", 2 * 1024 * 1024, "gc-ntsc-11.bin", "IPL ROM NTSC 1.1"));
+			Option("GC/Wii", "IPL", File("EF9194AB4804AA0AA8540D846CAF291B28331165", 2 * 1024 * 1024, "gc-ntsc-12.bin", "IPL ROM NTSC 1.2"));
+			Option("GC/Wii", "IPL", File("F27C63E5394E2FD1606F70DF004C4FC2D6027700", 2 * 1024 * 1024, "gc-pal-10.bin", "IPL ROM PAL 1.0"));
+			Option("GC/Wii", "IPL", File("F3CD0C7C61CBCEFA85E7DE3AFF4CFA50BC508714", 2 * 1024 * 1024, "gc-pal-11.bin", "IPL ROM PAL 1.1"));
+			Option("GC/Wii", "IPL", File("80B8744FF5E43585392F55546BD03A673D11EF5F", 2 * 1024 * 1024, "gc-pal-12.bin", "IPL ROM PAL 1.2"));
+
+			FirmwareAndOption("C116D867BA001DCD6BF6D399FF4BF38D340F556C", 4 * 1024, "GC/Wii", "DSP COEF", "dsp_coef.bin", "DSP COEF");
+			FirmwareAndOption("3C6CC6E04FDD0B2A392D7A6ED769455444846BE7", 8 * 1024, "GC/Wii", "DSP IROM", "dsp_rom.bin", "DSP IROM");
+
 			AllPatches = allPatches;
 			FirmwareFilesByHash = filesByHash;
 			FirmwareOptions = options;

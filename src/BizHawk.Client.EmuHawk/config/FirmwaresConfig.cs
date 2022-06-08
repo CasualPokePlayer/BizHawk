@@ -87,6 +87,7 @@ namespace BizHawk.Client.EmuHawk
 			["VEC"] = "Vectrex",
 			["MSX"] = "MSX",
 			["PS2"] = "Sony PlayStation 2",
+			["GC/Wii"] = "GameCube / Wii",
 		};
 
 		public string TargetSystem { get; set; }

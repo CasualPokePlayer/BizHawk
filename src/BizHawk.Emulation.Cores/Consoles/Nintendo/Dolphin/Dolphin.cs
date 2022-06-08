@@ -72,6 +72,10 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			}
 
 			Directory.CreateDirectory("DolphinUserFolder");
+			Directory.CreateDirectory("DolphinUserFolder/GC");
+			Directory.CreateDirectory("DolphinUserFolder/GC/EUR");
+			Directory.CreateDirectory("DolphinUserFolder/GC/USA");
+			Directory.CreateDirectory("DolphinUserFolder/GC/JAP");
 
 			if (_syncSettings.ApplyPerGameSettings)
 			{
@@ -79,9 +83,49 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 				gameSettings.ExtractToDirectory("DolphinUserFolder");
 			}
 
+			if (!Directory.Exists("Sys"))
 			{
-				using var gcFolder = new ZipArchive(new MemoryStream(Util.DecompressGzipFile(new MemoryStream(Resources.DOLPHINGCFOLDER.Value))), ZipArchiveMode.Read, false);
-				gcFolder.ExtractToDirectory("DolphinUserFolder");
+				Directory.CreateDirectory("Sys");
+				using var sysFolder = new ZipArchive(new MemoryStream(Util.DecompressGzipFile(new MemoryStream(Resources.DOLPHINSYSFOLDER.Value))), ZipArchiveMode.Read, false);
+				sysFolder.ExtractToDirectory("Sys");
+			}
+
+			if (!IsWii && !_syncSettings.MainSettings.SkipIPL)
+			{
+				var ipl = lp.Comm.CoreFileProvider.GetFirmwareOrThrow(new("GC/Wii", "IPL"), "Cannot find IPL ROM, change sync settings to skip IPL boot");
+				// probably wrong
+				File.WriteAllBytes("DolphinUserFolder/GC/EUR/IPL.bin", ipl);
+				File.WriteAllBytes("DolphinUserFolder/GC/USA/IPL.bin", ipl);
+				File.WriteAllBytes("DolphinUserFolder/GC/JAP/IPL.bin", ipl);
+			}
+			else
+			{
+				var ipl = lp.Comm.CoreFileProvider.GetFirmware(new("GC/Wii", "IPL"));
+				if (ipl is not null)
+				{
+					lp.Comm.Notify("Using user-provided IPL ROM for font files");
+					// probably wrong
+					File.WriteAllBytes("DolphinUserFolder/GC/EUR/IPL.bin", ipl);
+					File.WriteAllBytes("DolphinUserFolder/GC/USA/IPL.bin", ipl);
+					File.WriteAllBytes("DolphinUserFolder/GC/JAP/IPL.bin", ipl);
+				}
+			}
+
+			if (!_syncSettings.MainSettings.DSPHLE)
+			{
+				var coef = lp.Comm.CoreFileProvider.GetFirmware(new("GC/Wii", "DSP COEF"));
+				if (coef is not null)
+				{
+					lp.Comm.Notify("Using user-provided DSP COEF");
+					File.WriteAllBytes("DolphinUserFolder/GC/dsp_coef.bin", coef);
+				}
+
+				var irom = lp.Comm.CoreFileProvider.GetFirmware(new("GC/Wii", "DSP IROM"));
+				if (irom is not null)
+				{
+					lp.Comm.Notify("Using user-provided DSP IROM");
+					File.WriteAllBytes("DolphinUserFolder/GC/dsp_rom.bin", irom);
+				}
 			}
 
 			DeterministicEmulation = lp.DeterministicEmulationRequested || _syncSettings.MainSettings.EnableCustomRTC;
@@ -103,18 +147,6 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 				}
 
 				Thread.Sleep(1);
-			}
-
-			if (IsWii)
-			{
-				const string msgcfgpath = "DolphinUserFolder/WiiSession/shared2/wc24/nwc24msg.cfg";
-				if (File.Exists(msgcfgpath)) // is this always true?
-				{
-					File.Delete(msgcfgpath);
-				}
-
-				using var wiiFolder = new ZipArchive(new MemoryStream(Util.DecompressGzipFile(new MemoryStream(Resources.DOLPHINWIIFOLDER.Value))), ZipArchiveMode.Read, false);
-				wiiFolder.ExtractToDirectory("DolphinUserFolder");
 			}
 
 			_framecb = FrameCallback;
