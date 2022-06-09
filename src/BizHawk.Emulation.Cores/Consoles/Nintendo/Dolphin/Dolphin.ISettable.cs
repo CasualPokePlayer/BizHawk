@@ -913,7 +913,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			[DisplayName("Crop")]
 			[Description("")]
 			[Category("Settings")]
-			[DefaultValue(true)]
+			[DefaultValue(false)]
 			[Browsable(true)]
 			public bool Crop { get; set; }
 

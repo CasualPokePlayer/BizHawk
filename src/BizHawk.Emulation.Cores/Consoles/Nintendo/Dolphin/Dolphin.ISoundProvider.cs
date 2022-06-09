@@ -14,7 +14,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 		{
 			int sz = 0;
 			IntPtr data = _core.Dolphin_GetAudio(ref sz);
-			if (sz > 0)
+			if (sz > 0) // sometimes 0 is returned, particularly on first frame of IPL boot
 			{
 				if (sz > _sampleBuf.Length)
 				{

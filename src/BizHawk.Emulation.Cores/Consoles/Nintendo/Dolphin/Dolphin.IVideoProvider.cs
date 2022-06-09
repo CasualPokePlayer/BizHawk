@@ -21,25 +21,30 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 
 		private unsafe void FrameCallback(IntPtr data, int width, int height, int pitch)
 		{
-			if (_vbuf.Length < width * height)
+			lock (_vbuf)
 			{
-				_vbuf = new int[width * height];
-			}
-
-			BufferWidth = width;
-			BufferHeight = height;
-
-			byte* src = (byte*)data;
-			for (int i = 0; i < height; i++)
-			{
-				for (int j = 0; j < width; j++)
+				if (_vbuf.Length < width * height)
 				{
-					int p = src[j * 4] << 16;
-					p |= src[j * 4 + 1] << 8;
-					p |= src[j * 4 + 2];
-					_vbuf[width * i + j] = p;
+					_vbuf = new int[width * height];
 				}
-				src += pitch;
+
+				BufferWidth = width;
+				BufferHeight = height;
+
+				fixed (int* vbuf = _vbuf)
+				{
+					byte* src = (byte*)data;
+					int* dst = vbuf;
+					for (int i = 0; i < height; i++)
+					{
+						for (int j = 0; j < width; j++)
+						{
+							*dst++ = (src[0] << 16) | (src[1] << 8) | src[2];
+							src += 4;
+						}
+						src += width * 4 - pitch;
+					}
+				}
 			}
 		}
 	}

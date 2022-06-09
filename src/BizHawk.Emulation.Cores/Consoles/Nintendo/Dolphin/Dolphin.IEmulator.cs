@@ -20,7 +20,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 
 		public bool FrameAdvance(IController controller, bool render, bool renderSound = true)
 		{
-			_controller = controller;
+			Interlocked.Exchange(ref _controller, controller);
 			IsLagFrame = true;
 
 			_core.Dolphin_FrameStep();
