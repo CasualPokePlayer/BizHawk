@@ -14,7 +14,7 @@ using BizHawk.Emulation.Cores.Properties;
 
 namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 {
-	[PortedCore(CoreNames.Dolphin, "Dolphin Team", "5.0-16444-dirty", "https://github.com/dolphin-emu/dolphin", singleInstance: true, isReleased: false)]
+	[PortedCore(CoreNames.Dolphin, "Dolphin Team", "5.0-16426", "https://github.com/dolphin-emu/dolphin", singleInstance: true, isReleased: false)]
 	public partial class Dolphin
 	{
 		private static readonly LibDolphin _core;
