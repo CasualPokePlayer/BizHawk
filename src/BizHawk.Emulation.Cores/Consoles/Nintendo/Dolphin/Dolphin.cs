@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 
@@ -135,23 +136,6 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			extensioncb = ExtensionConfigCallback;
 			_core.Dolphin_SetConfigCallbacks(mpluscb, extensioncb);
 
-			_hostRunning = true;
-			_hostThread = new Thread(() => ExecuteHostThread(lp.Discs[0].DiscPath)) { IsBackground = true };
-			_hostThread.Start();
-
-			while (!_core.Dolphin_BootupSuccessful())
-			{
-				if (!_hostRunning)
-				{
-					throw new Exception("Dolphin failed to bootup!");
-				}
-
-				Thread.Sleep(1);
-			}
-
-			_framecb = FrameCallback;
-			_core.Dolphin_SetFrameCallback(_framecb);
-
 			_gcpadcb = GCPadCallback;
 			_core.Dolphin_SetGCPadCallback(_gcpadcb);
 
@@ -160,6 +144,24 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 				_wiipadcb = WiiPadCallback;
 				_core.Dolphin_SetWiiPadCallback(_wiipadcb);
 			}
+
+			_hostRunning = true;
+			_hostThread = new Thread(() => ExecuteHostThread(lp.Discs[0].DiscPath)) { IsBackground = true };
+			_hostThread.Start();
+
+			while (!_core.Dolphin_BootupSuccessful())
+			{
+				if (!_hostRunning)
+				{
+					Dispose();
+					throw new Exception("Dolphin failed to bootup!");
+				}
+
+				Thread.Sleep(1);
+			}
+
+			_vhandle = GCHandle.Alloc(_vbuf, GCHandleType.Pinned);
+			_core.Dolphin_SetFrameBuffer(_vhandle.AddrOfPinnedObject());
 
 			InitMemoryDomains();
 

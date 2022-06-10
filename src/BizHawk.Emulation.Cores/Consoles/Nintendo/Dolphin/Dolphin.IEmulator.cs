@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using System;
+using System.Threading;
 
 using BizHawk.Emulation.Common;
 
@@ -23,7 +24,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			Interlocked.Exchange(ref _controller, controller);
 			IsLagFrame = true;
 
-			_core.Dolphin_FrameStep();
+			_core.Dolphin_FrameStep(ref _width, ref _height);
 
 			if (renderSound)
 			{
@@ -48,6 +49,15 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 
 		public void Dispose()
 		{
+			if (_vhandle.IsAllocated)
+			{
+				_vhandle.Free();
+			}
+
+			_core.Dolphin_SetFrameBuffer(IntPtr.Zero);
+			_core.Dolphin_SetGCPadCallback(null);
+			_core.Dolphin_SetWiiPadCallback(null);
+
 			if (_hostRunning)
 			{
 				if (_isDumpingDtm)

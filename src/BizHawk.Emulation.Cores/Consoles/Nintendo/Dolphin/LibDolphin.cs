@@ -18,14 +18,11 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 		[BizImport(cc)]
 		public abstract bool Dolphin_BootupSuccessful();
 
-		[UnmanagedFunctionPointer(cc)]
-		public delegate void FrameCallback(IntPtr data, int width, int height, int pitch);
+		[BizImport(cc)]
+		public abstract void Dolphin_SetFrameBuffer(IntPtr fb);
 
 		[BizImport(cc)]
-		public abstract void Dolphin_SetFrameCallback(FrameCallback cb);
-
-		[BizImport(cc)]
-		public abstract void Dolphin_FrameStep();
+		public abstract void Dolphin_FrameStep(ref int width, ref int height);
 
 		public enum PadButtons : ushort
 		{
