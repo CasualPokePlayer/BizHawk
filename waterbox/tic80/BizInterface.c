@@ -67,7 +67,7 @@ ECL_EXPORT void FrameAdvance(MyFrameInfo* f)
 	}
 	
 	u32* dst = f->b.VideoBuffer;
-	for (u32 i = 0; i < f->b.Height; i++)
+	for (u32 i = 0; i < height; i++)
 	{
 		memcpy(dst, src, width * sizeof (u32));
 		dst += width;
