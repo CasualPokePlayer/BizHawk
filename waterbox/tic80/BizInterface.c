@@ -1,5 +1,6 @@
 #include <tic80.h>
 #include <tic.h>
+#include <api.h>
 
 #include <emulibc.h>
 #include <waterboxcore.h>
@@ -20,14 +21,24 @@ ECL_EXPORT bool Init(u8* rom, u32 sz)
 	return true;
 }
 
-int dummy[1];
-
 ECL_EXPORT void GetMemoryAreas(MemoryArea* m)
 {
-	m[0].Data = dummy;
-	m[0].Name = "dummy";
-	m[0].Size = sizeof (dummy);
-	m[0].Flags = MEMORYAREA_FLAGS_WORDSIZE4 | MEMORYAREA_FLAGS_WRITABLE | MEMORYAREA_FLAGS_PRIMARY;
+	tic_mem* mem = (tic_mem*)tic;
+
+	m[0].Data = mem->ram->data;
+	m[0].Name = "RAM";
+	m[0].Size = sizeof(mem->ram->data);
+	m[0].Flags = MEMORYAREA_FLAGS_WORDSIZE1 | MEMORYAREA_FLAGS_WRITABLE | MEMORYAREA_FLAGS_PRIMARY;
+
+	m[1].Data = mem->ram->persistent.data;
+	m[1].Name = "SaveRAM";
+	m[1].Size = sizeof(mem->ram->persistent.data);
+	m[1].Flags = MEMORYAREA_FLAGS_WORDSIZE1 | MEMORYAREA_FLAGS_WRITABLE | MEMORYAREA_FLAGS_SAVERAMMABLE;
+
+	m[2].Data = mem->ram->vram.data;
+	m[2].Name = "VRAM";
+	m[2].Size = sizeof(mem->ram->vram.data);
+	m[2].Flags = MEMORYAREA_FLAGS_WORDSIZE1 | MEMORYAREA_FLAGS_WRITABLE;
 }
 
 typedef struct
@@ -69,7 +80,7 @@ ECL_EXPORT void FrameAdvance(MyFrameInfo* f)
 	u32* dst = f->b.VideoBuffer;
 	for (u32 i = 0; i < height; i++)
 	{
-		memcpy(dst, src, width * sizeof (u32));
+		memcpy(dst, src, width * sizeof(u32));
 		dst += width;
 		src += TIC80_FULLWIDTH;
 	}
