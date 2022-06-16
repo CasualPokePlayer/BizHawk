@@ -27,7 +27,7 @@ ECL_EXPORT void GetMemoryAreas(MemoryArea* m)
 	m[0].Data = dummy;
 	m[0].Name = "dummy";
 	m[0].Size = sizeof (dummy);
-	m[0].Flags = MEMORYAREA_FLAGS_WRITABLE;
+	m[0].Flags = MEMORYAREA_FLAGS_WORDSIZE4 | MEMORYAREA_FLAGS_WRITABLE;
 }
 
 typedef struct
