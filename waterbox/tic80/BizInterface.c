@@ -44,18 +44,24 @@ ECL_EXPORT void GetMemoryAreas(MemoryArea* m)
 typedef struct
 {
 	FrameInfo b;
-	tic80_input inputs;
 	bool crop;
 } MyFrameInfo;
 
 bool lagged;
 void (*inputcb)() = 0;
 
+static tic80_input biz_inputs;
+
+ECL_EXPORT void SetInputs(tic80_input* inputs)
+{
+	memcpy(&biz_inputs, inputs, sizeof(tic80_input));
+}
+
 ECL_EXPORT void FrameAdvance(MyFrameInfo* f)
 {
 	lagged = true;
 
-	tic80_tick(tic, f->inputs);
+	tic80_tick(tic, biz_inputs);
 	tic80_sound(tic);
 
 	f->b.Samples = tic->samples.count / TIC80_SAMPLE_CHANNELS;
