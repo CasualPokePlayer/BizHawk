@@ -339,7 +339,7 @@ struct MyFrameInfo : public FrameInfo
 	u8 TouchY;
 	s8 MicVolume;
 	s8 GBALightSensor;
-	bool ConsiderTouchLag;
+	bool ConsiderAltLag;
 };
 
 static s16 biz_mic_input[735];
@@ -425,8 +425,8 @@ EXPORT void FrameAdvance(MyFrameInfo* f)
 	}
 	f->Cycles = NDS::GetSysClockCycles(2);
 	f->Lagged = NDS::LagFrameFlag;
-	// if we want to consider touch screen lag, use that lag flag if we haven't unlagged already 
-	if (f->ConsiderTouchLag && NDS::LagFrameFlag)
+	// if we want to consider other lag sources, use that lag flag if we haven't unlagged already 
+	if (f->ConsiderAltLag && NDS::LagFrameFlag)
 	{
 		f->Lagged = NDS::AltLagFrameFlag;
 	}
