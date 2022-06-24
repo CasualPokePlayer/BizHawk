@@ -426,7 +426,7 @@ EXPORT void FrameAdvance(MyFrameInfo* f)
 	f->Cycles = NDS::GetSysClockCycles(2);
 	f->Lagged = NDS::LagFrameFlag;
 	// if we want to consider touch screen lag, use that lag flag if we haven't unlagged already 
-	if (f->ConsiderTouchLag && !NDS::LagFrameFlag)
+	if (f->ConsiderTouchLag && NDS::LagFrameFlag)
 	{
 		f->Lagged = NDS::AltLagFrameFlag;
 	}
