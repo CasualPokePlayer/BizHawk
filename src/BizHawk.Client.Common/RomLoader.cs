@@ -544,6 +544,7 @@ namespace BizHawk.Client.Common
 							RomData = kvp.Value,
 							FileData = kvp.Value, // TODO: Hope no one needed anything special here
 							Extension = Path.GetExtension(kvp.Key),
+							RomPath = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(path.SubstringBefore('|')), kvp.Key)),
 							Game = Database.GetGameInfo(kvp.Value, Path.GetFileName(kvp.Key))
 						})
 						.ToList(),
