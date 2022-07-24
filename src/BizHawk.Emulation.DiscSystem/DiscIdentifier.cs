@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 
@@ -111,7 +112,7 @@ namespace BizHawk.Emulation.DiscSystem
 
 	public class DiscIdentifier
 	{
-		public DiscIdentifier(Disc disc)
+		public DiscIdentifier(Disc disc, string path)
 		{
 			_disc = disc;
 			_dsr = new DiscSectorReader(disc)
@@ -121,21 +122,23 @@ namespace BizHawk.Emulation.DiscSystem
 				// so let's be careful here.. we're just trying to ID things, not be robust
 				Policy = {ThrowExceptions2048 = false}
 			};
+
+			_discType = _disc is null ? DetectSpecialDiscType(path) : DetectDiscType();
 		}
 
 		private readonly Disc _disc;
 		private readonly DiscSectorReader _dsr;
 		private readonly Dictionary<int, byte[]> _sectorCache = new Dictionary<int, byte[]>();
+		private readonly DiscType _discType;
+
+		public DiscType DiscType => _discType;
 
 		/// <summary>
 		/// Attempts to determine the type of the disc.
 		/// In the future, we might return a struct or a class with more detailed information
 		/// </summary>
-		public DiscType DetectDiscType(string ext)
+		private DiscType DetectDiscType()
 		{
-			if (ext == ".wbfs")
-				return DiscType.Wii;
-
 			// PCFX & TurboCD sometimes (if not alltimes) have audio on track 1 - run these before the AudioDisc detection (asni)
 			if (DetectPCFX())
 				return DiscType.PCFX;
@@ -251,6 +254,122 @@ namespace BizHawk.Emulation.DiscSystem
 			}
 
 			return DiscType.UnknownFormat;
+		}
+
+		private DiscType DetectSpecialDiscType(string path)
+		{
+			try
+			{
+				using var fs = new FileStream(path, FileMode.Open, FileAccess.Read);
+				using var reader = new BinaryReader(fs);
+				uint readType()
+				{
+					var be32 = reader.ReadBytes(4);
+					return (uint)unchecked(be32[0] << 24 | be32[1] << 16 | be32[2] << 8 | be32[3]);
+				}
+
+				switch (Path.GetExtension(path).ToLowerInvariant())
+				{
+					case ".ciso":
+						{
+							var magic = reader.ReadUInt32();
+							if (magic != 0x4F534943) // "CISO"
+							{
+								return DiscType.UnknownFormat;
+							}
+
+							reader.ReadBytes(0x8000 + 20);
+
+							if (readType() == 0x5D1C9EA3)
+							{
+								return DiscType.Wii;
+							}
+							else if (readType() == 0xC2339F3D)
+							{
+								return DiscType.GameCube;
+							}
+							else
+							{
+								return DiscType.UnknownFormat;
+							}
+						}
+					case ".tgc":
+						{
+							var magic = reader.ReadUInt32();
+							if (magic != 0xA2380FAE)
+							{
+								return DiscType.UnknownFormat;
+							}
+
+							return DiscType.GameCube; // I think this is GC only?
+						}
+					case ".gcz":
+						{
+							var magic = reader.ReadUInt32();
+							if (magic != 0xB10BC001)
+							{
+								return DiscType.UnknownFormat;
+							}
+
+							return readType() switch
+							{
+								0 => DiscType.GameCube,
+								1 => DiscType.Wii,
+								_ => DiscType.UnknownFormat,
+							};
+						}
+					case ".wia":
+						{
+							var magic = reader.ReadUInt32();
+							if (magic != 0x01414957) // "WIA\x1"
+							{
+								return DiscType.UnknownFormat;
+							}
+
+							reader.ReadBytes(0x44);
+
+							return readType() switch
+							{
+								1 => DiscType.GameCube,
+								2 => DiscType.Wii,
+								_ => DiscType.UnknownFormat,
+							};
+						}
+					case ".rvz":
+						{
+							var magic = reader.ReadUInt32();
+							if (magic != 0x015A5652) // "RVZ\x1"
+							{
+								return DiscType.UnknownFormat;
+							}
+
+							reader.ReadBytes(0x44);
+
+							return readType() switch
+							{
+								1 => DiscType.GameCube,
+								2 => DiscType.Wii,
+								_ => DiscType.UnknownFormat,
+							};
+						}
+					case ".wbfs":
+						{
+							var magic = reader.ReadUInt32();
+							if (magic != 0x53464257) // "WBFS"
+							{
+								return DiscType.UnknownFormat;
+							}
+
+							return DiscType.Wii; // only wii uses this
+						}
+					default:
+						return DiscType.UnknownFormat;
+				}
+			}
+			catch
+			{
+				return DiscType.UnknownFormat;
+			}
 		}
 
 		/// <summary>

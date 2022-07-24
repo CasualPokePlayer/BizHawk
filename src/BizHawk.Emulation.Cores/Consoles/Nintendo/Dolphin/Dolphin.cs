@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -27,9 +28,9 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 		}
 
 		private Thread _hostThread;
-		private volatile bool _hostRunning;
+		private bool HostRunning => _hostThread?.IsAlive ?? false;
 
-		private void ExecuteHostThread(string gamePath)
+		private void ExecuteHostThread(string gamePath, string secondDiscPath)
 		{
 			List<string> args = new(new[]
 			{
@@ -39,32 +40,113 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 				"--platform=headless",
 			});
 
+			if (secondDiscPath is not null)
+			{
+				args.Add($"--exec={secondDiscPath}");
+			}
+
 			ApplyNativeSettings(args);
 			_core.Dolphin_Main(args.Count, args.ToArray());
-			_hostRunning = false;
 		}
 
 		private static string GetGameId(string path)
 		{
-			using var reader = new StreamReader(path, Encoding.UTF8);
+			if (path is null)
+			{
+				return new string(new char[6]);
+			}
+
+			using var fs = new FileStream(path, FileMode.Open, FileAccess.Read);
+			using var reader = new BinaryReader(fs, Encoding.ASCII);
+
 			var ret = new char[6];
-			reader.Read(ret, 0, 6);
+			int readBeInt()
+			{
+				var be32 = reader.ReadBytes(4);
+				return unchecked(be32[0] << 24 | be32[1] << 16 | be32[2] << 8 | be32[3]);
+			}
+
+			switch (Path.GetExtension(path))
+			{
+				case ".iso":
+				case ".gcm":
+					reader.Read(ret, 0, 6);
+					break;
+				case ".ciso":
+					// header ends at 0x8000
+					reader.Read(ret, 0x8000, 6);
+					break;
+				case ".tgc":
+					{
+						reader.ReadBytes(8);
+						var headerEnd = readBeInt();
+						if (headerEnd - 8 < 0)
+						{
+							break;
+						}
+						reader.Read(ret, headerEnd - 8, 6);
+						break;
+					}
+				case ".gcz":
+					// ID is in compressed data, so...
+					break;
+				case ".wia":
+				case ".rvz":
+					// offset 0x58 stores the first 80 bytes of the disc uncompressed
+					reader.Read(ret, 0x58, 6);
+					break;
+				case ".wbfs":
+					// header ends at 0x200
+					reader.Read(ret, 0x200, 6);
+					break;
+			}
+
 			return new string(ret);
 		}
+
+		private static Dolphin CurrentCore;
 
 		[CoreConstructor(VSystemID.Raw.GC)]
 		[CoreConstructor(VSystemID.Raw.Wii)]
 		public Dolphin(CoreLoadParameters<DolphinSettings, DolphinSyncSettings> lp)
 		{
+			if (lp.Discs.Count > 2 || (lp.Discs.Count > 0 && lp.Roms.Count > 0))
+			{
+				throw new Exception("Wrong number of discs and/or ROMs!");
+			}
+
+			CurrentCore?.Dispose();
+			CurrentCore = this;
+
+			string gamePath = lp.Discs.FirstOrDefault()?.DiscPath ?? lp.Roms.First().RomPath;
+			string secondDiscPath = lp.Discs.Count == 2 ? lp.Discs[1].DiscPath : null;
+
 			_serviceProvider = new(this);
+
 			_settings = lp.Settings ?? new();
 			_syncSettings = lp.SyncSettings ?? new();
-			SystemId = lp.Game.System;
-			IsWii = SystemId == VSystemID.Raw.Wii;
-			_isDumpingDtm = !IsWii && _settings.DumpDTM && lp.DeterministicEmulationRequested;
+
+			IsWii = lp.Game.System == VSystemID.Raw.Wii;
+
+			_isDumpingDtm = _settings.DumpDTM && lp.DeterministicEmulationRequested;
+
 			if (_isDumpingDtm)
 			{
-				InitDtmDump(lp.Game.Name, GetGameId(lp.Discs[0].DiscPath));
+				byte[] secondDiscName = new byte[40];
+				if (secondDiscPath is not null)
+				{
+					var name = Encoding.UTF8.GetBytes(Path.GetFileName(secondDiscPath));
+					if (name.Length <= 40)
+					{
+						Array.Copy(name, secondDiscName, name.Length);
+					}
+					else
+					{
+						throw new Exception("Second disc name is too large for DTM dump!");
+					}
+				}
+
+				InitDtmDump(lp.Game.Name, GetGameId(lp.Discs.FirstOrDefault()?.DiscPath), secondDiscName);
 			}
 
 			if (Directory.Exists("DolphinUserFolder"))
@@ -130,10 +212,10 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			}
 
 			DeterministicEmulation = lp.DeterministicEmulationRequested || _syncSettings.MainSettings.EnableCustomRTC;
-			ControllerDefinition = CreateControllerDefinition();
+			ControllerDefinition = CreateControllerDefinition(lp.Discs.Count == 2);
 
-			mpluscb = MotionPlusConfigCallback;
-			extensioncb = ExtensionConfigCallback;
+			mpluscb = n => Wiimotes[n].HasMotionPlus;
+			extensioncb = n => Wiimotes[n].Extension;
 			_core.Dolphin_SetConfigCallbacks(mpluscb, extensioncb);
 
 			_gcpadcb = GCPadCallback;
@@ -145,13 +227,12 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 				_core.Dolphin_SetWiiPadCallback(_wiipadcb);
 			}
 
-			_hostRunning = true;
-			_hostThread = new Thread(() => ExecuteHostThread(lp.Discs[0].DiscPath)) { IsBackground = true };
+			_hostThread = new Thread(() => ExecuteHostThread(gamePath, lp.Discs.Count == 2 ? lp.Discs[1].DiscPath : null)) { IsBackground = true };
 			_hostThread.Start();
 
 			while (!_core.Dolphin_BootupSuccessful())
 			{
-				if (!_hostRunning)
+				if (!HostRunning)
 				{
 					Dispose();
 					throw new Exception("Dolphin failed to bootup!");
@@ -186,7 +267,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 
 		public Wiimote[] Wiimotes { get; private set; }
 
-		private ControllerDefinition CreateControllerDefinition()
+		private ControllerDefinition CreateControllerDefinition(bool multiDisc)
 		{
 			var ret = new ControllerDefinition((IsWii ? "Wii" : "GameCube") + " Controls");
 
@@ -257,29 +338,25 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 				}
 			}
 
+			if (multiDisc)
+			{
+				ret.BoolButtons.Add("Swap Disc");
+			}
+
+			ret.BoolButtons.Add("Reset");
+
 			return ret.MakeImmutable();
 		}
 
-		// todo: remove when possible
-
+		// todo: remove these callbacks when possible
 		private readonly LibDolphin.MPlusConfigCallback mpluscb;
 		private readonly LibDolphin.ExtensionConfigCallback extensioncb;
-
-		private bool MotionPlusConfigCallback(int n)
-		{
-			return Wiimotes[n].HasMotionPlus;
-		}
-
-		private DolphinWiiPadSettings.WiimoteExtensions ExtensionConfigCallback(int n)
-		{
-			return Wiimotes[n].Extension;
-		}
 
 		private bool _isDumpingDtm;
 
 		private BinaryWriter _dtm;
 
-		private void InitDtmDump(string gameName, string gameID)
+		private void InitDtmDump(string gameName, string gameID, byte[] secondDiscName)
 		{
 			_inputCount = 0;
 
@@ -354,7 +431,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			_dtm.Write(true); // use FMA (probably a safe bet this is enabled, it rolled out around 2012-2013, disable manually if needed)
 			_dtm.Write((byte)0); // gba controllers (not even built in so...)
 			_dtm.Write(new byte[7]); // reserved
-			_dtm.Write(new byte[40]); // name of second iso for double disc game... not sure how to support this yet
+			_dtm.Write(secondDiscName); // name of second disc for double disc game
 			_dtm.Write(new byte[20]
 			{
 				0xC4, 0x14, 0x67, 0xA8, 0xEB, 0x07, 0x60, 0x45, 0xE2, 0xA1, 0x4C, 0x7C, 0x0A, 0x15, 0xD5, 0x0F, 0x74, 0xD2, 0x6E, 0xC2,
@@ -404,8 +481,8 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			buttons |= (byte)(((p->Buttons & LibDolphin.PadButtons.Right) != 0) ? (1 << 1) : 0);
 			buttons |= (byte)(((p->Buttons & LibDolphin.PadButtons.L) != 0) ? (1 << 2) : 0);
 			buttons |= (byte)(((p->Buttons & LibDolphin.PadButtons.R) != 0) ? (1 << 3) : 0);
-			buttons |= false ? (1 << 4) : 0; // change disc (not supported)
-			buttons |= false ? (1 << 5) : 0; // reset (not supported)
+			buttons |= (byte)(_doSwapDisc ? (1 << 4) : 0); // change disc
+			buttons |= (byte)(_doReset ? (1 << 5) : 0); // reset
 			buttons |= (byte)(p->IsConnected ? (1 << 6) : 0); // is connected (this is always true)
 			buttons |= false ? (1 << 7) : 0; // PAD_GET_ORIGIN (this is always false due to how the code works)
 			_dtm.Write(buttons);
@@ -416,6 +493,32 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			_dtm.Write(p->StickY);
 			_dtm.Write(p->SubstickX);
 			_dtm.Write(p->SubstickY);
+
+			_inputCount++;
+		}
+
+		private unsafe void DumpWiiPadToDtm(byte* rpt)
+		{
+			byte len = *rpt switch
+			{
+				0x30 => 1 + 2,
+				0x31 => 1 + 2 + 3,
+				0x32 => 1 + 2 + 8,
+				0x33 => 1 + 2 + 3 + 12,
+				0x34 => 1 + 2 + 19,
+				0x35 => 1 + 2 + 3 + 16,
+				0x36 => 1 + 2 + 10 + 9,
+				0x37 => 1 + 2 + 3 + 10 + 9,
+				0x3D => 1 + 21,
+				0x3E or 0x3F => 1 + 2 + 1 + 18,
+				_ => throw new InvalidOperationException(),
+			};
+
+			_dtm.Write(len);
+			for (int i = 0; i < len; i++)
+			{
+				_dtm.Write(*rpt++);
+			}
 
 			_inputCount++;
 		}

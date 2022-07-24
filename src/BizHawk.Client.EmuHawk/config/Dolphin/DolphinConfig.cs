@@ -32,6 +32,7 @@ namespace BizHawk.Client.EmuHawk
 		private void Button1_Click(object sender, EventArgs e)
 		{
 			_s.UseCompressedStates = UseCompressedStatesCB.Checked;
+			_s.GPULagFrames = GPULagFramesCB.Checked;
 			_s.DumpDTM = DumpDTMCB.Checked;
 			_settable.PutCoreSettings(_s);
 
@@ -50,6 +51,7 @@ namespace BizHawk.Client.EmuHawk
 			SYSCONFSettingsPropertyGrid.SelectedObject = _ss.SYSCONFSettings;
 			ApplyPerGameSettingsCB.Checked = _ss.ApplyPerGameSettings;
 			UseCompressedStatesCB.Checked = _s.UseCompressedStates;
+			GPULagFramesCB.Checked = _s.GPULagFrames;
 			DumpDTMCB.Checked = _s.DumpDTM;
 		}
 	}

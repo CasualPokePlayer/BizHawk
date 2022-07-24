@@ -52,11 +52,13 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 		public class DolphinSettings
 		{
 			public bool UseCompressedStates { get; set; }
+			public bool GPULagFrames { get; set; }
 			public bool DumpDTM { get; set; }
 
 			public DolphinSettings()
 			{
 				UseCompressedStates = true;
+				GPULagFrames = true;
 				DumpDTM = false;
 			}
 

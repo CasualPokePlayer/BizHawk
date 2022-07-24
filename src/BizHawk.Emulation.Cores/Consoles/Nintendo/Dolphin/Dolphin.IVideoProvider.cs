@@ -1,5 +1,4 @@
-﻿using System;
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 
 using BizHawk.Emulation.Common;
 
@@ -18,7 +17,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 		public int VsyncDenominator => _core.Dolphin_GetVSyncDenominator();
 		public int BackgroundColor => 0;
 
-		private readonly int[] _vbuf = new int[640 * 528 * 4]; // todo: is this enough?
+		private readonly int[] _vbuf = new int[640 * 528 * 8]; // todo: is this enough?
 		private readonly GCHandle _vhandle;
 
 		public int[] GetVideoBuffer() => _vbuf;

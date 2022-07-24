@@ -189,6 +189,7 @@ namespace BizHawk.Emulation.DiscSystem
 					LoadCue(Path.GetDirectoryName(IN_FromPath), File.ReadAllText(IN_FromPath));
 					break;
 				case ".iso":
+				case ".gcm":
 					{
 						// make a fake .cue file to represent this .iso and mount that
 						//however... to save many users from a stupid mistake, check if the size is NOT a multiple of 2048 (but IS a multiple of 2352) and in that case consider it a mode2 disc

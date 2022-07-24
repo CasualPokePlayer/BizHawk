@@ -87,7 +87,7 @@ namespace BizHawk.Emulation.DiscSystem
 		public string OldHash()
 		{
 			if (disc is null)
-				return "wbfs can't hash";
+				return "cannot hash this disc type";
 
 			byte[] buffer = new byte[512 * 2352];
 			DiscSectorReader dsr = new DiscSectorReader(disc);

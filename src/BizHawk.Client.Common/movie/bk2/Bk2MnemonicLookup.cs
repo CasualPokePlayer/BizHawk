@@ -166,6 +166,8 @@ namespace BizHawk.Client.Common
 			["Next Disk"] = '>',
 			["Previous Disk"] = '<',
 
+			["Swap Disc"] = '~',
+
 			["F1"] = '1',
 			["F2"] = '2',
 			["F3"] = '3',

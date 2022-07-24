@@ -15,7 +15,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 
 		public int Frame { get; set; }
 
-		public string SystemId { get; }
+		public string SystemId => IsWii ? VSystemID.Raw.Wii : VSystemID.Raw.GC;
 
 		public bool DeterministicEmulation { get; }
 
@@ -24,7 +24,16 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			Interlocked.Exchange(ref _controller, controller);
 			IsLagFrame = true;
 
-			_core.Dolphin_FrameStep(ref _width, ref _height);
+			// deferred until input callback occurs
+			_doSwapDisc = _controller.IsPressed("Swap Disc");
+			_doReset = _controller.IsPressed("Reset");
+
+			bool gpuLagged = _core.Dolphin_FrameStep(ref _width, ref _height);
+
+			if (_settings.GPULagFrames)
+			{
+				IsLagFrame = gpuLagged; 
+			}
 
 			if (renderSound)
 			{
@@ -47,8 +56,15 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			IsLagFrame = false;
 		}
 
+		private bool _disposed = false;
+
 		public void Dispose()
 		{
+			if (_disposed)
+			{
+				return;
+			}
+
 			if (_vhandle.IsAllocated)
 			{
 				_vhandle.Free();
@@ -58,7 +74,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			_core.Dolphin_SetGCPadCallback(null);
 			_core.Dolphin_SetWiiPadCallback(null);
 
-			if (_hostRunning)
+			if (HostRunning)
 			{
 				if (_isDumpingDtm)
 				{
@@ -66,7 +82,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 				}
 
 				_core.Dolphin_Shutdown();
-				while (_hostRunning)
+				while (HostRunning)
 				{
 					Thread.Sleep(1);
 				}
@@ -84,6 +100,9 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 					_dtm = null;
 				}
 			}
+
+			CurrentCore = null;
+			_disposed = true;
 		}
 	}
 }

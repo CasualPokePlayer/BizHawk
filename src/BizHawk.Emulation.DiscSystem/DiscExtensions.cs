@@ -33,7 +33,13 @@ namespace BizHawk.Emulation.DiscSystem
 
 			var disc = discMountJob.OUT_Disc;
 
-			var discType = new DiscIdentifier(disc).DetectDiscType(Path.GetExtension(path));
+			if (type.HasValue && disc is null)
+			{
+				errorCallback($"Not a {type} disc");
+				return null;
+			}
+
+			var discType = new DiscIdentifier(disc, path).DiscType;
 
 			if (type.HasValue && discType != type)
 			{

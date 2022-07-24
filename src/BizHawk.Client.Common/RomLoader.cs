@@ -229,10 +229,10 @@ namespace BizHawk.Client.Common
 			return true;
 		}
 
-		private GameInfo MakeGameFromDisc(Disc disc, string ext, string name)
+		private GameInfo MakeGameFromDisc(Disc disc, string path, string ext, string name)
 		{
 			// TODO - use more sophisticated IDer
-			var discType = new DiscIdentifier(disc).DetectDiscType(ext);
+			var discType = new DiscIdentifier(disc, path).DiscType;
 			var discHasher = new DiscHasher(disc);
 			var discHash = discType == DiscType.SonyPSX
 				? discHasher.Calculate_PSX_BizIDHash()
@@ -301,14 +301,16 @@ namespace BizHawk.Client.Common
 		private bool LoadDisc(string path, CoreComm nextComm, HawkFile file, string ext, string forcedCoreName, out IEmulator nextEmulator, out GameInfo game)
 		{
 			var disc = DiscExtensions.CreateAnyType(path, str => DoLoadErrorCallback(str, "???", LoadErrorType.DiscError));
-			if (disc == null && ext is not ".wbfs")
+			var discType = new DiscIdentifier(disc, path).DiscType;
+
+			if (disc is null && discType is DiscType.UnknownFormat)
 			{
 				game = null;
 				nextEmulator = null;
 				return false;
 			}
 
-			game = MakeGameFromDisc(disc, ext, Path.GetFileNameWithoutExtension(file.Name));
+			game = MakeGameFromDisc(disc, path, ext, Path.GetFileNameWithoutExtension(file.Name));
 
 			var cip = new CoreInventoryParameters(this)
 			{
@@ -319,7 +321,7 @@ namespace BizHawk.Client.Common
 						new DiscAsset
 						{
 							DiscData = disc,
-							DiscType = new DiscIdentifier(disc).DetectDiscType(Path.GetExtension(path)),
+							DiscType = discType,
 							DiscName = Path.GetFileNameWithoutExtension(path),
 							DiscPath = path
 						}
@@ -350,7 +352,7 @@ namespace BizHawk.Client.Common
 				.Select(a => (IDiscAsset)new DiscAsset
 				{
 					DiscData = a.d,
-					DiscType = new DiscIdentifier(a.d).DetectDiscType(Path.GetExtension(a.p)),
+					DiscType = new DiscIdentifier(a.d, a.p).DiscType,
 					DiscName = Path.GetFileNameWithoutExtension(a.p),
 					DiscPath = a.p
 				})
@@ -358,7 +360,7 @@ namespace BizHawk.Client.Common
 			if (m3u.Entries.Count == 0)
 				throw new InvalidOperationException("Couldn't load any contents of the M3U as discs");
 
-			game = MakeGameFromDisc(discs[0].DiscData, Path.GetExtension(m3u.Entries[0].Path), discs[0].DiscName);
+			game = MakeGameFromDisc(discs[0].DiscData, discs[0].DiscPath, Path.GetExtension(m3u.Entries[0].Path), discs[0].DiscName);
 			var cip = new CoreInventoryParameters(this)
 			{
 				Comm = nextComm,
@@ -556,7 +558,7 @@ namespace BizHawk.Client.Common
 						.Select(a => (IDiscAsset)new DiscAsset
 						{
 							DiscData = a.d,
-							DiscType = new DiscIdentifier(a.d).DetectDiscType(Path.GetExtension(a.p)),
+							DiscType = new DiscIdentifier(a.d, a.p).DiscType,
 							DiscName = Path.GetFileNameWithoutExtension(a.p),
 							DiscPath = a.p
 						})
@@ -793,6 +795,8 @@ namespace BizHawk.Client.Common
 
 			public static readonly IReadOnlyCollection<string> GBA = new[] { "gba" };
 
+			public static readonly IReadOnlyCollection<string> GC = new[] { "gcm", "tgc", "iso", "ciso", "gcz", "wia", "rvz", "dol", "elf" };
+
 			public static readonly IReadOnlyCollection<string> GEN = new[] { "gen", "md", "smd", "32x" };
 
 			public static readonly IReadOnlyCollection<string> INTV = new[] { "int", "bin", "rom" };
@@ -823,10 +827,13 @@ namespace BizHawk.Client.Common
 
 			public static readonly IReadOnlyCollection<string> VEC = new[] { "vec" };
 
+			public static readonly IReadOnlyCollection<string> WII = new[] { "gcm", "iso", "ciso", "gcz", "wbfs", "wia", "rvz", "wad", "dol", "elf" };
+
 			public static readonly IReadOnlyCollection<string> WSWAN = new[] { "ws", "wsc" };
 
 			public static readonly IReadOnlyCollection<string> ZXSpectrum = new[] { "tzx", "tap", "dsk", "pzx" };
 
+			// don't add GC and Wii here, as Dolphin handles all file IO
 			public static readonly IReadOnlyCollection<string> AutoloadFromArchive = Array.Empty<string>()
 				.Concat(A26)
 				.Concat(A78)
@@ -859,7 +866,7 @@ namespace BizHawk.Client.Common
 		/// <remarks>TODO add and handle <see cref="FilesystemFilter.LuaScripts"/> (you can drag-and-drop scripts and there are already non-rom things in this list, so why not?)</remarks>
 		private static readonly FilesystemFilterSet RomFSFilterSet = new FilesystemFilterSet(
 			new FilesystemFilter("Music Files", Array.Empty<string>(), devBuildExtraExts: new[] { "psf", "minipsf", "sid", "nsf" }),
-			new FilesystemFilter("Disc Images", new[] { "cue", "ccd", "mds", "m3u" }),
+			new FilesystemFilter("Disc Images", new[] { "cue", "ccd", "mds", "m3u", "iso", "gcm", "tgc", "ciso", "gcz", "wia", "rvz", "wbfs" }),
 			new FilesystemFilter("NES", RomFileExtensions.NES.Concat(new[] { "nsf" }).ToList(), addArchiveExts: true),
 			new FilesystemFilter("Super NES", RomFileExtensions.SNES, addArchiveExts: true),
 			new FilesystemFilter("PlayStation", new[] { "cue", "ccd", "mds", "m3u" }),
@@ -890,6 +897,8 @@ namespace BizHawk.Client.Common
 			new FilesystemFilter("Odyssey 2", RomFileExtensions.O2),
 			new FilesystemFilter("Uzebox", RomFileExtensions.UZE),
 			new FilesystemFilter("Vectrex", RomFileExtensions.VEC),
+			new FilesystemFilter("GameCube", RomFileExtensions.GC),
+			new FilesystemFilter("Wii", RomFileExtensions.WII),
 			FilesystemFilter.EmuHawkSaveStates
 		);
 
