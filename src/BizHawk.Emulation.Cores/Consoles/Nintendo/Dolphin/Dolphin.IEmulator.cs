@@ -25,10 +25,19 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			IsLagFrame = true;
 
 			// deferred until input callback occurs
-			_doSwapDisc = _controller.IsPressed("Swap Disc");
+			bool swapDisc = _controller.IsPressed("Swap Disc");
+			if (swapDisc && !_didSwapDisc)
+			{
+				_doSwapDisc = true;
+			}
+			else if (!swapDisc && _didSwapDisc)
+			{
+				_didSwapDisc = false;
+			}
+
 			_doReset = _controller.IsPressed("Reset");
 
-			bool gpuLagged = _core.Dolphin_FrameStep(ref _width, ref _height);
+			bool gpuLagged = _core.Dolphin_FrameStep(render, ref _width, ref _height);
 
 			if (_settings.GPULagFrames)
 			{
@@ -73,6 +82,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			_core.Dolphin_SetFrameBuffer(IntPtr.Zero);
 			_core.Dolphin_SetGCPadCallback(null);
 			_core.Dolphin_SetWiiPadCallback(null);
+			_core.Dolphin_SetConfigCallbacks(null, null);
 
 			if (HostRunning)
 			{

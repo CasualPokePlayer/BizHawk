@@ -9,6 +9,7 @@ using BizHawk.Common.StringExtensions;
 using BizHawk.Emulation.Common;
 using BizHawk.Emulation.Cores;
 using BizHawk.Emulation.Cores.Libretro;
+using BizHawk.Emulation.Cores.Nintendo.Dolphin;
 using BizHawk.Emulation.Cores.Nintendo.SNES;
 using BizHawk.Emulation.Cores.Sony.PSX;
 using BizHawk.Emulation.Cores.Arcades.MAME;
@@ -234,9 +235,12 @@ namespace BizHawk.Client.Common
 			// TODO - use more sophisticated IDer
 			var discType = new DiscIdentifier(disc, path).DiscType;
 			var discHasher = new DiscHasher(disc);
-			var discHash = discType == DiscType.SonyPSX
-				? discHasher.Calculate_PSX_BizIDHash()
-				: discHasher.OldHash();
+			var discHash = discType switch
+			{
+				DiscType.SonyPSX => discHasher.Calculate_PSX_BizIDHash(),
+				DiscType.GameCube or DiscType.Wii => Dolphin.QuickHashDisc(path),
+				_ => discHasher.OldHash()
+			};
 
 			var game = Database.CheckDatabase(discHash);
 			if (game == null)

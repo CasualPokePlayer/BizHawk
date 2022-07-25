@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -16,7 +17,7 @@ using BizHawk.Emulation.Cores.Properties;
 namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 {
 	[PortedCore(CoreNames.Dolphin, "Dolphin Team", "5.0-16426", "https://github.com/dolphin-emu/dolphin", singleInstance: true, isReleased: false)]
-	public partial class Dolphin
+	public partial class Dolphin : IRomInfo
 	{
 		private static readonly LibDolphin _core;
 
@@ -66,7 +67,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 				return unchecked(be32[0] << 24 | be32[1] << 16 | be32[2] << 8 | be32[3]);
 			}
 
-			switch (Path.GetExtension(path))
+			switch (Path.GetExtension(path).ToLowerInvariant())
 			{
 				case ".iso":
 				case ".gcm":
@@ -74,7 +75,8 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 					break;
 				case ".ciso":
 					// header ends at 0x8000
-					reader.Read(ret, 0x8000, 6);
+					reader.ReadBytes(0x8000);
+					reader.Read(ret, 0, 6);
 					break;
 				case ".tgc":
 					{
@@ -84,7 +86,8 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 						{
 							break;
 						}
-						reader.Read(ret, headerEnd - 8, 6);
+						reader.ReadBytes(headerEnd - 8);
+						reader.Read(ret, 0, 6);
 						break;
 					}
 				case ".gcz":
@@ -93,15 +96,57 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 				case ".wia":
 				case ".rvz":
 					// offset 0x58 stores the first 80 bytes of the disc uncompressed
-					reader.Read(ret, 0x58, 6);
+					reader.ReadBytes(0x58);
+					reader.Read(ret, 0, 6);
 					break;
 				case ".wbfs":
 					// header ends at 0x200
-					reader.Read(ret, 0x200, 6);
+					reader.ReadBytes(0x200);
+					reader.Read(ret, 0, 6);
 					break;
 			}
 
 			return new string(ret);
+		}
+
+		private static unsafe uint HashAdler32(byte[] data)
+		{
+			const uint MOD_ADLER = 65521;
+			uint a = 1, b = 0;
+			int len = data.Length;
+
+			fixed (byte* dataPtr = data)
+			{
+				var p = dataPtr;
+				while (len != 0)
+				{
+					int tlen = len > 5550 ? 5550 : len;
+					len -= tlen;
+
+					do
+					{
+						a += *p++;
+						b += a;
+					} while (tlen-- != 0);
+
+					a = (a & 0xffff) + (a >> 16) * (65536 - MOD_ADLER);
+					b = (b & 0xffff) + (b >> 16) * (65536 - MOD_ADLER);
+				}
+
+				if (a >= MOD_ADLER)
+				{
+					a -= MOD_ADLER;
+				}
+
+				b = (b & 0xffff) + (b >> 16) * (65536 - MOD_ADLER);
+
+				if (b >= MOD_ADLER)
+				{
+					b -= MOD_ADLER;
+				}
+
+				return (b << 16) | a;
+			}
 		}
 
 		private static Dolphin CurrentCore;
@@ -119,7 +164,12 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			CurrentCore = this;
 
 			string gamePath = lp.Discs.FirstOrDefault()?.DiscPath ?? lp.Roms.First().RomPath;
-			string secondDiscPath = lp.Discs.Count == 2 ? lp.Discs[1].DiscPath : null;
+			_multiDisc = lp.Discs.Count == 2;
+
+			if (lp.Discs.Count > 0)
+			{
+				RomDetails = $"{lp.Game.Name}\r\nCRC32:{lp.Game.Hash}";
+			}
 
 			_serviceProvider = new(this);
 
@@ -127,27 +177,6 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			_syncSettings = lp.SyncSettings ?? new();
 
 			IsWii = lp.Game.System == VSystemID.Raw.Wii;
-
-			_isDumpingDtm = _settings.DumpDTM && lp.DeterministicEmulationRequested;
-
-			if (_isDumpingDtm)
-			{
-				byte[] secondDiscName = new byte[40];
-				if (secondDiscPath is not null)
-				{
-					var name = Encoding.UTF8.GetBytes(Path.GetFileName(secondDiscPath));
-					if (name.Length <= 40)
-					{
-						Array.Copy(name, secondDiscName, name.Length);
-					}
-					else
-					{
-						throw new Exception("Second disc name is too large for DTM dump!");
-					}
-				}
-
-				InitDtmDump(lp.Game.Name, GetGameId(lp.Discs.FirstOrDefault()?.DiscPath), secondDiscName);
-			}
 
 			if (Directory.Exists("DolphinUserFolder"))
 			{
@@ -194,13 +223,26 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 				}
 			}
 
+			_isDumpingDtm = _settings.DumpDTM && lp.DeterministicEmulationRequested;
+
+			uint iromHash = 0;
+			uint coefHash = 0;
+
 			if (!_syncSettings.MainSettings.DSPHLE)
 			{
+				// built-in rom hashs
+				iromHash = 0xE789B5A5;
+				coefHash = 0xA4A575F5;
+
 				var coef = lp.Comm.CoreFileProvider.GetFirmware(new("GC/Wii", "DSP COEF"));
 				if (coef is not null)
 				{
 					lp.Comm.Notify("Using user-provided DSP COEF");
 					File.WriteAllBytes("DolphinUserFolder/GC/dsp_coef.bin", coef);
+					if (_isDumpingDtm) // no need to hash like this if we aren't dumping
+					{
+						coefHash = HashAdler32(coef);
+					}
 				}
 
 				var irom = lp.Comm.CoreFileProvider.GetFirmware(new("GC/Wii", "DSP IROM"));
@@ -208,11 +250,37 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 				{
 					lp.Comm.Notify("Using user-provided DSP IROM");
 					File.WriteAllBytes("DolphinUserFolder/GC/dsp_rom.bin", irom);
+					if (_isDumpingDtm) // ditto
+					{
+						iromHash = HashAdler32(irom);
+					}
 				}
 			}
 
+			if (_isDumpingDtm)
+			{
+				var secondDiscName = new byte[40];
+				if (_multiDisc)
+				{
+					var name = Encoding.UTF8.GetBytes(Path.GetFileName(lp.Discs[1].DiscPath));
+					if (name.Length <= 40)
+					{
+						Array.Copy(name, secondDiscName, name.Length);
+					}
+					else
+					{
+						throw new Exception("Second disc name is too large for DTM dump!");
+					}
+				}
+
+				var gameHash = new byte[16];
+				_core.Dolphin_HashMedium(gamePath, gameHash, false);
+
+				InitDtmDump(lp.Game.Name, GetGameId(lp.Discs.FirstOrDefault()?.DiscPath), secondDiscName, gameHash, iromHash, coefHash);
+			}
+
 			DeterministicEmulation = lp.DeterministicEmulationRequested || _syncSettings.MainSettings.EnableCustomRTC;
-			ControllerDefinition = CreateControllerDefinition(lp.Discs.Count == 2);
+			ControllerDefinition = CreateControllerDefinition();
 
 			mpluscb = n => Wiimotes[n].HasMotionPlus;
 			extensioncb = n => Wiimotes[n].Extension;
@@ -227,7 +295,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 				_core.Dolphin_SetWiiPadCallback(_wiipadcb);
 			}
 
-			_hostThread = new Thread(() => ExecuteHostThread(gamePath, lp.Discs.Count == 2 ? lp.Discs[1].DiscPath : null)) { IsBackground = true };
+			_hostThread = new Thread(() => ExecuteHostThread(gamePath, _multiDisc ? lp.Discs[1].DiscPath : null)) { IsBackground = true };
 			_hostThread.Start();
 
 			while (!_core.Dolphin_BootupSuccessful())
@@ -249,6 +317,8 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			ResetCounters();
 		}
 
+		public string RomDetails { get; }
+
 		private bool IsWii { get; }
 
 		public class Wiimote
@@ -267,7 +337,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 
 		public Wiimote[] Wiimotes { get; private set; }
 
-		private ControllerDefinition CreateControllerDefinition(bool multiDisc)
+		private ControllerDefinition CreateControllerDefinition()
 		{
 			var ret = new ControllerDefinition((IsWii ? "Wii" : "GameCube") + " Controls");
 
@@ -338,7 +408,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 				}
 			}
 
-			if (multiDisc)
+			if (_multiDisc)
 			{
 				ret.BoolButtons.Add("Swap Disc");
 			}
@@ -356,7 +426,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 
 		private BinaryWriter _dtm;
 
-		private void InitDtmDump(string gameName, string gameID, byte[] secondDiscName)
+		private void InitDtmDump(string gameName, string gameID, byte[] secondDiscName, byte[] gameHash, uint iromHash, uint coefHash)
 		{
 			_inputCount = 0;
 
@@ -369,8 +439,8 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			_dtm.Seek(0, SeekOrigin.Begin);
 
 			// https://tasvideos.org/EmulatorResources/DTM
-			_dtm.Write(Encoding.UTF8.GetBytes("DTM\u001a")); // signature
-			_dtm.Write(Encoding.UTF8.GetBytes(gameID)); // game id
+			_dtm.Write(Encoding.ASCII.GetBytes("DTM\u001a")); // signature
+			_dtm.Write(Encoding.ASCII.GetBytes(gameID)); // game id
 			_dtm.Write(IsWii); // wii (always false for now)
 			var controllers = 0;
 			controllers |= _syncSettings.MainSettings.SIDevice0 != DolphinMainSettings.SIDevices.None ? (1 << 0) : 0;
@@ -391,13 +461,13 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			_dtm.Write(0L); // NOTE: lag count, set at end
 			_dtm.Write(new byte[8]); // reserved
 			_dtm.Write(0); // NOTE: re-record count... don't have access to that, so user can set it manually if they want
-			_dtm.Write(Encoding.UTF8.GetBytes("BizHawk")); // author name...
+			_dtm.Write(Encoding.ASCII.GetBytes("BizHawk")); // author name...
 			_dtm.Write(new byte[32 - 7]); // 0 pad author name
 			var videoBackend = Enum.GetName(typeof(DolphinMainSettings.GFXBackends), _syncSettings.MainSettings.GFXBackend);
-			_dtm.Write(Encoding.UTF8.GetBytes(videoBackend)); // video backend name...
+			_dtm.Write(Encoding.ASCII.GetBytes(videoBackend)); // video backend name...
 			_dtm.Write(new byte[16 - videoBackend.Length]); // 0 pad video backend name
 			_dtm.Write(new byte[16]); // audio emulator, not actually implemented in upstream
-			_dtm.Write(new byte[16]); // md5 of iso... probably don't want to implement this yet
+			_dtm.Write(gameHash); // md5 of iso...
 			// dolphin only supports UNIX timestamps with 4 bytes of width, although the movie header has it with 8 bytes...
 			_dtm.Write((long)(uint)(_syncSettings.MainSettings.CustomRTCValue - new DateTime(1970, 1, 1, 0, 0, 0)).TotalSeconds);
 			_dtm.Write(true); // yes, these are valid sync settings
@@ -436,11 +506,11 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			{
 				0xC4, 0x14, 0x67, 0xA8, 0xEB, 0x07, 0x60, 0x45, 0xE2, 0xA1, 0x4C, 0x7C, 0x0A, 0x15, 0xD5, 0x0F, 0x74, 0xD2, 0x6E, 0xC2,
 			}); // hash of revision this fork is based on (5.0-16426)
-			_dtm.Write(0); // dsp pirom hash... not actually hooked up atm
-			_dtm.Write(0); // dsp coef hash... not actually hooked up atm
+			_dtm.Write(iromHash); // dsp pirom hash
+			_dtm.Write(coefHash); // dsp coef hash
 			_dtm.Write(0L); // NOTE: tick count, set at end
 			_dtm.Write(new byte[11]); // reserved
-			Debug.Assert(_dtm.BaseStream.Position == 256);
+			Trace.Assert(_dtm.BaseStream.Position == 256);
 		}
 
 		private void EndDtmDump()
@@ -521,6 +591,17 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			}
 
 			_inputCount++;
+		}
+
+		public static string QuickHashDisc(string path)
+		{
+			var hash = new byte[4];
+			_core.Dolphin_HashMedium(path, hash, true);
+			string ret = "";
+			foreach (var b in hash)
+				ret += b.ToString("X2");
+
+			return ret;
 		}
 	}
 }

@@ -9,6 +9,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 	public partial class Dolphin : IStatable
 	{
 		private byte[] _stateBuf = new byte[0];
+		private readonly bool _multiDisc;
 
 		public void SaveStateBinary(BinaryWriter writer)
 		{
@@ -28,6 +29,11 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			writer.Write(IsLagFrame);
 			writer.Write(LagCount);
 			writer.Write(Frame);
+
+			if (_multiDisc)
+			{
+				writer.Write(_didSwapDisc);
+			}
 		}
 
 		public void LoadStateBinary(BinaryReader reader)
@@ -46,6 +52,11 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			IsLagFrame = reader.ReadBoolean();
 			LagCount = reader.ReadInt32();
 			Frame = reader.ReadInt32();
+
+			if (_multiDisc)
+			{
+				_didSwapDisc = reader.ReadBoolean();
+			}
 		}
 	}
 }

@@ -20,6 +20,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 
 		private readonly LibDolphin.GCPadCallback _gcpadcb;
 
+		private volatile bool _didSwapDisc = false;
 		private volatile bool _doSwapDisc;
 		private volatile bool _doReset;
 
@@ -102,6 +103,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			if (_doSwapDisc || _doReset)
 			{
 				_core.Dolphin_SpecialInputs(_doSwapDisc, _doReset);
+				_didSwapDisc |= _doSwapDisc;
 				_doSwapDisc = false;
 				_doReset = false;
 			}

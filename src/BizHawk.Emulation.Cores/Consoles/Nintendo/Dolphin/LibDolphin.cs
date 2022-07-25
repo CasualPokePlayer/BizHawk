@@ -22,7 +22,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 		public abstract void Dolphin_SetFrameBuffer(IntPtr fb);
 
 		[BizImport(cc)]
-		public abstract bool Dolphin_FrameStep(ref int width, ref int height);
+		public abstract bool Dolphin_FrameStep(bool render, ref int width, ref int height);
 
 		public enum PadButtons : ushort
 		{
@@ -242,5 +242,8 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 
 		[BizImport(cc)]
 		public abstract void Dolphin_SpecialInputs(bool swapDisc, bool reset);
+
+		[BizImport(cc, Compatibility = true)]
+		public abstract void Dolphin_HashMedium(string path, byte[] hash, bool quick);
 	}
 }
