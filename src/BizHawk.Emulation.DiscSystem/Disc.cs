@@ -128,19 +128,10 @@ namespace BizHawk.Emulation.DiscSystem
 		internal Disc()
 		{}
 
-		public static bool IsValidExtension(string extension) =>
-			extension == ".iso"
-			|| extension == ".cue"
-			|| extension == ".ccd"
-			|| extension == ".mds"
+		public static bool IsValidExtension(string extension)
+			=> extension.ToLowerInvariant() is ".ccd" or ".cue" or ".iso" or ".mds"
 			// these extensions are only used in the context of GC or Wiis
-			// some may need special care to be used
-			|| extension == ".gcm" // this is actually just an iso
-			|| extension == ".tgc"
-			|| extension == ".ciso"
-			|| extension == ".gcz"
-			|| extension == ".wia"
-			|| extension == ".rvz"
-			|| extension == ".wbfs";
+			// most need special care to be used (except gcm, which is just an iso)
+			or ".ciso" or ".gcm" or ".gcz" or ".tgc" or ".rvz" or ".wbfs" or ".wia";
 	}
 }

@@ -15,6 +15,7 @@ namespace BizHawk.Emulation.Common
 {
 	public static class EmulatorExtensions
 	{
+		/// <remarks>need to think about e.g. Genesis / Mega Drive using one sysID but having a different display name depending on the BIOS region --yoshi</remarks>
 		public static readonly IReadOnlyDictionary<string, string> SystemIDDisplayNames = new Dictionary<string, string>
 		{
 			[VSystemID.Raw.A26] = "Atari 2600",
@@ -24,6 +25,7 @@ namespace BizHawk.Emulation.Common
 			[VSystemID.Raw.C64] = "Commodore 64",
 			[VSystemID.Raw.ChannelF] = "Channel F",
 			[VSystemID.Raw.Coleco] = "ColecoVision",
+			// DEBUG
 			[VSystemID.Raw.GBL] = "Game Boy Link",
 			[VSystemID.Raw.GB] = "GB",
 			[VSystemID.Raw.SGB] = "SGB",
@@ -32,25 +34,32 @@ namespace BizHawk.Emulation.Common
 			[VSystemID.Raw.GC] = "GameCube",
 			[VSystemID.Raw.GEN] = "Genesis",
 			[VSystemID.Raw.GG] = "Game Gear",
+			[VSystemID.Raw.GGL] = "Game Gear Link",
 			[VSystemID.Raw.INTV] = "Intellivision",
 			[VSystemID.Raw.Libretro] = "Libretro",
 			[VSystemID.Raw.Lynx] = "Lynx",
 			[VSystemID.Raw.MAME] = "MAME",
+			[VSystemID.Raw.MSX] = "MSX",
 			[VSystemID.Raw.N64] = "Nintendo 64",
 			[VSystemID.Raw.NDS] = "NDS",
 			[VSystemID.Raw.NES] = "NES",
 			[VSystemID.Raw.NGP] = "Neo-Geo Pocket",
+			// NULL
 			[VSystemID.Raw.O2] = "Odyssey2",
 			[VSystemID.Raw.PCE] = "TurboGrafx-16",
 			[VSystemID.Raw.PCECD] = "TurboGrafx - 16(CD)",
 			[VSystemID.Raw.PCFX] = "PCFX",
+			[VSystemID.Raw.PS2] = "PlayStation 2",
 			[VSystemID.Raw.PSX] = "PlayStation",
 			[VSystemID.Raw.SAT] = "Saturn",
+			[VSystemID.Raw.Sega32X] = "Genesis 32X",
 			[VSystemID.Raw.SG] = "SG-1000",
 			[VSystemID.Raw.SGX] = "SuperGrafx",
+			[VSystemID.Raw.SGXCD] = "SuperGrafx CD-ROM²", // this was a TG-16 peripheral which the SuperGrafx kept compatibility with, though no games used it (w/ SGX) according to Wikipedia, so maybe this should say "TurboGrafx CD-ROM²"? --yoshi
 			[VSystemID.Raw.SMS] = "Sega Master System",
 			[VSystemID.Raw.SNES] = "SNES",
 			[VSystemID.Raw.TI83] = "TI - 83",
+			[VSystemID.Raw.TIC80] = "TIC-80",
 			[VSystemID.Raw.UZE] = "Uzebox",
 			[VSystemID.Raw.VB] = "Virtual Boy",
 			[VSystemID.Raw.VEC] = "Vectrex",
@@ -422,7 +431,7 @@ namespace BizHawk.Emulation.Common
 				.Replace('|', '+') // '|' is the filename-member separator for archives in HawkFile
 				.Replace(":", " -") // ':' is the path separator in lists (Path.GetFileName will drop all but the last entry in such a list)
 				.Replace("\"", ""); // '"' is just annoying as it needs escaping on the command-line
-			var filesystemDir = Path.GetDirectoryName(pass1);
+			var filesystemDir = string.IsNullOrWhiteSpace(pass1) ? string.Empty : Path.GetDirectoryName(pass1);
 			var pass2 = Path.GetFileName(pass1).RemoveInvalidFileSystemChars();
 			return Path.Combine(filesystemDir, pass2.RemoveSuffix('.')); // trailing '.' would be duplicated when file extension is added
 		}

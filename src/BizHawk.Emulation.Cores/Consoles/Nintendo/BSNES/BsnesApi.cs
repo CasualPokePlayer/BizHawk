@@ -212,7 +212,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.BSNES
 		}
 
 		[StructLayout(LayoutKind.Sequential)]
-		public class SnesCallbacks
+		public sealed class SnesCallbacks
 		{
 			public snes_video_frame_t videoFrameCb;
 			public snes_audio_sample_t audioSampleCb;
@@ -233,7 +233,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.BSNES
 
 			public IEnumerable<Delegate> AllDelegatesInMemoryOrder()
 			{
-				FieldsInOrder ??= GetType()
+				FieldsInOrder ??= typeof(SnesCallbacks)
 					.GetFields()
 					.OrderBy(BizInvokerUtilities.ComputeFieldOffset)
 					.ToList();
@@ -246,7 +246,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.BSNES
 		public struct SnesInitData
 		{
 			public ENTROPY entropy;
-			public BSNES_INPUT_DEVICE left_port;
+			public BSNES_PORT1_INPUT_DEVICE left_port;
 			public BSNES_INPUT_DEVICE right_port;
 			public bool hotfixes;
 			public bool fast_ppu;

@@ -245,7 +245,12 @@ namespace BizHawk.Client.Common
 				["B28"] = 's',
 				["B29"] = 't',
 				["B30"] = 'u',
-				["B31"] = 'v'
+				["B31"] = 'v',
+
+				["Extra1"] = '1',
+				["Extra2"] = '2',
+				["Extra3"] = '3',
+				["Extra4"] = '4'
 			},
 			[VSystemID.Raw.TI83] = new()
 			{
@@ -625,6 +630,8 @@ namespace BizHawk.Client.Common
 				["Right Stick, Pinky"] = 'p',
 				["Analog"] = 'M',
 				["Offscreen Shot"] = 'o',
+				["Open Tray"] = 'o',
+				["Close Tray"] = 'c',
 			},
 			[VSystemID.Raw.Wii] = new()
 			{
@@ -653,7 +660,8 @@ namespace BizHawk.Client.Common
 			["LStick Y"] = "lsY",
 			["RStick X"] = "rsX",
 			["RStick Y"] = "rsY",
-			["Disc Select"] = "Disc"
+			["Disc Select"] = "Disc",
+			["Disk Index"] = "Disk",
 		};
 
 		private static readonly Dictionary<string, Dictionary<string, string>> AxisSystemOverrides = new Dictionary<string, Dictionary<string, string>>

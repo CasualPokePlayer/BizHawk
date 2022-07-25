@@ -347,11 +347,7 @@ namespace BizHawk.Client.Common
 			var discs = m3u.Entries
 				.Select(e => e.Path)
 				.Where(p => Disc.IsValidExtension(Path.GetExtension(p)))
-				.Select(path => new
-				{
-					d = DiscExtensions.CreateAnyType(path, str => DoLoadErrorCallback(str, "???", LoadErrorType.DiscError)),
-					p = path,
-				})
+				.Select(path => (p: path, d: DiscExtensions.CreateAnyType(path, str => DoLoadErrorCallback(str, "???", LoadErrorType.DiscError))))
 				.Where(a => a.d != null)
 				.Select(a => (IDiscAsset)new DiscAsset
 				{
@@ -554,11 +550,7 @@ namespace BizHawk.Client.Common
 						.ToList(),
 					Discs = xmlGame.AssetFullPaths
 						.Where(p => Disc.IsValidExtension(Path.GetExtension(p)))
-						.Select(path => new
-						{
-							d = DiscExtensions.CreateAnyType(path, str => DoLoadErrorCallback(str, system, LoadErrorType.DiscError)),
-							p = path,
-						})
+						.Select(path => (p: path, d: DiscExtensions.CreateAnyType(path, str => DoLoadErrorCallback(str, system, LoadErrorType.DiscError))))
 						.Where(a => a.d != null)
 						.Select(a => (IDiscAsset)new DiscAsset
 						{
@@ -808,6 +800,8 @@ namespace BizHawk.Client.Common
 
 			public static readonly IReadOnlyCollection<string> Lynx = new[] { "lnx" };
 
+			public static readonly IReadOnlyCollection<string> MSX = new[] { "cas", "dsk", "mx1", "rom" };
+
 			public static readonly IReadOnlyCollection<string> N64 = new[] { "z64", "v64", "n64" };
 
 			public static readonly IReadOnlyCollection<string> NDS = new[] { "nds" };
@@ -825,6 +819,8 @@ namespace BizHawk.Client.Common
 			public static readonly IReadOnlyCollection<string> SNES = new[] { "smc", "sfc", "xml" };
 
 			public static readonly IReadOnlyCollection<string> TI83 = new[] { "83g", "83l", "83p" };
+
+			public static readonly IReadOnlyCollection<string> TIC80 = new[] { "tic" };
 
 			public static readonly IReadOnlyCollection<string> UZE = new[] { "uze" };
 
@@ -850,6 +846,7 @@ namespace BizHawk.Client.Common
 				.Concat(GEN)
 				.Concat(INTV)
 				.Concat(Lynx)
+				.Concat(MSX)
 				.Concat(N64)
 				.Concat(NDS)
 				.Concat(NES)
@@ -859,6 +856,7 @@ namespace BizHawk.Client.Common
 				.Concat(SMS)
 				.Concat(SNES)
 				.Concat(TI83)
+				.Concat(TIC80)
 				.Concat(UZE)
 				.Concat(VB)
 				.Concat(VEC)
@@ -889,6 +887,7 @@ namespace BizHawk.Client.Common
 			new FilesystemFilter("ColecoVision", RomFileExtensions.Coleco, addArchiveExts: true),
 			new FilesystemFilter("IntelliVision", RomFileExtensions.INTV, addArchiveExts: true),
 			new FilesystemFilter("TI-83", RomFileExtensions.TI83, addArchiveExts: true),
+			new FilesystemFilter("TIC-80", RomFileExtensions.TIC80, addArchiveExts: true),
 			FilesystemFilter.Archives,
 			new FilesystemFilter("Genesis", RomFileExtensions.GEN.Concat(new[] { "bin", "cue", "ccd" }).ToList(), addArchiveExts: true),
 			new FilesystemFilter("SID Commodore 64 Music File", Array.Empty<string>(), devBuildExtraExts: new[] { "sid" }, devBuildAddArchiveExts: true),
@@ -902,6 +901,7 @@ namespace BizHawk.Client.Common
 			new FilesystemFilter("Odyssey 2", RomFileExtensions.O2),
 			new FilesystemFilter("Uzebox", RomFileExtensions.UZE),
 			new FilesystemFilter("Vectrex", RomFileExtensions.VEC),
+			new FilesystemFilter("MSX", RomFileExtensions.MSX),
 			new FilesystemFilter("GameCube", RomFileExtensions.GC),
 			new FilesystemFilter("Wii", RomFileExtensions.WII),
 			FilesystemFilter.EmuHawkSaveStates

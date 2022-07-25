@@ -26,6 +26,7 @@ using BizHawk.Emulation.Cores.Computers.AppleII;
 using BizHawk.Emulation.Cores.Computers.Commodore64;
 using BizHawk.Emulation.Cores.Computers.MSX;
 using BizHawk.Emulation.Cores.Computers.SinclairSpectrum;
+using BizHawk.Emulation.Cores.Computers.TIC80;
 using BizHawk.Emulation.Cores.Consoles.Belogic;
 using BizHawk.Emulation.Cores.Consoles.ChannelF;
 using BizHawk.Emulation.Cores.Consoles.NEC.PCE;
@@ -61,7 +62,6 @@ using BizHawk.Emulation.Cores.Nintendo.SubNESHawk;
 using BizHawk.Emulation.Cores.PCEngine;
 using BizHawk.Emulation.Cores.Sega.GGHawkLink;
 using BizHawk.Emulation.Cores.Sega.MasterSystem;
-using BizHawk.Emulation.Cores.Sony.PS2;
 using BizHawk.Emulation.Cores.Sony.PSX;
 using BizHawk.Emulation.Cores.Waterbox;
 using BizHawk.Emulation.Cores.WonderSwan;
@@ -2826,9 +2826,6 @@ namespace BizHawk.Client.EmuHawk
 			// Cygne
 			items.Add(CreateCoreSubmenu(VSystemCategory.Handhelds, CoreNames.Cygne, CreateGenericCoreConfigItem<WonderSwan>(CoreNames.Cygne)));
 
-			// DobieStation
-			items.Add(CreateCoreSubmenu(VSystemCategory.Consoles, CoreNames.DobieStation, CreateGenericCoreConfigItem<DobieStation>(CoreNames.DobieStation)));
-
 			// Dolphin
 			items.Add(CreateCoreSubmenu(VSystemCategory.Consoles, CoreNames.Dolphin, CreateSettingsItem("Settings...", (_, _) => OpenDolphinSettingsDialog(GetSettingsAdapterFor<Dolphin>()))));
 
@@ -3032,6 +3029,9 @@ namespace BizHawk.Client.EmuHawk
 
 			// TI83Hawk
 			items.Add(CreateCoreSubmenu(VSystemCategory.Other, CoreNames.TI83Hawk, CreateSettingsItem("Palette...", (_, _) => OpenTI83PaletteSettingsDialog(GetSettingsAdapterFor<TI83>()))));
+
+			// TIC80
+			items.Add(CreateCoreSubmenu(VSystemCategory.PCs, CoreNames.TIC80, CreateGenericCoreConfigItem<TIC80>(CoreNames.TIC80)));
 
 			// T. S. T.
 			items.Add(CreateCoreSubmenu(VSystemCategory.Consoles, CoreNames.TST, CreateGenericNymaCoreConfigItem<Tst>(CoreNames.TST, Tst.CachedSettingsInfo)));

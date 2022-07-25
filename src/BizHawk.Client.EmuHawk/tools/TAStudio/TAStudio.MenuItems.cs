@@ -7,6 +7,7 @@ using System.Windows.Forms;
 using BizHawk.Client.Common;
 using BizHawk.Client.EmuHawk.ToolExtensions;
 using BizHawk.Common;
+using BizHawk.Common.CollectionExtensions;
 using BizHawk.Emulation.Common;
 
 namespace BizHawk.Client.EmuHawk
@@ -54,13 +55,7 @@ namespace BizHawk.Client.EmuHawk
 			{
 				if (SaveRamEmulator.CloneSaveRam() != null)
 				{
-					int index = 0;
-					if (TasView.SelectedRows.Any())
-					{
-						index = TasView.SelectedRows.First();
-					}
-
-					GoToFrame(index);
+					GoToFrame(TasView.AnyRowsSelected ? TasView.FirstSelectedRowIndex : 0);
 					var newProject = CurrentTasMovie.ConvertToSaveRamAnchoredMovie(
 						SaveRamEmulator.CloneSaveRam());
 					MainForm.PauseEmulator();
@@ -224,7 +219,7 @@ namespace BizHawk.Client.EmuHawk
 				return;
 			}
 
-			if (TasView.LastSelectedIndex == CurrentTasMovie.InputLogLength)
+			if (TasView.SelectionEndIndex == CurrentTasMovie.InputLogLength)
 			{
 				TasView.SelectRow(CurrentTasMovie.InputLogLength, false);
 			}
@@ -238,12 +233,13 @@ namespace BizHawk.Client.EmuHawk
 
 			if (file != null)
 			{
+				var selectionStart = TasView.SelectionStartIndex!.Value;
 				new MovieZone(
 					Emulator,
 					Tools,
 					MovieSession,
-					TasView.FirstSelectedIndex.Value,
-					TasView.LastSelectedIndex.Value - TasView.FirstSelectedIndex.Value + 1)
+					start: selectionStart,
+					length: TasView.SelectionEndIndex!.Value - selectionStart + 1)
 					.Save(file.FullName);
 
 				Config.RecentMacros.Add(file.FullName);
@@ -406,6 +402,7 @@ namespace BizHawk.Client.EmuHawk
 			TasView.Refresh();
 		}
 
+		/// <remarks>TODO merge w/ Deselect?</remarks>
 		private void SelectAllMenuItem_Click(object sender, EventArgs e)
 		{
 			TasView.SelectAll();
@@ -416,8 +413,9 @@ namespace BizHawk.Client.EmuHawk
 		{
 			if (TasView.Focused && TasView.AnyRowsSelected)
 			{
-				var prevMarker = CurrentTasMovie.Markers.PreviousOrCurrent(TasView.LastSelectedIndex ?? 0);
-				var nextMarker = CurrentTasMovie.Markers.Next(TasView.LastSelectedIndex ?? 0);
+				var selectionEnd = TasView.SelectionEndIndex ?? 0;
+				var prevMarker = CurrentTasMovie.Markers.PreviousOrCurrent(selectionEnd);
+				var nextMarker = CurrentTasMovie.Markers.Next(selectionEnd);
 
 				int prev = prevMarker?.Frame ?? 0;
 				int next = nextMarker?.Frame ?? CurrentTasMovie.InputLogLength;
@@ -499,7 +497,7 @@ namespace BizHawk.Client.EmuHawk
 								_tasClipboard.Add(new TasClipboardEntry(i, line));
 							}
 
-							var rollbackFrame =  CurrentTasMovie.CopyOverInput(TasView.FirstSelectedIndex ?? 0, _tasClipboard.Select(x => x.ControllerState));
+							var rollbackFrame = CurrentTasMovie.CopyOverInput(TasView.SelectionStartIndex ?? 0, _tasClipboard.Select(static x => x.ControllerState));
 							if (rollbackFrame > 0)
 							{
 								GoToLastEmulatedFrameIfNecessary(rollbackFrame);
@@ -539,11 +537,12 @@ namespace BizHawk.Client.EmuHawk
 								_tasClipboard.Add(new TasClipboardEntry(i, line));
 							}
 
-							var needsToRollback = TasView.FirstSelectedIndex < Emulator.Frame;
-							CurrentTasMovie.InsertInput(TasView.FirstSelectedIndex ?? 0, _tasClipboard.Select(x => x.ControllerState));
+							var selectionStart = TasView.SelectionStartIndex;
+							var needsToRollback = selectionStart < Emulator.Frame;
+							CurrentTasMovie.InsertInput(selectionStart ?? 0, _tasClipboard.Select(static x => x.ControllerState));
 							if (needsToRollback)
 							{
-								GoToLastEmulatedFrameIfNecessary(TasView.FirstSelectedIndex.Value);
+								GoToLastEmulatedFrameIfNecessary(selectionStart!.Value);
 								DoAutoRestore();
 							}
 
@@ -558,8 +557,9 @@ namespace BizHawk.Client.EmuHawk
 		{
 			if (TasView.Focused && TasView.AnyRowsSelected)
 			{
-				var needsToRollback = TasView.FirstSelectedIndex < Emulator.Frame;
-				var rollBackFrame = TasView.FirstSelectedIndex ?? 0;
+				var selectionStart = TasView.SelectionStartIndex;
+				var needsToRollback = selectionStart < Emulator.Frame;
+				var rollBackFrame = selectionStart ?? 0;
 
 				_tasClipboard.Clear();
 				var list = TasView.SelectedRows.ToArray();
@@ -598,9 +598,9 @@ namespace BizHawk.Client.EmuHawk
 			{
 				var firstWithInput = FirstNonEmptySelectedFrame;
 				bool needsToRollback = firstWithInput.HasValue && firstWithInput < Emulator.Frame;
-				int rollBackFrame = TasView.FirstSelectedIndex ?? 0;
+				var rollBackFrame = TasView.SelectionStartIndex ?? 0;
 
-				CurrentTasMovie.ChangeLog.BeginNewBatch($"Clear frames {TasView.SelectedRows.Min()}-{TasView.SelectedRows.Max()}");
+				CurrentTasMovie.ChangeLog.BeginNewBatch($"Clear frames {TasView.SelectionStartIndex}-{TasView.SelectionEndIndex}");
 				foreach (int frame in TasView.SelectedRows)
 				{
 					CurrentTasMovie.ClearFrame(frame);
@@ -622,8 +622,9 @@ namespace BizHawk.Client.EmuHawk
 		{
 			if (TasView.Focused && TasView.AnyRowsSelected)
 			{
-				var needsToRollback = TasView.FirstSelectedIndex < Emulator.Frame;
-				var rollBackFrame = TasView.FirstSelectedIndex ?? 0;
+				var selectionStart = TasView.SelectionStartIndex;
+				var needsToRollback = selectionStart < Emulator.Frame;
+				var rollBackFrame = selectionStart ?? 0;
 				if (rollBackFrame >= CurrentTasMovie.InputLogLength)
 				{
 					// Cannot delete non-existent frames
@@ -665,8 +666,8 @@ namespace BizHawk.Client.EmuHawk
 				if (TasView.Focused && TasView.AnyRowsSelected)
 				{
 					var framesToInsert = TasView.SelectedRows;
-					var insertionFrame = Math.Min((TasView.LastSelectedIndex ?? 0) + 1, CurrentTasMovie.InputLogLength);
-					var needsToRollback = TasView.FirstSelectedIndex < Emulator.Frame;
+					var insertionFrame = Math.Min((TasView.SelectionEndIndex ?? 0) + 1, CurrentTasMovie.InputLogLength);
+					var needsToRollback = TasView.SelectionStartIndex < Emulator.Frame;
 
 					var inputLog = framesToInsert
 						.Select(frame => CurrentTasMovie.GetInputLogEntry(frame))
@@ -689,8 +690,9 @@ namespace BizHawk.Client.EmuHawk
 		{
 			if (TasView.Focused && TasView.AnyRowsSelected)
 			{
-				var insertionFrame = TasView.FirstSelectedIndex ?? 0;
-				var needsToRollback = TasView.FirstSelectedIndex < Emulator.Frame;
+				var selectionStart = TasView.SelectionStartIndex;
+				var insertionFrame = selectionStart ?? 0;
+				var needsToRollback = selectionStart < Emulator.Frame;
 
 				CurrentTasMovie.InsertEmptyFrame(insertionFrame);
 
@@ -708,7 +710,7 @@ namespace BizHawk.Client.EmuHawk
 		{
 			if (TasView.Focused && TasView.AnyRowsSelected)
 			{
-				int insertionFrame = TasView.FirstSelectedIndex ?? 0;
+				var insertionFrame = TasView.SelectionStartIndex ?? 0;
 				using var framesPrompt = new FramesPrompt();
 				if (framesPrompt.ShowDialog().IsOk())
 				{
@@ -721,8 +723,8 @@ namespace BizHawk.Client.EmuHawk
 		{
 			if (TasView.Focused && TasView.AnyRowsSelected)
 			{
-				var rollbackFrame = TasView.LastSelectedIndex ?? 0;
-				var needsToRollback = TasView.FirstSelectedIndex < Emulator.Frame;
+				var rollbackFrame = TasView.SelectionEndIndex ?? 0;
+				var needsToRollback = TasView.SelectionStartIndex < Emulator.Frame;
 
 				CurrentTasMovie.Truncate(rollbackFrame);
 				MarkerControl.MarkerInputRoll.TruncateSelection(CurrentTasMovie.Markers.Count - 1);
@@ -738,7 +740,8 @@ namespace BizHawk.Client.EmuHawk
 
 		private void SetMarkersMenuItem_Click(object sender, EventArgs e)
 		{
-			if (TasView.SelectedRows.Count() > 50)
+			var selectedRows = TasView.SelectedRows.ToList();
+			if (selectedRows.Count > 50)
 			{
 				var result = DialogController.ShowMessageBox2("Are you sure you want to add more than 50 markers?", "Add markers", EMsgBoxIcon.Question, useOKCancel: true);
 				if (!result)
@@ -747,7 +750,7 @@ namespace BizHawk.Client.EmuHawk
 				}
 			}
 
-			foreach (var index in TasView.SelectedRows)
+			foreach (var index in selectedRows)
 			{
 				MarkerControl.AddMarker(index, false);
 			}
@@ -755,12 +758,12 @@ namespace BizHawk.Client.EmuHawk
 
 		private void SetMarkerWithTextMenuItem_Click(object sender, EventArgs e)
 		{
-			MarkerControl.AddMarker(TasView.SelectedRows.FirstOrDefault(), true);
+			MarkerControl.AddMarker(TasView.AnyRowsSelected ? TasView.FirstSelectedRowIndex : 0, true);
 		}
 
 		private void RemoveMarkersMenuItem_Click(object sender, EventArgs e)
 		{
-			CurrentTasMovie.Markers.RemoveAll(m => TasView.SelectedRows.Contains(m.Frame));
+			CurrentTasMovie.Markers.RemoveAll(m => TasView.IsRowSelected(m.Frame));
 			MarkerControl.UpdateMarkerCount();
 			RefreshDialog();
 		}
@@ -1217,8 +1220,7 @@ namespace BizHawk.Client.EmuHawk
 			ColumnsSubMenu.DropDownItems.Clear();
 
 			var columns = TasView.AllColumns
-				.Where(c => !string.IsNullOrWhiteSpace(c.Text))
-				.Where(c => c.Name != "FrameColumn")
+				.Where(static c => !string.IsNullOrWhiteSpace(c.Text) && c.Name is not "FrameColumn")
 				.ToList();
 
 			int workingHeight = Screen.FromControl(this).WorkingArea.Height;
@@ -1403,18 +1405,19 @@ namespace BizHawk.Client.EmuHawk
 				(Clipboard.GetDataObject()?.GetDataPresent(DataFormats.StringFormat) ?? false)
 				&& TasView.AnyRowsSelected;
 
+			var selectionIsSingleRow = TasView.SelectedRows.CountIsExactly(1);
 			StartNewProjectFromNowMenuItem.Visible =
-				TasView.SelectedRows.Count() == 1
-				&& TasView.SelectedRows.Contains(Emulator.Frame)
+				selectionIsSingleRow
+				&& TasView.IsRowSelected(Emulator.Frame)
 				&& !CurrentTasMovie.StartsFromSaveRam;
 
 			StartANewProjectFromSaveRamMenuItem.Visible =
-				TasView.SelectedRows.Count() == 1
+				selectionIsSingleRow
 				&& SaveRamEmulator != null
 				&& !CurrentTasMovie.StartsFromSavestate;
 
 			StartFromNowSeparator.Visible = StartNewProjectFromNowMenuItem.Visible || StartANewProjectFromSaveRamMenuItem.Visible;
-			RemoveMarkersContextMenuItem.Enabled = CurrentTasMovie.Markers.Any(m => TasView.SelectedRows.Contains(m.Frame)); // Disable the option to remove markers if no markers are selected (FCEUX does this).
+			RemoveMarkersContextMenuItem.Enabled = CurrentTasMovie.Markers.Any(m => TasView.IsRowSelected(m.Frame)); // Disable the option to remove markers if no markers are selected (FCEUX does this).
 			CancelSeekContextMenuItem.Enabled = MainForm.PauseOnFrame.HasValue;
 			BranchContextMenuItem.Visible = TasView.CurrentCell?.RowIndex == Emulator.Frame;
 

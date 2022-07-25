@@ -94,7 +94,7 @@ namespace BizHawk.Client.EmuHawk
 			recentCoreSettingsSubmenu.DropDownItems.AddRange(CreateCoreSettingsSubmenus().ToArray());
 			ToolStripMenuItemEx noRecentsItem = new() { Enabled = false, Text = "(N/A)" };
 			recentCoreSettingsSubmenu.DropDownItems.Add(noRecentsItem);
-			recentCoreSettingsSubmenu.DropDownOpened += (_, _) =>
+			recentCoreSettingsSubmenu.DropDownOpening += (_, _) =>
 			{
 				foreach (ToolStripItem submenu in recentCoreSettingsSubmenu.DropDownItems) submenu.Visible = Config.RecentCores.Contains(submenu.Text);
 				noRecentsItem.Visible = Config.RecentCores.Count is 0;
@@ -685,23 +685,26 @@ namespace BizHawk.Client.EmuHawk
 				// I would like to trigger a repaint here, but this isn't done yet
 			};
 
-			if (!OSTailoredCode.IsUnixHost && !Config.SkipOutdatedOsCheck)
+			if (!Config.SkipOutdatedOsCheck && OSTailoredCode.HostWindowsVersion is not null)
 			{
-				var (winVersion, win10Release) = OSTailoredCode.HostWindowsVersion.Value;
+				var (winVersion, win10PlusVersion) = OSTailoredCode.HostWindowsVersion.Value;
 				var message = winVersion switch
 				{
-					OSTailoredCode.WindowsVersion._10 when win10Release < 1909 => $"Quick reminder: version {win10Release} of Windows 10 is no longer supported by Microsoft. EmuHawk will continue to work, but please update to at least 1909 for increased security.",
+//					OSTailoredCode.WindowsVersion._11 when win10PlusRelease! < new Version(10, 0, 22621) => $"Quick reminder: Your copy of Windows 11 (build {win10PlusRelease.Build}) is no longer supported by Microsoft.\nEmuHawk will probably continue working, but please update to at least 21H2 for increased security.",
+					OSTailoredCode.WindowsVersion._11 => null,
+					OSTailoredCode.WindowsVersion._10 when win10PlusVersion! < new Version(10, 0, 19043) => $"Quick reminder: Your copy of Windows 10 (build {win10PlusVersion.Build}) is no longer supported by Microsoft.\nEmuHawk will probably continue working, but please update to at least 21H1 for increased security.",
 					OSTailoredCode.WindowsVersion._10 => null,
-					OSTailoredCode.WindowsVersion._8_1 => null, // still CBB
-					_ => $"Quick reminder: Windows {winVersion.ToString().RemovePrefix('_').Replace("_", ".")} is no longer supported by Microsoft. EmuHawk will continue to work, but please get a new operating system for increased security (either Windows 8.1, Windows 10, or a GNU+Linux distro)."
+					OSTailoredCode.WindowsVersion._8_1 => "Heads up: Microsoft will stop supporting Windows 8.1 in January 2023, and we'll be doing the same.\nEmuHawk will probably continue working, but please get a new operating system (either Windows 10+ or a GNU+Linux distro).",
+					_ => $"Quick reminder: Windows {winVersion.ToString().RemovePrefix('_').Replace("_", ".")} is no longer supported by Microsoft.\nEmuHawk will probably continue working, but please get a new operating system for increased security (either Windows 10+ or a GNU+Linux distro)."
 				};
-#if false
-				if (message != null)
+				if (message is not null)
 				{
-					using var box = new ExceptionBox(message);
-					box.ShowDialog();
-				}
+#if DEBUG
+				Console.WriteLine(message);
+#else
+				Load += (_, _) => Config.SkipOutdatedOsCheck = this.ShowMessageBox2($"{message}\n\nSkip this reminder from now on?");
 #endif
+				}
 			}
 		}
 
@@ -1459,7 +1462,7 @@ namespace BizHawk.Client.EmuHawk
 
 		public void UpdateCheatStatus()
 		{
-			if (CheatList.ActiveCount > 0)
+			if (CheatList.AnyActive)
 			{
 				CheatStatusButton.ToolTipText = "Cheats are currently active";
 				CheatStatusButton.Image = Properties.Resources.Freeze;
@@ -2076,8 +2079,8 @@ namespace BizHawk.Client.EmuHawk
 		}
 
 		private static readonly IList<Type> SpecializedTools = ReflectionCache.Types
-			.Where(t => typeof(IToolForm).IsAssignableFrom(t) && !t.IsAbstract)
-			.Where(t => t.GetCustomAttribute<SpecializedToolAttribute>() != null)
+			.Where(static t => !t.IsAbstract && typeof(IToolForm).IsAssignableFrom(t)
+				&& t.GetCustomAttribute<SpecializedToolAttribute>() is not null)
 			.ToList();
 
 		private ISet<char> _availableAccelerators;
