@@ -16,7 +16,8 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 		private DolphinSettings _settings;
 		private DolphinSyncSettings _syncSettings;
 
-		public DolphinSettings GetSettings() => _settings.Clone();
+		public DolphinSettings GetSettings()
+			=> _settings.Clone();
 
 		public PutSettingsDirtyBits PutSettings(DolphinSettings o)
 		{
@@ -30,7 +31,8 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			return ret ? PutSettingsDirtyBits.RebootCore : PutSettingsDirtyBits.None;
 		}
 
-		public DolphinSyncSettings GetSyncSettings() => _syncSettings.Clone();
+		public DolphinSyncSettings GetSyncSettings()
+			=> _syncSettings.Clone();
 
 		public PutSettingsDirtyBits PutSyncSettings(DolphinSyncSettings o)
 		{
@@ -62,12 +64,11 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 				DumpDTM = false;
 			}
 
-			public DolphinSettings Clone() => MemberwiseClone() as DolphinSettings;
+			public DolphinSettings Clone()
+				=> (DolphinSettings)MemberwiseClone();
 
 			public static bool NeedsReboot(DolphinSettings x, DolphinSettings y)
-			{
-				return x.DumpDTM != y.DumpDTM;
-			}
+				=> x.DumpDTM != y.DumpDTM;
 		}
 
 		public class DolphinSyncSettings
@@ -111,6 +112,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 
 		public abstract class DolphinNativeSettings
 		{
+			[JsonIgnore] // nicely propagates to any derived class
 			protected abstract string NativeName { get; }
 
 			private static bool IsBrowsable(PropertyInfo prop)
@@ -200,7 +202,8 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 
 			public void ApplyNativeSettings(List<string> config)
 			{
-				foreach (var prop in this.GetType().GetProperties())
+#pragma warning disable BHI1101 // nope, fuck that
+				foreach (var prop in GetType().GetProperties())
 				{
 					// ensure settings which cannot be browsed have their defaults set
 					if (prop.CanWrite && !IsBrowsable(prop))
@@ -221,11 +224,10 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			protected override string NativeName => "Dolphin";
 
 			public DolphinMainSettings()
-			{
-				SettingsUtil.SetDefaultValues(this);
-			}
+				=> SettingsUtil.SetDefaultValues(this);
 
-			public DolphinMainSettings Clone() => MemberwiseClone() as DolphinMainSettings;
+			public DolphinMainSettings Clone()
+				=> (DolphinMainSettings)MemberwiseClone();
 
 			[DisplayName("Skip IPL")]
 			[Description("")]
@@ -768,11 +770,10 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			}
 
 			public DolphinWiiPadSettings()
-			{
-				SettingsUtil.SetDefaultValues(this);
-			}
+				=> SettingsUtil.SetDefaultValues(this);
 
-			public DolphinWiiPadSettings Clone() => MemberwiseClone() as DolphinWiiPadSettings;
+			public DolphinWiiPadSettings Clone()
+				=> (DolphinWiiPadSettings)MemberwiseClone();
 
 			public enum WiimoteExtensions
 			{
@@ -871,11 +872,10 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			protected override string NativeName => "Graphics";
 
 			public DolphinGFXSettings()
-			{
-				SettingsUtil.SetDefaultValues(this);
-			}
+				=> SettingsUtil.SetDefaultValues(this);
 
-			public DolphinGFXSettings Clone() => MemberwiseClone() as DolphinGFXSettings;
+			public DolphinGFXSettings Clone()
+				=> (DolphinGFXSettings)MemberwiseClone();
 
 			[DisplayName("VSync")]
 			[Description("")]
@@ -1114,11 +1114,10 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			protected override string NativeName => "SYSCONF";
 
 			public DolphinSYSCONFSettings()
-			{
-				SettingsUtil.SetDefaultValues(this);
-			}
+				=> SettingsUtil.SetDefaultValues(this);
 
-			public DolphinSYSCONFSettings Clone() => MemberwiseClone() as DolphinSYSCONFSettings;
+			public DolphinSYSCONFSettings Clone()
+				=> (DolphinSYSCONFSettings)MemberwiseClone();
 
 			[DisplayName("Sreensaver")]
 			[Description("")]
