@@ -82,7 +82,6 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			_core.Dolphin_SetFrameBuffer(IntPtr.Zero);
 			_core.Dolphin_SetGCPadCallback(null);
 			_core.Dolphin_SetWiiPadCallback(null);
-			_core.Dolphin_SetConfigCallbacks(null, null);
 
 			if (HostRunning)
 			{
@@ -111,6 +110,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 				}
 			}
 
+			_core.Dolphin_SetConfigCallbacks(null, null);
 			CurrentCore = null;
 			_disposed = true;
 		}

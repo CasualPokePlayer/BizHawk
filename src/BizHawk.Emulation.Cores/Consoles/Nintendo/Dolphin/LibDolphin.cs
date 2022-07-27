@@ -244,6 +244,6 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 		public abstract void Dolphin_SpecialInputs(bool swapDisc, bool reset);
 
 		[BizImport(cc, Compatibility = true)]
-		public abstract void Dolphin_HashMedium(string path, byte[] hash, bool quick);
+		public abstract void Dolphin_HashMedium(string path, byte[] hash, bool quick, bool doInit);
 	}
 }

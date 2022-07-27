@@ -163,7 +163,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 			CurrentCore?.Dispose();
 			CurrentCore = this;
 
-			string gamePath = lp.Discs.FirstOrDefault()?.DiscPath ?? lp.Roms.First().RomPath;
+			string gamePath = lp.Discs.FirstOrDefault()?.DiscPath ?? lp.Roms[0].RomPath;
 			_multiDisc = lp.Discs.Count == 2;
 
 			if (lp.Discs.Count > 0)
@@ -274,7 +274,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 				}
 
 				var gameHash = new byte[16];
-				_core.Dolphin_HashMedium(gamePath, gameHash, false);
+				_core.Dolphin_HashMedium(gamePath, gameHash, false, true);
 
 				InitDtmDump(lp.Game.Name, GetGameId(lp.Discs.FirstOrDefault()?.DiscPath), secondDiscName, gameHash, iromHash, coefHash);
 			}
@@ -596,7 +596,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Dolphin
 		public static string QuickHashDisc(string path)
 		{
 			var hash = new byte[4];
-			_core.Dolphin_HashMedium(path, hash, true);
+			_core.Dolphin_HashMedium(path, hash, true, CurrentCore is null);
 			string ret = "";
 			foreach (var b in hash)
 				ret += b.ToString("X2");
