@@ -718,6 +718,8 @@ namespace BizHawk.Client.Common
 
 					return false;
 				}
+
+				_ = game!; // shouldn't be null if `nextEmulator` isn't? just in case
 			}
 			catch (Exception ex)
 			{
