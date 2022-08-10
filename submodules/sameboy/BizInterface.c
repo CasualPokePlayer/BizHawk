@@ -1,4 +1,4 @@
-#undef GB_INTERNAL // don't rely on GB_INTERNAL if possible
+#undef GB_INTERNAL // don't rely on GB_INTERNAL in interface
 
 #include "gb.h"
 #include "blip_buf.h"
