@@ -94,7 +94,7 @@ extern void * q_memcpy(void *, const void *, size_t);
 #define abort() \
   do { \
     fprintf(stderr, "Internal error; file %s, line %d\n", __FILE__, __LINE__); \
-    (_abort) (); \
+    (abort) (); \
 } while (0)
 #endif
 
