@@ -206,3 +206,5 @@ EXPORT void SetInputCallback(void (*callback)())
 {
 	inputcb = callback;
 }
+
+void _abort(void) { __asm__("int3"); }

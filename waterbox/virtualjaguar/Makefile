@@ -1,11 +1,11 @@
 COMMON_FLAGS := -fno-strict-aliasing -fwrapv -I./src/ -I./src/m68000 \
 	-Werror=int-to-pointer-cast -Wno-unused-variable -Wno-cpp \
 	-Wno-unused-but-set-variable -Wno-return-type -Wno-misleading-indentation \
-	-Wno-parentheses -Wno-unused-label
+	-Wno-parentheses -Wno-unused-label -Dabort=_abort
 
-CCFLAGS := -std=gnu11 $(COMMON_FLAGS) -Wno-implicit-function-declaration
+CCFLAGS := -std=c11 $(COMMON_FLAGS) -Wno-implicit-function-declaration
 
-CXXFLAGS := -std=gnu++11 $(COMMON_FLAGS)
+CXXFLAGS := -std=c++11 $(COMMON_FLAGS)
 
 TARGET = virtualjaguar.wbx
 
