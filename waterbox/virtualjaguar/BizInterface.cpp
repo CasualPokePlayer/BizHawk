@@ -53,7 +53,7 @@ EXPORT bool Init(BizSettings* bizSettings, u8* bios, u8* rom, u32 sz)
 	blip_set_rates(blipR, 48000, 41000);
 
 	JaguarInit();
-	
+
 	if (!JaguarLoadFile(rom, sz))
 	{
 		if (!AlpineLoadFile(rom, sz))
@@ -132,7 +132,7 @@ EXPORT void GetMemoryAreas(MemoryArea* m)
 	m[5].Flags = MEMORYAREA_FLAGS_WORDSIZE1 | MEMORYAREA_FLAGS_WRITABLE;
 
 	m[6].Data = jagMemSpace + 0xE00000;
-	m[6].Name = "BIOS";
+	m[6].Name = "Boot Rom";
 	m[6].Size = 0x20000;
 	m[6].Flags = MEMORYAREA_FLAGS_WORDSIZE1 | MEMORYAREA_FLAGS_WRITABLE;
 

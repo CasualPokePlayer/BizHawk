@@ -184,7 +184,7 @@ if (inRoutine)
 
 	if (m68kPC & 0x01)		// Oops! We're fetching an odd address!
 	{
-		WriteLog("M68K: Attempted to execute from an odd address!\n\nBacktrace:\n\n");
+		/*WriteLog("M68K: Attempted to execute from an odd address!\n\nBacktrace:\n\n");
 
 		static char buffer[2048];
 		for(int i=0; i<0x400; i++)
@@ -203,7 +203,7 @@ if (inRoutine)
 		WriteLog("Jaguar: VBL interrupt is %s\n", ((TOMIRQEnabled(IRQ_VIDEO)) && (JaguarInterruptHandlerIsValid(64))) ? "enabled" : "disabled");
 		M68K_show_context();
 		LogDone();
-		exit(0);
+		exit(0);*/
 	}
 
 	// Disassemble everything
