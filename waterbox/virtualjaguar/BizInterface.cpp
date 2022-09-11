@@ -194,8 +194,12 @@ EXPORT void FrameAdvance(MyFrameInfo* f)
 		}
 	}
 
-	memcpy(f->SoundBuffer, soundBuf, samples * 4);
-	f->Samples = samples;
+	blip_end_frame(blipL, samples);
+	blip_end_frame(blipR, samples);
+
+	f->Samples = blip_samples_avail(blipL);
+	blip_read_samples(blipL, f->SoundBuffer + 0, f->Samples, 1);
+	blip_read_samples(blipR, f->SoundBuffer + 1, f->Samples, 1);
 }
 
 EXPORT void SetInputCallback(void (*callback)())
