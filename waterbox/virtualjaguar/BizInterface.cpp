@@ -176,21 +176,19 @@ EXPORT void FrameAdvance(MyFrameInfo* f)
 	s16* sb = reinterpret_cast<s16*>(soundBuf);
 	for (u32 i = 0; i < samples; i++)
 	{
-		s16 l = sb[i];
+		s16 l = *sb++;
 		if (latchL != l)
 		{
 			blip_add_delta(blipL, i, latchL - l);
 			latchL = l;
 		}
 
-		s16 r = sb[i + 1];
+		s16 r = *sb++;
 		if (latchR != r)
 		{
 			blip_add_delta(blipR, i, latchR - r);
 			latchR = r;
 		}
-		
-		sb += 2;
 	}
 
 	blip_end_frame(blipL, samples);
