@@ -37,7 +37,7 @@ static blip_t* blipL;
 static blip_t* blipR;
 static s16 latchL, latchR;
 
-EXPORT bool Init(BizSettings* bizSettings, u8* bios, u8* rom, u32 sz)
+EXPORT bool Init(BizSettings* bizSettings, u8* boot, u8* rom, u32 sz)
 {
 	vjs.GPUEnabled = true;
 	vjs.DSPEnabled = true;
@@ -69,10 +69,7 @@ EXPORT bool Init(BizSettings* bizSettings, u8* bios, u8* rom, u32 sz)
 	}
 
 	SET32(jaguarMainRAM, 0, 0x00200000);
-	if (vjs.useJaguarBIOS)
-	{
-		memcpy(jagMemSpace + 0xE00000, bios, 0x20000);
-	}
+	memcpy(jagMemSpace + 0xE00000, boot, 0x20000);
 
 	JaguarReset();
 
@@ -132,7 +129,7 @@ EXPORT void GetMemoryAreas(MemoryArea* m)
 	m[5].Flags = MEMORYAREA_FLAGS_WORDSIZE1 | MEMORYAREA_FLAGS_WRITABLE;
 
 	m[6].Data = jagMemSpace + 0xE00000;
-	m[6].Name = "Boot Rom";
+	m[6].Name = "BIOS";
 	m[6].Size = 0x20000;
 	m[6].Flags = MEMORYAREA_FLAGS_WORDSIZE1 | MEMORYAREA_FLAGS_WRITABLE;
 
