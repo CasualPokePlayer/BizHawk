@@ -172,7 +172,7 @@ EXPORT void FrameAdvance(MyFrameInfo* f)
 	f->Lagged = lagged;
 
 	u32 samples = 48000 / (vjs.hardwareTypeNTSC ? 60 : 50);
-	SoundCallback(soundBuf, samples * 2);
+	SoundCallback(soundBuf, samples * 4);
 	s16* sb = reinterpret_cast<s16*>(soundBuf);
 	for (u32 i = 0; i < samples; i++)
 	{
