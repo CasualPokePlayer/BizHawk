@@ -102,7 +102,7 @@ EXPORT void GetMemoryAreas(MemoryArea* m)
 	m[0].Size = 0x200000;
 	m[0].Flags = MEMORYAREA_FLAGS_WORDSIZE1 | MEMORYAREA_FLAGS_WRITABLE | MEMORYAREA_FLAGS_PRIMARY;
 
-	m[1].Data = jaguarMainROM;
+	m[1].Data = eeprom_ram;
 	m[1].Name = "EEPROM";
 	m[1].Size = sizeof(eeprom_ram);
 	m[1].Flags = MEMORYAREA_FLAGS_WORDSIZE1 | MEMORYAREA_FLAGS_WRITABLE | MEMORYAREA_FLAGS_SAVERAMMABLE;
