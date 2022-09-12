@@ -358,6 +358,11 @@ namespace BizHawk.Emulation.Common
 					game.System = VSystemID.Raw.WSWAN;
 					break;
 
+				case ".J64":
+				case ".JAG":
+					game.System = VSystemID.Raw.Jaguar;
+					break;
+
 				case ".LNX":
 					game.System = VSystemID.Raw.Lynx;
 					break;
