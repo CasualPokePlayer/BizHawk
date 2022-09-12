@@ -48,8 +48,8 @@ EXPORT bool Init(BizSettings* bizSettings, u8* boot, u8* rom, u32 sz)
 	soundBuf = alloc_invisible<u16>(2048);
 	blipL = blip_new(1024);
 	blipR = blip_new(1024);
-	blip_set_rates(blipL, 48000, 41000);
-	blip_set_rates(blipR, 48000, 41000);
+	blip_set_rates(blipL, 48000, 44100);
+	blip_set_rates(blipR, 48000, 44100);
 
 	JaguarInit();
 
