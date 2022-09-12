@@ -174,7 +174,7 @@ EXPORT void FrameAdvance(MyFrameInfo* f)
 	u32 samples = 48000 / (vjs.hardwareTypeNTSC ? 60 : 50);
 	SoundCallback(soundBuf, samples * 2);
 	s16* sb = reinterpret_cast<s16*>(soundBuf);
-	for (u32 i = 0; i < samples; i++, sb += 2)
+	for (u32 i = 0; i < samples; i++)
 	{
 		s16 l = sb[i];
 		if (latchL != l)
@@ -189,6 +189,8 @@ EXPORT void FrameAdvance(MyFrameInfo* f)
 			blip_add_delta(blipR, i, latchR - r);
 			latchR = r;
 		}
+		
+		sb += 2;
 	}
 
 	blip_end_frame(blipL, samples);
