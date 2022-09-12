@@ -391,7 +391,7 @@ namespace BizHawk.Client.Common
 				["Toggle Link Shift"] = 'F',
 				["Toggle Link Spacing"] = 'C',
 			},
-			[VSystemID.Raw.Jaguar] = new()
+			[VSystemID.Raw.JAG] = new()
 			{
 				["Option"] = 'O',
 				["Asterisk"] = '*',

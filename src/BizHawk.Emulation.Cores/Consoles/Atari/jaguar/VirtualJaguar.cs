@@ -14,7 +14,7 @@ namespace BizHawk.Emulation.Cores.Atari.Jaguar
 	{
 		private readonly LibVirtualJaguar _core;
 
-		[CoreConstructor(VSystemID.Raw.Jaguar)]
+		[CoreConstructor(VSystemID.Raw.JAG)]
 		public VirtualJaguar(CoreLoadParameters<object, VirtualJaguarSyncSettings> lp)
 			: base(lp.Comm, new Configuration
 			{
@@ -25,7 +25,7 @@ namespace BizHawk.Emulation.Cores.Atari.Jaguar
 				MaxSamples = 1024,
 				DefaultFpsNumerator = 60,
 				DefaultFpsDenominator = 1,
-				SystemId = VSystemID.Raw.Jaguar,
+				SystemId = VSystemID.Raw.JAG,
 			})
 		{
 			_syncSettings = lp.SyncSettings ?? new();
