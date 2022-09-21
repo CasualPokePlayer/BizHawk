@@ -20,6 +20,7 @@
 #include <time.h>
 #include <string.h>
 #include "blitter.h"
+#include "cdhle.h"
 #include "cdrom.h"
 #include "dac.h"
 #include "dsp.h"
@@ -50,10 +51,24 @@ extern uint8_t jagMemSpace[];
 uint32_t jaguarMainROMCRC32, jaguarROMSize, jaguarRunAddress;
 bool jaguarCartInserted = false;
 bool lowerField = false;
+bool jaguarCdInserted = false;
 
 void M68KInstructionHook(void)
 {
 	// TODO: Trace/Exec callback
+
+	if (jaguarCdInserted)
+	{
+		uint32_t pc = m68k_get_reg(NULL, M68K_REG_PC);
+		if (pc >= 0x3000 && pc <= 0x306C)
+		{
+			CDHLEHook((pc - 0x3000) / 6);
+			// return
+			uint32_t sp = m68k_get_reg(NULL, M68K_REG_SP);
+			m68k_set_reg(M68K_REG_PC, m68k_read_memory_32(sp));
+			m68k_set_reg(M68K_REG_SP, sp + 4);
+		}
+	}
 }
 
 //
@@ -388,6 +403,7 @@ void JaguarInit(void)
 	TOMInit();
 	JERRYInit();
 	CDROMInit();
+	CDHLEInit();
 }
 
 void HalflineCallback(void);
@@ -410,6 +426,7 @@ void JaguarReset(void)
 	GPUReset();
 	DSPReset();
 	CDROMReset();
+	CDHLEReset();
     m68k_pulse_reset();
 
 	lowerField = false;
@@ -418,6 +435,7 @@ void JaguarReset(void)
 
 void JaguarDone(void)
 {
+	CDHLEDone();
 	CDROMDone();
 	GPUDone();
 	DSPDone();

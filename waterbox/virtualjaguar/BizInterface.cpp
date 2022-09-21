@@ -36,7 +36,7 @@ static blip_t* blipL;
 static blip_t* blipR;
 static s16 latchL, latchR;
 
-EXPORT bool Init(BizSettings* bizSettings, u8* boot, u8* rom, u32 sz)
+static void InitCommon(BizSettings* bizSettings)
 {
 	vjs.hardwareTypeNTSC = bizSettings->hardwareTypeNTSC;
 	vjs.useJaguarBIOS = bizSettings->useJaguarBIOS;
@@ -46,8 +46,12 @@ EXPORT bool Init(BizSettings* bizSettings, u8* boot, u8* rom, u32 sz)
 	blipR = blip_new(1024);
 	blip_set_rates(blipL, 48000, 44100);
 	blip_set_rates(blipR, 48000, 44100);
-
 	JaguarInit();
+}
+
+EXPORT bool Init(BizSettings* bizSettings, u8* boot, u8* rom, u32 sz)
+{
+	InitCommon(bizSettings);
 
 	if (!JaguarLoadFile(rom, sz))
 	{
@@ -69,6 +73,26 @@ EXPORT bool Init(BizSettings* bizSettings, u8* boot, u8* rom, u32 sz)
 	JaguarReset();
 
 	return true;
+}
+
+void (*cd_toc_callback)(void * dest);
+void (*cd_read_callback)(int32_t lba, void * dest);
+
+EXPORT void SetCdCallbacks(void (*ctc)(void * dest), void (*cdrc)(int32_t lba, void * dest))
+{
+	cd_toc_callback = ctc;
+	cd_read_callback = cdrc;
+}
+
+EXPORT void InitWithCd(BizSettings* bizSettings, u8* boot)
+{
+	InitCommon(bizSettings);
+	vjs.hardwareTypeAlpine = false;
+
+	SET32(jaguarMainRAM, 0, 0x00200000);
+	memcpy(jagMemSpace + 0xE00000, boot, 0x20000);
+
+	JaguarReset();
 }
 
 extern uint16_t eeprom_ram[64];
