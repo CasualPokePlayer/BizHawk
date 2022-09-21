@@ -55,8 +55,6 @@ bool jaguarCdInserted = false;
 
 void M68KInstructionHook(void)
 {
-	// TODO: Trace/Exec callback
-
 	if (jaguarCdInserted)
 	{
 		uint32_t pc = m68k_get_reg(NULL, M68K_REG_PC);
@@ -69,6 +67,18 @@ void M68KInstructionHook(void)
 			m68k_set_reg(M68K_REG_SP, sp + 4);
 		}
 	}
+
+	if (__builtin_expect(!!TraceCallback, false))
+	{
+		uint32_t regs[18];
+		for (uint32_t i = 0; i < 18; i++)
+		{
+			regs[i] = m68k_get_reg(NULL, (m68k_register_t)i);
+		}
+		TraceCallback(regs); 
+	}
+
+	MAYBE_CALLBACK(ExecuteCallback, m68k_get_reg(NULL, M68K_REG_PC));
 }
 
 //
@@ -88,6 +98,8 @@ int irq_ack_handler(int level)
 
 unsigned int m68k_read_memory_8(unsigned int address)
 {
+	MAYBE_CALLBACK(ReadCallback, address);
+
 	address &= 0x00FFFFFF;
 
 	unsigned int retVal = 0;
@@ -112,6 +124,8 @@ unsigned int m68k_read_memory_8(unsigned int address)
 
 unsigned int m68k_read_memory_16(unsigned int address)
 {
+	MAYBE_CALLBACK(ReadCallback, address);
+
 	address &= 0x00FFFFFF;
 
     unsigned int retVal = 0;
@@ -144,6 +158,8 @@ unsigned int m68k_read_memory_16(unsigned int address)
 
 unsigned int m68k_read_memory_32(unsigned int address)
 {
+	MAYBE_CALLBACK(ReadCallback, address);
+
 	address &= 0x00FFFFFF;
 
 	uint32_t retVal = 0;
@@ -163,6 +179,8 @@ unsigned int m68k_read_memory_32(unsigned int address)
 
 void m68k_write_memory_8(unsigned int address, unsigned int value)
 {
+	MAYBE_CALLBACK(WriteCallback, address);
+
 	address &= 0x00FFFFFF;
 
 	if ((address >= 0x000000) && (address <= 0x1FFFFF))
@@ -179,6 +197,8 @@ void m68k_write_memory_8(unsigned int address, unsigned int value)
 
 void m68k_write_memory_16(unsigned int address, unsigned int value)
 {
+	MAYBE_CALLBACK(WriteCallback, address);
+
 	address &= 0x00FFFFFF;
 
 	if ((address >= 0x000000) && (address <= 0x1FFFFE))

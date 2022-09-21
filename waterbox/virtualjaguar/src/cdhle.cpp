@@ -278,14 +278,18 @@ static void CD_read(void)
 	uint32_t dstStart = m68k_get_reg(NULL, M68K_REG_A0);
 	uint32_t dstEnd = m68k_get_reg(NULL, M68K_REG_A1);
 
+	fprintf(stderr, "CD READ: dstStart %08X, dstEnd %08X\n", dstStart, dstEnd);
+
 	if (dstEnd <= dstStart)
 	{
+		fprintf(stderr, "CD READ ERROR: dstEnd < dstStart\n");
 		SET_ERR();
 		return;
 	}
 
 	if (cd_paused)
 	{
+		fprintf(stderr, "CD READ ERROR: cd_paused\n");
 		SET_ERR();
 		return;
 	}
@@ -296,8 +300,11 @@ static void CD_read(void)
 	uint32_t seconds = (timecode >> 8) & 0xFF;
 	uint32_t minutes = (timecode >> 16) & 0xFF;
 
+	fprintf(stderr, "CD READ: is seeking %d, mins %02d, secs %02d, frames %02d\n", !!(timecode & 0x80000000), minutes, seconds, frames);
+
 	if (frames >= 75 || seconds >= 60 || minutes >= 73)
 	{
+		fprintf(stderr, "CD READ ERROR: timecode too large\n");
 		SET_ERR();
 		return;
 	}
