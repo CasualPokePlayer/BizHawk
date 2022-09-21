@@ -27,6 +27,47 @@ namespace BizHawk.Emulation.Cores.Atari.Jaguar
 		[BizImport(CC)]
 		public abstract bool Init(ref Settings s, IntPtr bios, IntPtr rom, int romsize);
 
+		[StructLayout(LayoutKind.Sequential)]
+		public struct TOC
+		{
+			public byte Padding0;
+			public byte Padding1;
+			public byte NumSessions;
+			public byte MinTrack;
+			public byte MaxTrack;
+			public byte LastLeadOutMins;
+			public byte LastLeadOutSecs;
+			public byte LastLeadOutFrames;
+
+			[StructLayout(LayoutKind.Sequential)]
+			public struct Track
+			{
+				public byte TrackNum;
+				public byte StartMins;
+				public byte StartSecs;
+				public byte StartFrames;
+				public byte SessionNum;
+				public byte DurMins;
+				public byte DurSecs;
+				public byte DurFrames;
+			}
+
+			[MarshalAs(UnmanagedType.ByValArray, SizeConst = 127)]
+			public Track[] Tracks;
+		}
+
+		[UnmanagedFunctionPointer(CC)]
+		public delegate void CDTOCCallback(IntPtr dst);
+
+		[UnmanagedFunctionPointer(CC)]
+		public delegate void CDReadCallback(int lba, IntPtr dst);
+
+		[BizImport(CC)]
+		public abstract void SetCdCallbacks(CDTOCCallback cdtc, CDReadCallback cdrc);
+
+		[BizImport(CC)]
+		public abstract void InitWithCd(ref Settings s, IntPtr bios);
+
 		[BizImport(CC)]
 		public abstract bool SaveRamIsDirty();
 
