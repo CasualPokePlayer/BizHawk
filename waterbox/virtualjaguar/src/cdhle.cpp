@@ -197,10 +197,13 @@ static void CDSendBlock(void)
 
 static void CDHLECallback(void)
 {
-	CDSendBlock();
 	RemoveCallback(CDHLECallback);
 	if (cd_is_reading)
 	{
+		if (!cd_paused)
+		{
+			CDSendBlock();
+		}
 		SetCallbackTime(CDHLECallback, 180 >> (cd_mode & 1));
 	}
 }
@@ -244,12 +247,13 @@ static const char * cd_func_strs[19] = {
 
 void CDHLEHook(uint32_t which)
 {
-	fprintf(stderr, "CD HLE Hook %s\n", cd_func_strs[which]);
+	//fprintf(stderr, "CD HLE Hook %s\n", cd_func_strs[which]);
 	CD_functions[which]();
 }
 
 static void CD_init(void)
 {
+	fprintf(stderr, "do CD_init");
 	cd_initm = false;
 }
 
@@ -258,14 +262,18 @@ static void CD_mode(void)
 	// bit 0 = speed (0 = single, 1 = double)
 	// bit 1 = mode (0 = audio, 1 = data)
 	cd_mode = m68k_get_reg(NULL, M68K_REG_D0) & 3;
+	fprintf(stderr, "CD_mode mode = %d, speed = %d\n", cd_mode >> 1, cd_mode & 1);
 	NO_ERR();
 }
 
 static void CD_ack(void)
 {
-	while (cd_is_reading)
+	if (!cd_paused)
 	{
-		CDSendBlock();
+		while (cd_is_reading)
+		{
+			CDSendBlock();
+		}
 	}
 
 	NO_ERR();
@@ -273,7 +281,7 @@ static void CD_ack(void)
 
 static void CD_jeri(void)
 {
-	
+	fprintf(stderr, "CD_jeri called %d!!!\n", m68k_get_reg(NULL, M68K_REG_D0) & 1);
 }
 
 static void CD_spin(void)
@@ -338,13 +346,6 @@ static void CD_read(void)
 		return;
 	}
 
-	if (cd_paused)
-	{
-		fprintf(stderr, "CD READ ERROR: cd_paused\n");
-		SET_ERR();
-		return;
-	}
-
 	uint32_t timecode = m68k_get_reg(NULL, M68K_REG_D0);
 
 	uint32_t frames = timecode & 0xFF;
@@ -365,7 +366,7 @@ static void CD_read(void)
 		cd_is_reading = true;
 		cd_read_addr_start = dstStart;
 		cd_read_addr_end = dstEnd;
-		cd_read_lba = (minutes * 60 + seconds) * 75 + frames - 150 - 6;
+		cd_read_lba = (minutes * 60 + seconds) * 75 + frames - 150;
 		cd_buf_block_num = 0;
 		RemoveCallback(CDHLECallback);
 		SetCallbackTime(CDHLECallback, 180 >> (cd_mode & 1));

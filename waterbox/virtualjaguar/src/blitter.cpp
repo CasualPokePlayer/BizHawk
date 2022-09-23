@@ -642,6 +642,11 @@ void blitter_generic(uint32_t cmd)
 			uint32_t pixelSize = (size - 1) << 16;
 			a2_x = (a2_x + pixelSize) & ~pixelSize;
 		}
+
+		a1_x += a1_step_x;
+		a1_y += a1_step_y;
+		a2_x += a2_step_x;
+		a2_y += a2_step_y;
 	}
 
 	WREG(A1_PIXEL,  (a1_y & 0xFFFF0000) | ((a1_x >> 16) & 0xFFFF));
