@@ -447,7 +447,7 @@ void JaguarReset(void)
 	DSPReset();
 	CDROMReset();
 	CDHLEReset();
-    m68k_pulse_reset();
+	m68k_pulse_reset();
 
 	lowerField = false;
 	SetCallbackTime(HalflineCallback, (vjs.hardwareTypeNTSC ? 31.777777777 : 32.0));

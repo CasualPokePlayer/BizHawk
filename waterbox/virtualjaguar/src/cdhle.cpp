@@ -2,6 +2,7 @@
 #include "gpu.h"
 #include "memory.h"
 #include "jaguar.h"
+#include "event.h"
 #include "m68000/m68kinterface.h"
 
 #include <assert.h>
@@ -15,11 +16,17 @@
 
 static bool cd_setup;
 static bool cd_initm;
-static bool cd_mode;
 static bool cd_muted;
 static bool cd_paused;
+static uint8_t cd_mode;
 static uint8_t cd_osamp;
-static uint32_t cd_last_read_addr;
+
+static bool cd_is_reading;
+static uint32_t cd_read_addr_start;
+static uint32_t cd_read_addr_end;
+static int32_t cd_read_lba;
+static uint8_t cd_buf2352[2352 * 4]; // also 64 * 147
+static uint32_t cd_buf_block_num;
 
 extern void (*cd_toc_callback)(void * dest);
 extern void (*cd_read_callback)(int32_t lba, void * dest);
@@ -75,6 +82,7 @@ void CDHLEInit(void)
 		assert(bootTrackNum != 0);
 		Track& bootTrack = toc.tracks[bootTrackNum];
 		int32_t startLba = bootTrack.start_mins * 4500 + bootTrack.start_secs * 75 + bootTrack.start_frames - 150;
+		fprintf(stderr, "timecode: %02d:%02d:%02d, startLba %04X\n", bootTrack.start_mins, bootTrack.start_secs, bootTrack.start_frames, startLba);
 		int32_t numLbas = bootTrack.dur_mins * 4500 + bootTrack.dur_secs * 75 + bootTrack.dur_frames;
 		uint8_t buf2352[2352];
 		bool foundHeader = false;
@@ -87,6 +95,7 @@ void CDHLEInit(void)
 			{
 				if (!memcmp(&buf2352[j], atariHeader, 32))
 				{
+					fprintf(stderr, "startLba + i %04X\n", startLba + i);
 					cd_boot_addr = GET32(buf2352, j + 32);
 					cd_boot_len = GET32(buf2352, j + 32 + 4);
 					cd_boot_lba = startLba + i;
@@ -108,11 +117,10 @@ void CDHLEReset(void)
 {
 	cd_setup = false;
 	cd_initm = false;
-	cd_mode = true;
 	cd_muted = false;
 	cd_paused = false;
+	cd_mode = 0;
 	cd_osamp = 0;
-	cd_last_read_addr = 0;
 
 	if (cd_read_callback)
 	{
@@ -149,7 +157,7 @@ void CDHLEReset(void)
 			}
 		}
 
-		cd_last_read_addr = dstStart;
+		cd_read_addr_start = dstStart;
 
 		SET32(jaguarMainRAM, 4, cd_boot_addr);
 		SET16(jaguarMainRAM, 0x3004, 0x0403); // BIOS VER
@@ -158,6 +166,43 @@ void CDHLEReset(void)
 
 void CDHLEDone(void)
 {
+}
+
+static void CDSendBlock(void)
+{
+	if (cd_buf_block_num == 0)
+	{
+		for (uint32_t i = 0; i < 4; i++)
+		{
+			cd_read_callback(cd_read_lba + i, &cd_buf2352[2352 * i]); 
+		}
+
+		cd_read_lba += 4;
+	}
+
+	// send one block of data
+	for (uint32_t i = 0; i < 64; i++)
+	{
+		JaguarWriteByte(cd_read_addr_start + i, cd_buf2352[i + 64 * cd_buf_block_num], GPU);
+	}
+
+	cd_read_addr_start += 64;
+	cd_buf_block_num = (cd_buf_block_num + 1) % 147;
+
+	if (cd_read_addr_start >= cd_read_addr_end)
+	{
+		cd_is_reading = false;
+	}
+}
+
+static void CDHLECallback(void)
+{
+	CDSendBlock();
+	RemoveCallback(CDHLECallback);
+	if (cd_is_reading)
+	{
+		SetCallbackTime(CDHLECallback, 180 >> (cd_mode & 1));
+	}
 }
 
 static void CD_init(void);
@@ -210,13 +255,19 @@ static void CD_init(void)
 
 static void CD_mode(void)
 {
+	// bit 0 = speed (0 = single, 1 = double)
 	// bit 1 = mode (0 = audio, 1 = data)
-	cd_mode = m68k_get_reg(NULL, M68K_REG_D0) & 2;
+	cd_mode = m68k_get_reg(NULL, M68K_REG_D0) & 3;
 	NO_ERR();
 }
 
 static void CD_ack(void)
 {
+	while (cd_is_reading)
+	{
+		CDSendBlock();
+	}
+
 	NO_ERR();
 }
 
@@ -237,7 +288,7 @@ static void CD_stop(void)
 
 static void CD_mute(void)
 {
-	if (!cd_mode)
+	if (!(cd_mode & 2))
 	{
 		cd_muted = true;
 		NO_ERR();
@@ -250,7 +301,7 @@ static void CD_mute(void)
 
 static void CD_umute(void)
 {
-	if (!cd_mode)
+	if (!(cd_mode & 2))
 	{
 		cd_muted = false;
 		NO_ERR();
@@ -311,22 +362,13 @@ static void CD_read(void)
 
 	if (!(timecode & 0x80000000))
 	{
-		int32_t lba = (minutes * 60 + seconds) * 75 + frames - 150;
-		uint8_t buf2352[2352];
-		while (dstStart < dstEnd)
-		{
-			cd_read_callback(lba++, buf2352);
-			for (uint32_t i = 0; i < 2352 && dstStart < dstEnd;)
-			{
-				uint32_t end = (i + 64) > 2352 ? 2352 : (i + 64);
-				for (; i < end; i++, dstStart++)
-				{
-					JaguarWriteByte(dstStart, buf2352[i], GPU);
-				}
-			}
-		}
-
-		cd_last_read_addr = dstStart;
+		cd_is_reading = true;
+		cd_read_addr_start = dstStart;
+		cd_read_addr_end = dstEnd;
+		cd_read_lba = (minutes * 60 + seconds) * 75 + frames - 150 - 6;
+		cd_buf_block_num = 0;
+		RemoveCallback(CDHLECallback);
+		SetCallbackTime(CDHLECallback, 180 >> (cd_mode & 1));
 	}
 
 	NO_ERR();
@@ -334,8 +376,15 @@ static void CD_read(void)
 
 static void CD_uread(void)
 {
-	// CD_read is instant, so this is not valid
-	SET_ERR();
+	if (cd_is_reading)
+	{
+		cd_is_reading = false;
+		NO_ERR();
+	}
+	else
+	{
+		SET_ERR();
+	}
 }
 
 static void CD_setup(void)
@@ -346,7 +395,7 @@ static void CD_setup(void)
 
 static void CD_ptr(void)
 {
-	m68k_set_reg(M68K_REG_A0, cd_last_read_addr);
+	m68k_set_reg(M68K_REG_A0, cd_read_addr_start);
 	m68k_set_reg(M68K_REG_A1, 0);
 }
 
