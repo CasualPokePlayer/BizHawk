@@ -20,8 +20,13 @@ MEDNAFLAGS := \
 	-Dprivate=public # the gods have abandoned us
 
 CCFLAGS := $(MEDNAFLAGS) -std=gnu99
-CXXFLAGS := $(MEDNAFLAGS) -std=gnu++11
+CXXFLAGS := $(MEDNAFLAGS) -std=gnu++11 -fno-rtti
 EXTRA_LIBS := -lz
+
+# a few files need rtti annoyingly
+PER_FILE_FLAGS_mednafen/src/Stream.cpp := -frtti
+PER_FILE_FLAGS_mednafen/src/MemoryStream.cpp := -frtti
+PER_FILE_FLAGS_mednafen/src/file.cpp := -frtti
 
 cppdir = $(shell find mednafen/src/$(1) -type f -name '*.cpp')
 cdir = $(shell find mednafen/src/$(1) -type f -name '*.c')
