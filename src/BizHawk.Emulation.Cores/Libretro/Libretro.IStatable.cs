@@ -12,8 +12,6 @@ namespace BizHawk.Emulation.Cores.Libretro
 
 		public void SaveStateBinary(BinaryWriter writer)
 		{
-			UpdateCallbackHandler();
-
 			_stateLen = api.retro_serialize_size();
 			if (_stateBuf.LongLength != _stateLen)
 			{
@@ -32,8 +30,6 @@ namespace BizHawk.Emulation.Cores.Libretro
 
 		public void LoadStateBinary(BinaryReader reader)
 		{
-			UpdateCallbackHandler();
-
 			var newlen = reader.ReadInt32();
 			if (newlen > _stateBuf.Length)
 			{

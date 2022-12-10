@@ -359,10 +359,10 @@ namespace BizHawk.Emulation.Cores.Libretro
 		public abstract uint retro_api_version();
 
 		[BizImport(cc)]
-		public abstract void retro_get_system_info(IntPtr retro_system_info);
+		public abstract void retro_get_system_info(out retro_system_info retro_system_info);
 
 		[BizImport(cc)]
-		public abstract void retro_get_system_av_info(IntPtr retro_system_av_info);
+		public abstract void retro_get_system_av_info(out retro_system_av_info retro_system_av_info);
 
 		[BizImport(cc)]
 		public abstract void retro_set_environment(IntPtr retro_environment);
@@ -407,10 +407,13 @@ namespace BizHawk.Emulation.Cores.Libretro
 		public abstract void retro_cheat_set(uint index, bool enabled, IntPtr code);
 
 		[BizImport(cc)]
-		public abstract bool retro_load_game(IntPtr retro_game_info);
+		public abstract bool retro_load_game(IntPtr no_game_info); // send IntPtr.Zero here
 
 		[BizImport(cc)]
-		public abstract bool retro_load_game_special(uint game_type, IntPtr retro_game_info, long num_info);
+		public abstract bool retro_load_game(in retro_game_info retro_game_info);
+
+		[BizImport(cc)]
+		public abstract bool retro_load_game_special(uint game_type, in retro_game_info retro_game_info, long num_info);
 
 		[BizImport(cc)]
 		public abstract void retro_unload_game();
@@ -451,7 +454,7 @@ namespace BizHawk.Emulation.Cores.Libretro
 		public abstract void LibretroBridge_GetRetroMessage(IntPtr cbHandler, ref LibretroApi.retro_message m);
 
 		[BizImport(cc)]
-		public abstract void LibretroBridge_SetDirectories(IntPtr cbHandler, byte[] systemDirectory, byte[] saveDirectory, byte[] coreDirectory, byte[] coreAssetsDirectory);
+		public abstract void LibretroBridge_SetDirectories(IntPtr cbHandler, string systemDirectory, string saveDirectory, string coreDirectory, string coreAssetsDirectory);
 
 		[BizImport(cc)]
 		public abstract void LibretroBridge_SetVideoSize(IntPtr cbHandler, int sz);
@@ -479,6 +482,6 @@ namespace BizHawk.Emulation.Cores.Libretro
 		}
 
 		[BizImport(cc)]
-		public abstract void LibretroBridge_GetRetroProcs(ref retro_procs cb_procs);
+		public abstract void LibretroBridge_GetRetroProcs(out retro_procs cb_procs);
 	}
 }

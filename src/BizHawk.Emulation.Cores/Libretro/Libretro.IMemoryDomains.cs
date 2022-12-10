@@ -12,8 +12,6 @@ namespace BizHawk.Emulation.Cores.Libretro
 
 		private void InitMemoryDomains()
 		{
-			UpdateCallbackHandler();
-
 			foreach (LibretroApi.RETRO_MEMORY m in Enum.GetValues(typeof(LibretroApi.RETRO_MEMORY)))
 			{
 				var mem = api.retro_get_memory_data(m);

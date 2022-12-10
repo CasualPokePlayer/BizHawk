@@ -19,27 +19,27 @@ namespace BizHawk.Emulation.Cores.Libretro
 			// joypad port 0
 			for (uint i = 0; i < input.Length; i++)
 			{
-				input[i] = retro_input_state(controller, 0, (uint)LibretroApi.RETRO_DEVICE.JOYPAD, 0, i);
+				input[i] = InputState(controller, 0, LibretroApi.RETRO_DEVICE.JOYPAD, 0, i);
 			}
 			bridge.LibretroBridge_SetInput(cbHandler, LibretroApi.RETRO_DEVICE.JOYPAD, 0, input);
 			// joypad port 1
 			for (uint i = 0; i < input.Length; i++)
 			{
-				input[i] = retro_input_state(controller, 1, (uint)LibretroApi.RETRO_DEVICE.JOYPAD, 0, i);
+				input[i] = InputState(controller, 1, LibretroApi.RETRO_DEVICE.JOYPAD, 0, i);
 			}
 			bridge.LibretroBridge_SetInput(cbHandler, LibretroApi.RETRO_DEVICE.JOYPAD, 1, input);
 			input = new short[(int)LibretroApi.RETRO_DEVICE_ID_POINTER.LAST];
 			// pointer port 0
 			for (uint i = 0; i < input.Length; i++)
 			{
-				input[i] = retro_input_state(controller, 0, (uint)LibretroApi.RETRO_DEVICE.POINTER, 0, i);
+				input[i] = InputState(controller, 0, LibretroApi.RETRO_DEVICE.POINTER, 0, i);
 			}
 			bridge.LibretroBridge_SetInput(cbHandler, LibretroApi.RETRO_DEVICE.POINTER, 0, input);
 			input = new short[(int)LibretroApi.RETRO_KEY.LAST];
 			// keyboard port 0
 			for (uint i = 0; i < input.Length; i++)
 			{
-				input[i] = retro_input_state(controller, 0, (uint)LibretroApi.RETRO_DEVICE.KEYBOARD, 0, i);
+				input[i] = InputState(controller, 0, LibretroApi.RETRO_DEVICE.KEYBOARD, 0, i);
 			}
 			bridge.LibretroBridge_SetInput(cbHandler, LibretroApi.RETRO_DEVICE.KEYBOARD, 0, input);
 		}
@@ -47,14 +47,14 @@ namespace BizHawk.Emulation.Cores.Libretro
 		//meanings (they are kind of hazy, but once we're done implementing this it will be completely defined by example)
 		//port = console physical port?
 		//device = logical device type
-		//index = sub device index? (multitap?)
+		//index = sub device index? (multitap?) (only actually used for the ANALOG device however...)
 		//id = button id (or key id)
-		private static short retro_input_state(IController controller, uint port, uint device, uint index, uint id)
+		private static short InputState(IController controller, uint port, LibretroApi.RETRO_DEVICE device, uint index, uint id)
 		{
 			//helpful debugging
 			//Console.WriteLine("{0} {1} {2} {3}", port, device, index, id);
 
-			switch ((LibretroApi.RETRO_DEVICE)device)
+			switch (device)
 			{
 				case LibretroApi.RETRO_DEVICE.POINTER:
 					{

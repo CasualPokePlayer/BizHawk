@@ -24,9 +24,7 @@ namespace BizHawk.Emulation.Cores.Libretro
 				OSTailoredCode.IsUnixHost ? "libLibretroBridge.so" : "libLibretroBridge.dll", hasLimitedLifetime: false);
 
 			bridge = BizInvoker.GetInvoker<LibretroBridge>(resolver, CallingConventionAdapters.Native);
-
-			cb_procs = new();
-			bridge.LibretroBridge_GetRetroProcs(ref cb_procs);
+			bridge.LibretroBridge_GetRetroProcs(out cb_procs);
 		}
 
 		private readonly LibretroApi api;
@@ -35,11 +33,56 @@ namespace BizHawk.Emulation.Cores.Libretro
 		public IEmulatorServiceProvider ServiceProvider => _serviceProvider;
 
 		private readonly IntPtr cbHandler;
+		private readonly BridgeGuard _guard;
 
-		// please call this before calling any retro functions
-		private void UpdateCallbackHandler()
+		private class BridgeGuard : IMonitor
 		{
-			bridge.LibretroBridge_SetGlobalCallbackHandler(cbHandler);
+			private static readonly object _sync = new();
+			private static IntPtr _activeHandler;
+			private static int _refCount;
+
+			private readonly IntPtr _parentHandler;
+
+			public BridgeGuard(IntPtr parentHandler)
+				=> _parentHandler = parentHandler;
+
+			public void Enter()
+			{
+				lock (_sync)
+				{
+					if (_activeHandler == IntPtr.Zero)
+					{
+						_activeHandler = _parentHandler;
+						bridge.LibretroBridge_SetGlobalCallbackHandler(_parentHandler);
+					}
+					else if (_activeHandler != _parentHandler)
+					{
+						throw new InvalidOperationException("Multiple callback handlers cannot be active at once!");
+					}
+
+					_refCount++;
+				}
+			}
+
+			public void Exit()
+			{
+				lock (_sync)
+				{
+					if (_refCount <= 0)
+					{
+						throw new InvalidOperationException($"Invalid {nameof(_refCount)}");
+					}
+					else
+					{
+						_refCount--;
+						if (_refCount == 0)
+						{
+							_activeHandler = IntPtr.Zero;
+							bridge.LibretroBridge_SetGlobalCallbackHandler(IntPtr.Zero);
+						}
+					}
+				}
+			}
 		}
 
 		public LibretroEmulator(CoreComm comm, IGameInfo game, string corePath, bool analysis = false)
@@ -53,10 +96,10 @@ namespace BizHawk.Emulation.Cores.Libretro
 					throw new Exception("Failed to create callback handler!");
 				}
 
-				UpdateCallbackHandler();
+				_guard = new(cbHandler);
 
 				api = BizInvoker.GetInvoker<LibretroApi>(
-					new DynamicLibraryImportResolver(corePath, hasLimitedLifetime: false), CallingConventionAdapters.Native);
+					new DynamicLibraryImportResolver(corePath, hasLimitedLifetime: false), _guard, CallingConventionAdapters.Native);
 
 				_serviceProvider = new(this);
 				Comm = comm;
@@ -66,12 +109,11 @@ namespace BizHawk.Emulation.Cores.Libretro
 					throw new InvalidOperationException("Unsupported Libretro API version (or major error in interop)");
 				}
 
-				var SystemDirectory = RetroString(Comm.CoreFileProvider.GetRetroSystemPath(game));
-				var SaveDirectory = RetroString(Comm.CoreFileProvider.GetRetroSaveRAMDirectory(game));
-				var CoreDirectory = RetroString(Path.GetDirectoryName(corePath));
-				var CoreAssetsDirectory = RetroString(Path.GetDirectoryName(corePath));
-
-				bridge.LibretroBridge_SetDirectories(cbHandler, SystemDirectory, SaveDirectory, CoreDirectory, CoreAssetsDirectory);
+				bridge.LibretroBridge_SetDirectories(cbHandler,
+					Comm.CoreFileProvider.GetRetroSystemPath(game),
+					Comm.CoreFileProvider.GetRetroSaveRAMDirectory(game),
+					Path.GetDirectoryName(corePath),
+					Path.GetDirectoryName(corePath));
 
 				ControllerDefinition = ControllerDef;
 
@@ -101,7 +143,7 @@ namespace BizHawk.Emulation.Cores.Libretro
 			}
 		}
 
-		private class RetroData
+		private class RetroData : IDisposable
 		{
 			private readonly GCHandle _handle;
 
@@ -114,7 +156,7 @@ namespace BizHawk.Emulation.Cores.Libretro
 				Length = len;
 			}
 
-			~RetroData() => _handle.Free();
+			public void Dispose() => _handle.Free();
 		}
 
 		private byte[] RetroString(string managedString)
@@ -132,8 +174,6 @@ namespace BizHawk.Emulation.Cores.Libretro
 
 		public void Dispose()
 		{
-			UpdateCallbackHandler();
-
 			if (inited)
 			{
 				api.retro_unload_game();
@@ -160,44 +200,52 @@ namespace BizHawk.Emulation.Cores.Libretro
 			NO_GAME,
 		}
 
-		public bool LoadData(byte[] data, string id) => LoadHandler(RETRO_LOAD.DATA, new(RetroString(id)), new(data, data.LongLength));
+		public bool LoadData(byte[] data, string id)
+		{
+			using RetroData retroPath = new(RetroString(id));
+			using RetroData retroData = new(data, data.LongLength);
+			return LoadHandler(RETRO_LOAD.DATA, retroPath, retroData);
+		}
 
-		public bool LoadPath(string path) => LoadHandler(RETRO_LOAD.PATH, new(RetroString(path)));
+		public bool LoadPath(string path)
+		{
+			using RetroData retroPath = new(RetroString(path));
+			return LoadHandler(RETRO_LOAD.PATH, retroPath);
+		}
 
 		public bool LoadNoGame() => LoadHandler(RETRO_LOAD.NO_GAME);
 
 		private unsafe bool LoadHandler(RETRO_LOAD which, RetroData path = null, RetroData data = null)
 		{
-			UpdateCallbackHandler();
-
-			var game = new LibretroApi.retro_game_info();
-			var gameptr = (IntPtr)(&game);
-
-			if (which == RETRO_LOAD.NO_GAME)
-			{
-				gameptr = IntPtr.Zero;
-			}
-			else
-			{
-				game.path = path.PinnedData;
-				if (which == RETRO_LOAD.DATA)
-				{
-					game.data = data.PinnedData;
-					game.size = data.Length;
-				}
-			}
-
 			api.retro_init();
-			bool success = api.retro_load_game(gameptr);
+			bool success;
+			LibretroApi.retro_game_info game;
+
+			switch (which)
+			{
+				case RETRO_LOAD.NO_GAME:
+					success = api.retro_load_game(IntPtr.Zero);
+					break;
+				case RETRO_LOAD.PATH:
+					game = new() { path = path.PinnedData };
+					success = api.retro_load_game(in game);
+					break;
+				case RETRO_LOAD.DATA:
+					game = new() { path = path.PinnedData, data = data.PinnedData, size = data.Length };
+					success = api.retro_load_game(in game);
+					break;
+				default:
+					api.retro_deinit();
+					throw new InvalidOperationException($"Invalid {nameof(RETRO_LOAD)} sent?");
+			}
+
 			if (!success)
 			{
 				api.retro_deinit();
 				return false;
 			}
 
-			var av = new LibretroApi.retro_system_av_info();
-			api.retro_get_system_av_info((IntPtr)(&av));
-			av_info = av;
+			api.retro_get_system_av_info(out av_info);
 
 			api.retro_set_video_refresh(cb_procs.retro_video_refresh_proc);
 			api.retro_set_audio_sample(cb_procs.retro_audio_sample_proc);
@@ -212,13 +260,14 @@ namespace BizHawk.Emulation.Cores.Libretro
 			//this stuff can only happen after the game is loaded
 
 			//allocate a video buffer which will definitely be large enough
-			InitVideoBuffer((int)av.geometry.base_width, (int)av.geometry.base_height, (int)(av.geometry.max_width * av.geometry.max_height));
+			InitVideoBuffer((int)av_info.geometry.base_width, (int)av_info.geometry.base_height,
+				(int)(av_info.geometry.max_width * av_info.geometry.max_height));
 
 			// TODO: more precise
-			VsyncNumerator = (int)(10000000 * av.timing.fps);
+			VsyncNumerator = (int)(10000000 * av_info.timing.fps);
 			VsyncDenominator = 10000000;
 
-			SetupResampler(av.timing.fps, av.timing.sample_rate);
+			SetupResampler(av_info.timing.fps, av_info.timing.sample_rate);
 
 			InitMemoryDomains(); // im going to assume this should happen when a game is loaded
 
@@ -271,18 +320,15 @@ namespace BizHawk.Emulation.Cores.Libretro
 			{
 				Comm.Notify(Mershul.PtrToStringUtf8(retro_msg.msg));
 			}
+
+			Frame++;
 		}
 
 		public bool FrameAdvance(IController controller, bool render, bool renderSound = true)
 		{
-			UpdateCallbackHandler();
-
 			FrameAdvancePrep(controller);
 			api.retro_run();
 			FrameAdvancePost(render, renderSound);
-
-			Frame++;
-
 			return true;
 		}
 
@@ -366,13 +412,10 @@ namespace BizHawk.Emulation.Cores.Libretro
 			IsLagFrame = false;
 		}
 
-		public unsafe RetroDescription CalculateDescription()
+		public RetroDescription CalculateDescription()
 		{
-			UpdateCallbackHandler();
-
 			var descr = new RetroDescription();
-			var sys_info = new LibretroApi.retro_system_info();
-			api.retro_get_system_info((IntPtr)(&sys_info));
+			api.retro_get_system_info(out var sys_info);
 			descr.LibraryName = Mershul.PtrToStringUtf8(sys_info.library_name);
 			descr.LibraryVersion = Mershul.PtrToStringUtf8(sys_info.library_version);
 			descr.ValidExtensions = Mershul.PtrToStringUtf8(sys_info.valid_extensions);
