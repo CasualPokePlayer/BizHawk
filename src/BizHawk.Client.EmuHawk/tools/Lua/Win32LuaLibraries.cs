@@ -12,6 +12,7 @@ using NLua;
 using BizHawk.Common;
 using BizHawk.Emulation.Common;
 using BizHawk.Client.Common;
+using BizHawk.Common.PathExtensions;
 
 namespace BizHawk.Client.EmuHawk
 {
@@ -109,6 +110,13 @@ namespace BizHawk.Client.EmuHawk
 			EmulationLuaLibrary.YieldCallback = EmuYield;
 
 			EnumerateLuaFunctions(nameof(LuaCanvas), typeof(LuaCanvas), null); // add LuaCanvas to Lua function reference table
+
+			// add our lua path to the LUA_PATH variable
+			// this is done already on windows, but not on linux it seems?
+			if (OSTailoredCode.IsUnixHost)
+			{
+				ExecuteString($"package[\"path\"] = package[\"path\"] .. \";{Path.Combine(PathUtils.ExeDirectoryPath, "lua")}/?.lua\"");
+			}
 		}
 
 		private ApiContainer _apiContainer;
