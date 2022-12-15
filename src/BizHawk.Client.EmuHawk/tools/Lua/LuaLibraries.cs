@@ -4,10 +4,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using System.Threading;
-
-using NLua;
 
 using BizHawk.Common;
 using BizHawk.Emulation.Common;
@@ -35,7 +32,7 @@ namespace BizHawk.Client.EmuHawk
 				{
 					var foundAttrs = method.GetCustomAttributes(typeof(LuaMethodAttribute), false);
 					if (foundAttrs.Length == 0) continue;
-					if (instance != null) _lua.RegisterFunction($"{name}.{((LuaMethodAttribute)foundAttrs[0]).Name}", instance, method);
+					if (instance != null) _lua.RegisterFunction(name, $"{((LuaMethodAttribute)foundAttrs[0]).Name}", instance, method);
 					LibraryFunction libFunc = new(
 						name,
 						type.GetCustomAttributes(typeof(DescriptionAttribute), false).Cast<DescriptionAttribute>()
@@ -46,7 +43,14 @@ namespace BizHawk.Client.EmuHawk
 				}
 			}
 
-			_th = new NLuaTableHelper(_lua, LogToLuaConsole);
+			_lua = config.LuaEngine switch
+			{
+				ELuaEngine.NLuaPlusKeraLuaPlusLua => new NLuaEngine(),
+				ELuaEngine.NeoLua => new NeoLuaEngine(),
+				_ => throw new InvalidOperationException()
+			};
+
+			_th = new(_lua, LogToLuaConsole);
 			_displayManager = displayManager;
 			_inputManager = inputManager;
 			_mainForm = mainForm;
@@ -107,7 +111,7 @@ namespace BizHawk.Client.EmuHawk
 			{
 				// add %exe%/Lua to library resolution pathset (LUA_PATH)
 				// this is done already on windows, but not on linux it seems?
-				var packageTable = (LuaTable) _lua["package"];
+				var packageTable = LuaTableHelper.ParseTable(_lua["package"]);
 				var luaPath = PathEntries.LuaAbsolutePath();
 				packageTable["path"] = $"{luaPath}/?.lua;{luaPath}?/init.lua;{packageTable["path"]}";
 			}
@@ -128,10 +132,10 @@ namespace BizHawk.Client.EmuHawk
 
 		private readonly MainForm _mainForm;
 
-		private Lua _lua = new() { State = { Encoding = Encoding.UTF8 } };
-		private LuaThread _currThread;
+		private ILuaEngine _lua;
+		private ILuaThread _currThread;
 
-		private readonly NLuaTableHelper _th;
+		private readonly LuaTableHelper _th;
 
 		private static Action<object[]> _logToLuaConsoleCallback = a => Console.WriteLine("a Lua lib is logging during init and the console lib hasn't been initialised yet");
 
@@ -141,9 +145,7 @@ namespace BizHawk.Client.EmuHawk
 
 		private EmulationLuaLibrary EmulationLuaLibrary => (EmulationLuaLibrary)Libraries[typeof(EmulationLuaLibrary)];
 
-		// nb: KeraLua isn't really the engine, NLua does the heavy lifting (KeraLua is just a thin layer for native lua)
-		// this is just done to differentiate against the old NLua engine, which was backed by KopiLua (c# impl of lua) instead of KeraLua
-		public string EngineName => "KeraLua";
+		public string EngineName => _lua.Name;
 
 		public bool IsRebootingCore { get; set; }
 
@@ -159,7 +161,7 @@ namespace BizHawk.Client.EmuHawk
 
 		private static void LogToLuaConsole(object outputs) => _logToLuaConsoleCallback(new[] { outputs });
 
-		public NLuaTableHelper GetTableHelper() => _th;
+		public LuaTableHelper GetTableHelper() => _th;
 
 		public void Restart(
 			IEmulatorServiceProvider newServiceProvider,
@@ -282,14 +284,13 @@ namespace BizHawk.Client.EmuHawk
 		}
 
 		public INamedLuaFunction CreateAndRegisterNamedFunction(
-			LuaFunction function,
+			ILuaFunction function,
 			string theEvent,
 			Action<string> logCallback,
 			LuaFile luaFile,
 			string name = null)
 		{
-			var nlf = new NamedLuaFunction(function, theEvent, logCallback, luaFile,
-				() => { _lua.NewThread(out var thread); return thread; }, name);
+			var nlf = new NamedLuaFunction(function, theEvent, logCallback, luaFile, () => _lua.NewThread(), name);
 			RegisteredFunctions.Add(nlf);
 			return nlf;
 		}
@@ -302,12 +303,10 @@ namespace BizHawk.Client.EmuHawk
 			return true;
 		}
 
-		public LuaThread SpawnCoroutine(string file)
+		public ILuaThread SpawnCoroutine(string file)
 		{
 			var content = File.ReadAllText(file);
-			var main = _lua.LoadString(content, "main");
-			_lua.NewThread(main, out var ret);
-			return ret;
+			return _lua.NewThread(content);
 		}
 
 		public void SpawnAndSetFileThread(string pathToLoad, LuaFile lf)
@@ -328,12 +327,7 @@ namespace BizHawk.Client.EmuHawk
 				var execResult = _currThread.Resume();
 
 				_currThread = null;
-				var result = execResult switch
-				{
-					KeraLua.LuaStatus.OK => (WaitForFrame: false, Terminated: true),
-					KeraLua.LuaStatus.Yield => (WaitForFrame: FrameAdvanceRequested, Terminated: false),
-					_ => throw new InvalidOperationException($"{nameof(_currThread.Resume)}() returned {execResult}?")
-				};
+				var result = (WaitForFrame: false, Terminated: !execResult);
 
 				FrameAdvanceRequested = false;
 				return result;

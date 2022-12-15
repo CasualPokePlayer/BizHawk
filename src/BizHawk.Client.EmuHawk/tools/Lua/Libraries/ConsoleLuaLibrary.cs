@@ -5,8 +5,6 @@ using System.Text;
 using BizHawk.Client.Common;
 using BizHawk.Common.CollectionExtensions;
 
-using NLua;
-
 namespace BizHawk.Client.EmuHawk
 {
 	public sealed class ConsoleLuaLibrary : LuaLibraryBase
@@ -65,16 +63,12 @@ namespace BizHawk.Client.EmuHawk
 		// Outputs the given object to the output box on the Lua Console dialog. Note: Can accept a LuaTable
 		private void LogWithSeparator(string separator, string terminator, params object[] outputs)
 		{
-			static string SerializeTable(LuaTable lti)
+			static string SerializeTable(ILuaTable lti)
 			{
 				var keyObjs = lti.Keys;
 				var valueObjs = lti.Values;
-				if (keyObjs.Count != valueObjs.Count)
-				{
-					throw new ArgumentException(message: "each value must be paired with one key, they differ in number", paramName: nameof(lti));
-				}
 
-				var values = new object[keyObjs.Count];
+				var values = new object[lti.Count];
 				var kvpIndex = 0;
 				foreach (var valueObj in valueObjs)
 				{
@@ -97,7 +91,7 @@ namespace BizHawk.Client.EmuHawk
 				=> sb.Append(output switch
 				{
 					null => "nil",
-					LuaTable table => SerializeTable(table),
+					NLua.LuaTable or Neo.IronLua.LuaTable => SerializeTable(LuaTableHelper.ParseTable(output)),
 					_ => output.ToString()
 				});
 

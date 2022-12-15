@@ -6,52 +6,51 @@ using System.Linq;
 
 using BizHawk.Common;
 
-using NLua;
-
 namespace BizHawk.Client.Common
 {
-	public sealed class NLuaTableHelper
+	public sealed class LuaTableHelper
 	{
+		private readonly ILuaEngine _lua;
 		private readonly Action<string> _logCallback;
 
-		private readonly Lua _lua;
-
-		public NLuaTableHelper(Lua lua, Action<string> logCallback)
+		public LuaTableHelper(ILuaEngine lua, Action<string> logCallback)
 		{
-			_logCallback = logCallback;
 			_lua = lua;
+			_logCallback = logCallback;
 		}
 
-		private LuaTable NewTable()
-		{
-			_lua.NewTable("__BIZHAWK_INTERNAL_TEMP_TABLE");
-			var ret = _lua.GetTable("__BIZHAWK_INTERNAL_TEMP_TABLE");
-			_lua["__BIZHAWK_INTERNAL_TEMP_TABLE"] = null;
-			return ret;
-		}
+		public ILuaTable CreateTable()
+			=> _lua switch
+			{
+				NLuaEngine nlua => new NLuaTable(nlua),
+				NeoLuaEngine => new NeoLuaTable(null),
+				_ => throw new InvalidOperationException()
+			};
 
-		public LuaTable CreateTable() => NewTable();
-
-		public LuaTable DictToTable<T>(IReadOnlyDictionary<string, T> dictionary)
+		public object DictToTable<T>(IReadOnlyDictionary<string, T> dictionary)
 		{
-			var table = NewTable();
+			var table = CreateTable();
 			foreach (var (k, v) in dictionary) table[k] = v;
-			return table;
+			return table.RawTable;
 		}
 
-		public IEnumerable<(TKey Key, TValue Value)> EnumerateEntries<TKey, TValue>(LuaTable table)
-			=> table.Keys.Cast<TKey>().Select(k => (k, (TValue) table[k]));
-
-		public IEnumerable<T> EnumerateValues<T>(LuaTable table) => table.Values.Cast<T>();
-
-		public LuaTable ListToTable<T>(IReadOnlyList<T> list, int indexFrom = 1)
+		public IEnumerable<(TKey Key, TValue Value)> EnumerateEntries<TKey, TValue>(object table)
 		{
-			var table = NewTable();
-			for (int i = 0, l = list.Count; i != l; i++) table[indexFrom + i] = list[i];
-			return table;
+			var t = ParseTable(table);
+			return t.Keys.Cast<TKey>().Select(k => (k, (TValue) t[k]));
 		}
 
-		public LuaTable MemoryBlockToTable(IReadOnlyList<byte> bytes, long startAddr)
+		public IEnumerable<T> EnumerateValues<T>(object table)
+			=> ParseTable(table).Values.Cast<T>();
+
+		public object ListToTable<T>(IReadOnlyList<T> list, int indexFrom = 1)
+		{
+			var table = CreateTable();
+			for (int i = 0, l = list.Count; i != l; i++) table[indexFrom + i] = list[i];
+			return table.RawTable;
+		}
+
+		public object MemoryBlockToTable(IReadOnlyList<byte> bytes, long startAddr)
 		{
 			var length = bytes.Count;
 			var table = CreateTable();
@@ -61,14 +60,14 @@ namespace BizHawk.Client.Common
 			return table;
 		}
 
-		public LuaTable ObjectToTable(object obj)
+		public object ObjectToTable(object obj)
 		{
-			var table = NewTable();
+			var table = CreateTable();
 			foreach (var method in obj.GetType().GetMethods())
 			{
 				if (!method.IsPublic) continue;
 				var foundAttrs = method.GetCustomAttributes(typeof(LuaMethodAttribute), false);
-				table[method.Name] = _lua.RegisterFunction(
+				table[method.Name] = _lua.CreateFunction(
 					foundAttrs.Length == 0 ? string.Empty : ((LuaMethodAttribute) foundAttrs[0]).Name, // empty string will default to the actual method name
 					obj,
 					method
@@ -93,6 +92,8 @@ namespace BizHawk.Client.Common
 					return ParseColor((int) (long) d, safe, logCallback);
 				case int i:
 					return Color.FromArgb(i);
+				case uint u:
+					return Color.FromArgb((int)u);
 				case long l:
 					return Color.FromArgb((int)l);
 				case string s:
@@ -111,5 +112,21 @@ namespace BizHawk.Client.Common
 					return ParseColor(o.ToString(), safe, logCallback);
 			}
 		}
+
+		public static ILuaFunction ParseFunction(object func)
+			=> func switch
+			{
+				NLua.LuaFunction f => new NLuaFunction(f),
+				Delegate d => new NeoLuaFunction(d),
+				_ => throw new InvalidOperationException($"param {nameof(func)} is not a valid lua function!")
+			};
+
+		public static ILuaTable ParseTable(object table)
+			=> table switch
+			{
+				NLua.LuaTable t => new NLuaTable(t),
+				Neo.IronLua.LuaTable t => new NeoLuaTable(t),
+				_ => throw new InvalidOperationException($"param {nameof(table)} is not a valid lua table!")
+			};
 	}
 }

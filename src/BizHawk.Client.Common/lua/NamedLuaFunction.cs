@@ -1,5 +1,4 @@
 ﻿using System;
-using NLua;
 
 using BizHawk.Emulation.Common;
 
@@ -29,9 +28,9 @@ namespace BizHawk.Client.Common
 
 		public const string EVENT_TYPE_SAVESTATE = "OnSavestateSave";
 
-		private readonly LuaFunction _function;
+		private readonly ILuaFunction _function;
 
-		public NamedLuaFunction(LuaFunction function, string theEvent, Action<string> logCallback, LuaFile luaFile, Func<LuaThread> createThreadCallback, string name = null)
+		public NamedLuaFunction(ILuaFunction function, string theEvent, Action<string> logCallback, LuaFile luaFile, Func<ILuaThread> createThreadCallback, string name = null)
 		{
 			_function = function;
 			Name = name ?? "Anonymous";
@@ -59,7 +58,7 @@ namespace BizHawk.Client.Common
 			{
 				try
 				{
-					_function.Call(args);
+					_function.Invoke(args);
 				}
 				catch (Exception ex)
 				{
@@ -87,7 +86,7 @@ namespace BizHawk.Client.Common
 
 		public LuaFile LuaFile { get; private set; }
 
-		private Func<LuaThread> CreateThreadCallback { get; }
+		private Func<ILuaThread> CreateThreadCallback { get; }
 
 		public string Event { get; }
 
@@ -101,7 +100,7 @@ namespace BizHawk.Client.Common
 		{
 			LuaSandbox.Sandbox(LuaFile.Thread, () =>
 			{
-				_function.Call(name);
+				_function.Invoke(name);
 			});
 		}
 	}

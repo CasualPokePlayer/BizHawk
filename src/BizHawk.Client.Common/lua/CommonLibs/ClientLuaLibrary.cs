@@ -9,8 +9,6 @@ using BizHawk.Client.Common.cheats;
 using BizHawk.Common;
 using BizHawk.Emulation.Common;
 
-using NLua;
-
 // ReSharper disable StringLiteralTypo
 // ReSharper disable UnusedMember.Global
 namespace BizHawk.Client.Common
@@ -291,12 +289,13 @@ namespace BizHawk.Client.Common
 
 		[LuaMethodExample("local newY = client.transform_point( 32, 100 ).y;")]
 		[LuaMethod("transformPoint", "Transforms a point (x, y) in emulator space to a point in client space")]
-		public LuaTable TransformPoint(int x, int y) {
+		[return: LuaTableParam]
+		public object TransformPoint(int x, int y) {
 			var transformed = APIs.EmuClient.TransformPoint(new Point(x, y));
 			var table = _th.CreateTable();
 			table["x"] = transformed.X;
 			table["y"] = transformed.Y;
-			return table;
+			return table.RawTable;
 		}
 
 		[LuaMethodExample("client.unpause( );")]
@@ -328,12 +327,14 @@ namespace BizHawk.Client.Common
 
 		[LuaMethodExample("local nlcliget = client.getavailabletools( );")]
 		[LuaMethod("getavailabletools", "Returns a list of the tools currently open")]
-		public LuaTable GetAvailableTools()
+		[return: LuaTableParam]
+		public object GetAvailableTools()
 			=> _th.EnumerateToLuaTable(APIs.Tool.AvailableTools.Select(tool => tool.Name.ToLower()), indexFrom: 0);
 
 		[LuaMethodExample("local nlcliget = client.gettool( \"Tool name\" );")]
 		[LuaMethod("gettool", "Returns an object that represents a tool of the given name (not case sensitive). If the tool is not open, it will be loaded if available. Use getavailabletools to get a list of names")]
-		public LuaTable GetTool(string name)
+		[return: LuaTableParam]
+		public object GetTool(string name)
 		{
 			var selectedTool = APIs.Tool.GetTool(name);
 			return selectedTool == null ? null : _th.ObjectToTable(selectedTool);
@@ -341,7 +342,8 @@ namespace BizHawk.Client.Common
 
 		[LuaMethodExample("local nlclicre = client.createinstance( \"objectname\" );")]
 		[LuaMethod("createinstance", "returns a default instance of the given type of object if it exists (not case sensitive). Note: This will only work on objects which have a parameterless constructor.  If no suitable type is found, or the type does not have a parameterless constructor, then nil is returned")]
-		public LuaTable CreateInstance(string name)
+		[return: LuaTableParam]
+		public object CreateInstance(string name)
 		{
 			var instance = APIs.Tool.CreateInstance(name);
 			return instance == null ? null : _th.ObjectToTable(instance);

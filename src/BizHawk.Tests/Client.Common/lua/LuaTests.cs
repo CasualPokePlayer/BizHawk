@@ -16,7 +16,7 @@ namespace BizHawk.Tests.Client.Common.Lua
 	public class LuaTests
 	{
 		private static readonly NLua.Lua LuaInstance = new() { State = { Encoding = Encoding.UTF8 } };
-		private static readonly NLuaTableHelper _th = new(LuaInstance, Console.WriteLine);
+		private static readonly LuaTableHelper _th = new(LuaInstance, Console.WriteLine);
 
 		private static object? ExpectedValue { get; set; }
 

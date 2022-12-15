@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 
-using NLua;
-
 // ReSharper disable UnusedMember.Global
 namespace BizHawk.Client.Common
 {
@@ -42,7 +40,8 @@ namespace BizHawk.Client.Common
 
 		[LuaMethodExample("console.writeline(#userdata.get_keys());")]
 		[LuaMethod("get_keys", "returns a list-like table of valid keys")]
-		public LuaTable GetKeys()
+		[return: LuaTableParam]
+		public object GetKeys()
 			=> _th.ListToTable((List<string>) APIs.UserData.Keys); //HACK cast will succeed as long as impl. returns Dictionary<K, V>.Keys.ToList() as IROC<K>
 	}
 }

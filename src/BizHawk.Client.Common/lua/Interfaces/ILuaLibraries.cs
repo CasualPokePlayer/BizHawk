@@ -1,7 +1,5 @@
 using System;
 
-using NLua;
-
 using BizHawk.Emulation.Common;
 
 namespace BizHawk.Client.Common
@@ -36,13 +34,13 @@ namespace BizHawk.Client.Common
 		void Close();
 
 		INamedLuaFunction CreateAndRegisterNamedFunction(
-			LuaFunction function,
+			ILuaFunction function,
 			string theEvent,
 			Action<string> logCallback,
 			LuaFile luaFile,
 			string name = null);
 
-		NLuaTableHelper GetTableHelper();
+		LuaTableHelper GetTableHelper();
 
 		void Restart(IEmulatorServiceProvider newServiceProvider, Config config, IEmulator emulator, IGameInfo game);
 

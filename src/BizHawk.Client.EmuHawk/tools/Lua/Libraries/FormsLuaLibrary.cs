@@ -8,8 +8,6 @@ using System.Windows.Forms;
 
 using BizHawk.Client.Common;
 
-using NLua;
-
 namespace BizHawk.Client.EmuHawk
 {
 	[Description("A library for creating and managing custom dialogs")]
@@ -49,7 +47,7 @@ namespace BizHawk.Client.EmuHawk
 
 		[LuaMethodExample("forms.addclick( 332, function()\r\n\tconsole.log( \"adds the given lua function as a click event to the given control\" );\r\nend );")]
 		[LuaMethod("addclick", "adds the given lua function as a click event to the given control")]
-		public void AddClick(long handle, LuaFunction clickEvent)
+		public void AddClick(long handle, [LuaFunctionParam] object clickEvent)
 		{
 			var ptr = new IntPtr(handle);
 			foreach (var form in _luaForms)
@@ -58,7 +56,7 @@ namespace BizHawk.Client.EmuHawk
 				{
 					if (control.Handle == ptr)
 					{
-						form.ControlEvents.Add(new LuaWinform.LuaEvent(control.Handle, clickEvent));
+						form.ControlEvents.Add(new LuaWinform.LuaEvent(control.Handle, LuaTableHelper.ParseFunction(clickEvent)));
 					}
 				}
 			}
@@ -70,7 +68,7 @@ namespace BizHawk.Client.EmuHawk
 		public long Button(
 			long formHandle,
 			string caption,
-			LuaFunction clickEvent,
+			[LuaFunctionParam] object clickEvent,
 			int? x = null,
 			int? y = null,
 			int? width = null,
@@ -85,7 +83,7 @@ namespace BizHawk.Client.EmuHawk
 			var button = new LuaButton();
 			SetText(button, caption);
 			form.Controls.Add(button);
-			form.ControlEvents.Add(new LuaWinform.LuaEvent(button.Handle, clickEvent));
+			form.ControlEvents.Add(new LuaWinform.LuaEvent(button.Handle, LuaTableHelper.ParseFunction(clickEvent)));
 
 			if (x.HasValue && y.HasValue)
 			{
@@ -173,7 +171,7 @@ namespace BizHawk.Client.EmuHawk
 			"dropdown", "Creates a dropdown (with a ComboBoxStyle of DropDownList) control on the given form. Dropdown items are passed via a lua table. Only the values will be pulled for the dropdown items, the keys are irrelevant. Items will be sorted alphabetically. x and y are the optional location parameters, and width and height are the optional size parameters.")]
 		public long Dropdown(
 			long formHandle,
-			LuaTable items,
+			[LuaTableParam] object items,
 			int? x = null,
 			int? y = null,
 			int? width = null,
@@ -342,7 +340,7 @@ namespace BizHawk.Client.EmuHawk
 			int? width = null,
 			int? height = null,
 			string title = null,
-			LuaFunction onClose = null)
+			[LuaFunctionParam] object onClose = null)
 		{
 			var form = new LuaWinform(CurrentFile, WindowClosed);
 			_luaForms.Add(form);
@@ -364,7 +362,7 @@ namespace BizHawk.Client.EmuHawk
 				{
 					try
 					{
-						onClose.Call();
+						LuaTableHelper.ParseFunction(onClose).Invoke();
 					}
 					catch (Exception ex)
 					{
@@ -585,7 +583,7 @@ namespace BizHawk.Client.EmuHawk
 		[LuaMethod(
 			"drawBezier",
 			"Draws a Bezier curve using the table of coordinates provided in the given color")]
-		public void DrawBezier(long componentHandle, LuaTable points, [LuaColorParam] object color)
+		public void DrawBezier(long componentHandle, [LuaTableParam] object points, [LuaColorParam] object color)
 		{
 			try
 			{
@@ -1040,7 +1038,7 @@ namespace BizHawk.Client.EmuHawk
 			"Draws a polygon using the table of coordinates specified in points. This should be a table of tables(each of size 2). If x or y is passed, the polygon will be translated by the passed coordinate pair. Line is the color of the polygon. Background is the optional fill color")]
 		public void DrawPolygon(
 			long componentHandle,
-			LuaTable points,
+			[LuaTableParam] object points,
 			int? x = null,
 			int? y = null,
 			[LuaColorParam] object line = null,
@@ -1271,7 +1269,7 @@ namespace BizHawk.Client.EmuHawk
 
 		[LuaMethodExample("forms.setdropdownitems(dropdown_handle, { \"item1\", \"item2\" });")]
 		[LuaMethod("setdropdownitems", "Updates the item list of a dropdown menu. The optional third parameter toggles alphabetical sorting of items, pass false to skip sorting.")]
-		public void SetDropdownItems(long handle, LuaTable items, bool alphabetize = true)
+		public void SetDropdownItems(long handle, [LuaTableParam] object items, bool alphabetize = true)
 		{
 			try
 			{

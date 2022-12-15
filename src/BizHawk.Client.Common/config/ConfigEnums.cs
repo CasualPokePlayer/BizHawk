@@ -1,5 +1,11 @@
 ﻿namespace BizHawk.Client.Common
 {
+	public enum ELuaEngine
+	{
+		NLuaPlusKeraLuaPlusLua,
+		NeoLua
+	}
+
 	public enum ESoundOutputMethod
 	{
 		DirectSound, XAudio2, OpenAL, Dummy

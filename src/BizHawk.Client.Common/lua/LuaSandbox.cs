@@ -1,14 +1,13 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
 using BizHawk.Common;
-using NLua;
 
 // TODO - evaluate for re-entrancy problems
 namespace BizHawk.Client.Common
 {
 	public class LuaSandbox
 	{
-		private static readonly ConditionalWeakTable<LuaThread, LuaSandbox> SandboxForThread = new();
+		private static readonly ConditionalWeakTable<ILuaThread, LuaSandbox> SandboxForThread = new();
 
 		public static Action<string> DefaultLogger { get; set; }
 
@@ -68,6 +67,18 @@ namespace BizHawk.Client.Common
 				DefaultLogger(exStr);
 				exceptionCallback?.Invoke();
 			}
+			catch (Neo.IronLua.LuaException ex)
+			{
+				var exStr = ex.ToString() + '\n';
+				if (ex.InnerException is not null)
+				{
+					exStr += ex.InnerException.ToString() + '\n';
+				}
+
+				Console.Write(exStr);
+				DefaultLogger(exStr);
+				exceptionCallback?.Invoke();
+			}
 			finally
 			{
 				if (_currentDirectory != null)
@@ -77,7 +88,7 @@ namespace BizHawk.Client.Common
 			}
 		}
 
-		public static LuaSandbox CreateSandbox(LuaThread thread, string initialDirectory)
+		public static LuaSandbox CreateSandbox(ILuaThread thread, string initialDirectory)
 		{
 			var sandbox = new LuaSandbox();
 			SandboxForThread.Add(thread, sandbox);
@@ -86,7 +97,7 @@ namespace BizHawk.Client.Common
 		}
 
 		/// <exception cref="InvalidOperationException">could not get sandbox reference for thread (<see cref="CreateSandbox"/> has not been called)</exception>
-		public static LuaSandbox GetSandbox(LuaThread thread)
+		public static LuaSandbox GetSandbox(ILuaThread thread)
 		{
 			// this is just placeholder.
 			// we shouldn't be calling a sandbox with no thread--construct a sandbox properly
@@ -108,7 +119,7 @@ namespace BizHawk.Client.Common
 			}
 		}
 
-		public static void Sandbox(LuaThread thread, Action callback, Action exceptionCallback = null)
+		public static void Sandbox(ILuaThread thread, Action callback, Action exceptionCallback = null)
 		{
 			GetSandbox(thread).Sandbox(callback, exceptionCallback);
 		}

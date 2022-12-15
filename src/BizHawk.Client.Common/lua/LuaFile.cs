@@ -1,4 +1,4 @@
-﻿using NLua;
+﻿using System;
 
 namespace BizHawk.Client.Common
 {
@@ -37,7 +37,7 @@ namespace BizHawk.Client.Common
 		public bool Enabled => State != RunState.Disabled;
 		public bool Paused => State == RunState.Paused;
 		public bool IsSeparator { get; }
-		public LuaThread Thread { get; set; }
+		public ILuaThread Thread { get; set; }
 		public bool FrameWaiting { get; set; }
 		public string CurrentDirectory { get; set; }
 

@@ -1,8 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
 
-using NLua;
-
 // ReSharper disable UnusedMember.Global
 // ReSharper disable UnusedAutoPropertyAccessor.Local
 namespace BizHawk.Client.Common
@@ -37,14 +35,15 @@ namespace BizHawk.Client.Common
 
 		[LuaMethodExample("local obemudis = emu.disassemble( 0x8000 );")]
 		[LuaMethod("disassemble", "Returns the disassembly object (disasm string and length int) for the given PC address. Uses System Bus domain if no domain name provided")]
-		public LuaTable Disassemble(uint pc, string name = "")
+		[return: LuaTableParam]
+		public object Disassemble(uint pc, string name = "")
 		{
 			var (disasm, length) = APIs.Emulation.Disassemble(pc, name);
 			if (length is 0) return null;
 			var table = _th.CreateTable();
 			table["disasm"] = disasm;
 			table["length"] = length;
-			return table;
+			return table.RawTable;
 		}
 
 		// TODO: what about 64 bit registers?
@@ -55,7 +54,8 @@ namespace BizHawk.Client.Common
 
 		[LuaMethodExample("local nlemuget = emu.getregisters( );")]
 		[LuaMethod("getregisters", "returns the complete set of available flags and registers for a given core")]
-		public LuaTable GetRegisters()
+		[return: LuaTableParam]
+		public object GetRegisters()
 			=> _th.DictToTable(APIs.Emulation.GetRegisters());
 
 		[LuaMethodExample("emu.setregister( emu.getregisters( )[ 0 ], -1000 );")]

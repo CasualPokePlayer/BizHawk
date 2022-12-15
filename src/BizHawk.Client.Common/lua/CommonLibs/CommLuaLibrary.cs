@@ -4,8 +4,6 @@ using System.ComponentModel;
 using System.Linq;
 using System.Text;
 
-using NLua;
-
 namespace BizHawk.Client.Common
 {
 	[Description("A library for communicating with other programs")]
@@ -59,7 +57,7 @@ namespace BizHawk.Client.Common
 		}
 
 		[LuaMethod("socketServerSendBytes", "sends bytes to the Socket server")]
-		public int SocketServerSendBytes(LuaTable byteArray)
+		public int SocketServerSendBytes([LuaTableParam] object byteArray)
 		{
 			if (!CheckSocketServer()) return -1;
 			return APIs.Comm.Sockets.SendBytes(_th.EnumerateValues<long>(byteArray).Select(l => (byte) l).ToArray());
@@ -148,7 +146,7 @@ namespace BizHawk.Client.Common
 			=> APIs.Comm.MMF.WriteToFile(mmf_filename, outputString);
 
 		[LuaMethod("mmfWriteBytes", "Write bytes to a memory mapped file")]
-		public int MmfWriteBytes(string mmf_filename, LuaTable byteArray)
+		public int MmfWriteBytes(string mmf_filename, [LuaTableParam] object byteArray)
 			=> APIs.Comm.MMF.WriteToFile(mmf_filename, _th.EnumerateValues<long>(byteArray).Select(l => (byte) l).ToArray());
 
 		[LuaMethod("mmfCopyFromMemory", "Copy a section of the memory to a memory mapped file")]
@@ -172,7 +170,8 @@ namespace BizHawk.Client.Common
 			=> APIs.Comm.MMF.ReadFromFile(mmf_filename, expectedSize);
 
 		[LuaMethod("mmfReadBytes", "Reads bytes from a memory mapped file")]
-		public LuaTable MmfReadBytes(string mmf_filename, int expectedSize)
+		[return: LuaTableParam]
+		public object MmfReadBytes(string mmf_filename, int expectedSize)
 			=> _th.ListToTable(APIs.Comm.MMF.ReadBytesFromFile(mmf_filename, expectedSize), indexFrom: 0);
 
 		// All HTTP related methods

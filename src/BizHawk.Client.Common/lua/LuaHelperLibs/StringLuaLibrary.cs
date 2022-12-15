@@ -2,8 +2,6 @@
 using System.ComponentModel;
 using System.Linq;
 
-using NLua;
-
 // ReSharper disable UnusedMember.Global
 namespace BizHawk.Client.Common
 {
@@ -136,12 +134,13 @@ namespace BizHawk.Client.Common
 
 		[LuaMethodExample("local nlbizspl = bizstring.split( \"Some, string\", \", \" );")]
 		[LuaMethod("split", "Splits str into a Lua-style array using the given separator (consecutive separators in str will NOT create empty entries in the array). If the separator is not a string exactly one char long, ',' will be used.")]
-		public LuaTable Split(string str, string separator)
+		[return: LuaTableParam]
+		public object Split(string str, string separator)
 		{
 			static char SingleOrElse(string s, char defaultValue)
 				=> s?.Length == 1 ? s[0] : defaultValue;
 			return string.IsNullOrEmpty(str)
-				? _th.CreateTable()
+				? _th.CreateTable().RawTable
 				: _th.ListToTable(str.Split(new[] { SingleOrElse(separator, ',') }, StringSplitOptions.RemoveEmptyEntries).ToList());
 		}
 	}

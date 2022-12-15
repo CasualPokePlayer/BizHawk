@@ -2,15 +2,13 @@
 using System.Drawing;
 using System.Linq;
 
-using NLua;
-
 namespace BizHawk.Client.Common
 {
 	public sealed class GuiLuaLibrary : LuaLibraryBase, IDisposable
 	{
 		private DisplaySurfaceID _rememberedSurfaceID = DisplaySurfaceID.EmuCore;
 
-		public Func<int, int, int?, int?, LuaTable> CreateLuaCanvasCallback { get; set; }
+		public Func<int, int, int?, int?, object> CreateLuaCanvasCallback { get; set; }
 
 		public GuiLuaLibrary(ILuaLibraries luaLibsImpl, ApiContainer apiContainer, Action<string> logOutputCallback)
 			: base(luaLibsImpl, apiContainer, logOutputCallback) {}
@@ -70,7 +68,7 @@ namespace BizHawk.Client.Common
 		[LuaMethodExample("gui.drawBezier( { { 5, 10 }, { 10, 10 }, { 10, 20 }, { 5, 20 } }, 0x000000FF );")]
 		[LuaMethod("drawBezier", "Draws a Bezier curve using the table of coordinates provided in the given color")]
 		public void DrawBezier(
-			LuaTable points,
+			[LuaTableParam] object points,
 			[LuaColorParam] object color,
 			string surfaceName = null)
 		{
@@ -78,7 +76,7 @@ namespace BizHawk.Client.Common
 			{
 				var pointsArr = new Point[4];
 				var i = 0;
-				foreach (var point in _th.EnumerateValues<LuaTable>(points)
+				foreach (var point in _th.EnumerateValues<object>(points)
 					.Select(table => _th.EnumerateValues<long>(table).ToList()))
 				{
 					pointsArr[i] = new Point((int) point[0], (int) point[1]);
@@ -210,14 +208,14 @@ namespace BizHawk.Client.Common
 		[LuaMethodExample("gui.drawPolygon( { { 5, 10 }, { 10, 10 }, { 10, 20 }, { 5, 20 } }, 10, 30, 0x007F00FF, 0x7F7F7FFF );")]
 		[LuaMethod("drawPolygon", "Draws a polygon using the table of coordinates specified in points. This should be a table of tables(each of size 2). If x or y is passed, the polygon will be translated by the passed coordinate pair. Line is the color of the polygon. Background is the optional fill color")]
 		public void DrawPolygon(
-			LuaTable points,
+			[LuaTableParam] object points,
 			int? offsetX = null,
 			int? offsetY = null,
 			[LuaColorParam] object line = null,
 			[LuaColorParam] object background = null,
 			string surfaceName = null)
 		{
-			var pointsList = _th.EnumerateValues<LuaTable>(points)
+			var pointsList = _th.EnumerateValues<object>(points)
 				.Select(table => _th.EnumerateValues<long>(table).ToList()).ToList();
 			try
 			{
@@ -306,7 +304,8 @@ namespace BizHawk.Client.Common
 
 		[LuaMethodExample("local nlguicre = gui.createcanvas( 77, 99, 2, 48 );")]
 		[LuaMethod("createcanvas", "Creates a canvas of the given size and, if specified, the given coordinates.")]
-		public LuaTable Text(int width, int height, int? x = null, int? y = null)
+		[return: LuaTableParam]
+		public object Text(int width, int height, int? x = null, int? y = null)
 			=> CreateLuaCanvasCallback(width, height, x, y);
 
 		[LuaMethodExample("gui.use_surface( \"client\" );")]

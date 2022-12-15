@@ -29,7 +29,7 @@ namespace BizHawk.Client.Common
 
 		protected readonly ILuaLibraries _luaLibsImpl;
 
-		protected readonly NLuaTableHelper _th;
+		protected readonly LuaTableHelper _th;
 
 		public static void ClearCurrentThread()
 		{

@@ -2,8 +2,6 @@
 
 using BizHawk.Emulation.Common;
 
-using NLua;
-
 // ReSharper disable UnusedMember.Global
 // ReSharper disable UnusedAutoPropertyAccessor.Local
 namespace BizHawk.Client.Common
@@ -47,7 +45,8 @@ namespace BizHawk.Client.Common
 
 		[LuaMethodExample("local nlgamget = gameinfo.getoptions( );")]
 		[LuaMethod("getoptions", "returns the game options for the currently loaded rom. Options vary per platform")]
-		public LuaTable GetOptions()
+		[return: LuaTableParam]
+		public object GetOptions()
 			=> _th.DictToTable(APIs.Emulation.GetGameOptions());
 	}
 }

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Windows.Forms;
-using NLua;
+
 using BizHawk.Client.Common;
 
 namespace BizHawk.Client.EmuHawk
@@ -32,7 +32,7 @@ namespace BizHawk.Client.EmuHawk
 				{
 					if (luaEvent.Control == handle)
 					{
-						luaEvent.Event.Call();
+						luaEvent.Event.Invoke();
 					}
 				}
 			});
@@ -40,13 +40,13 @@ namespace BizHawk.Client.EmuHawk
 
 		public class LuaEvent
 		{
-			public LuaEvent(IntPtr handle, LuaFunction luaFunction)
+			public LuaEvent(IntPtr handle, ILuaFunction luaFunction)
 			{
 				Event = luaFunction;
 				Control = handle;
 			}
 
-			public LuaFunction Event { get; }
+			public ILuaFunction Event { get; }
 			public IntPtr Control { get; }
 		}
 	}

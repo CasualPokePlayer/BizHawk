@@ -4,7 +4,6 @@ using System.ComponentModel;
 using System.Drawing;
 using System.Linq;
 
-using NLua;
 using BizHawk.Client.Common;
 using BizHawk.Common;
 
@@ -165,10 +164,11 @@ namespace BizHawk.Client.EmuHawk
 
 		[LuaMethodExample("local nltasget = tastudio.getselection( );")]
 		[LuaMethod("getselection", "gets the currently selected frames")]
-		public LuaTable GetSelection()
+		[return: LuaTableParam]
+		public object GetSelection()
 			=> Engaged()
 				? _th.EnumerateToLuaTable(Tastudio.GetSelection(), indexFrom: 0)
-				: _th.CreateTable();
+				: _th.CreateTable().RawTable;
 
 		[LuaMethodExample("")]
 		[LuaMethod("submitinputchange", "")]
@@ -377,7 +377,8 @@ namespace BizHawk.Client.EmuHawk
 
 		[LuaMethodExample("local nltasget = tastudio.getbranches( );")]
 		[LuaMethod("getbranches", "Returns a list of the current tastudio branches.  Each entry will have the Id, Frame, and Text properties of the branch")]
-		public LuaTable GetBranches()
+		[return: LuaTableParam]
+		public object GetBranches()
 		{
 			if (!Engaged()) return _th.CreateTable();
 			return _th.EnumerateToLuaTable(
@@ -394,13 +395,14 @@ namespace BizHawk.Client.EmuHawk
 
 		[LuaMethodExample("local nltasget = tastudio.getbranchinput( \"97021544-2454-4483-824f-47f75e7fcb6a\", 500 );")]
 		[LuaMethod("getbranchinput", "Gets the controller state of the given frame with the given branch identifier")]
-		public LuaTable GetBranchInput(string branchId, int frame)
+		[return: LuaTableParam]
+		public object GetBranchInput(string branchId, int frame)
 		{
 			var table = _th.CreateTable();
-			if (!Engaged()) return table;
+			if (!Engaged()) return table.RawTable;
 
 			var controller = Tastudio.GetBranchInput(branchId, frame);
-			if (controller == null) return table;
+			if (controller == null) return table.RawTable;
 
 			foreach (var button in controller.Definition.BoolButtons)
 			{
@@ -412,7 +414,7 @@ namespace BizHawk.Client.EmuHawk
 				table[button] = controller.AxisValue(button);
 			}
 
-			return table;
+			return table.RawTable;
 		}
 
 		[LuaMethodExample("tastudio.loadbranch(0)")]
@@ -482,23 +484,25 @@ namespace BizHawk.Client.EmuHawk
 
 		[LuaMethodExample("tastudio.onqueryitembg( function( currentindex, itemname )\r\n\tconsole.log( \"called during the background draw event of the tastudio listview. luaf must be a function that takes 2 params: index, column.  The first is the integer row index of the listview, and the 2nd is the string column name. luaf should return a value that can be parsed into a .NET Color object (string color name, or integer value)\" );\r\nend );")]
 		[LuaMethod("onqueryitembg", "called during the background draw event of the tastudio listview. luaf must be a function that takes 2 params: index, column.  The first is the integer row index of the listview, and the 2nd is the string column name. luaf should return a value that can be parsed into a .NET Color object (string color name, or integer value)")]
-		public void OnQueryItemBg(LuaFunction luaf)
+		public void OnQueryItemBg([LuaFunctionParam] object luaf)
 		{
 			if (Engaged())
 			{
-				Tastudio.QueryItemBgColorCallback = (index, name) => _th.SafeParseColor(luaf.Call(index, name)?[0]);
+				var f = LuaTableHelper.ParseFunction(luaf);
+				Tastudio.QueryItemBgColorCallback = (index, name) => _th.SafeParseColor(f.Invoke(index, name)?[0]);
 			}
 		}
 
 		[LuaMethodExample("tastudio.onqueryitemtext( function( currentindex, itemname )\r\n\tconsole.log( \"called during the text draw event of the tastudio listview. luaf must be a function that takes 2 params: index, column.  The first is the integer row index of the listview, and the 2nd is the string column name. luaf should return a value that can be parsed into a .NET Color object (string color name, or integer value)\" );\r\nend );")]
 		[LuaMethod("onqueryitemtext", "called during the text draw event of the tastudio listview. luaf must be a function that takes 2 params: index, column.  The first is the integer row index of the listview, and the 2nd is the string column name. luaf should return a value that can be parsed into a .NET Color object (string color name, or integer value)")]
-		public void OnQueryItemText(LuaFunction luaf)
+		public void OnQueryItemText([LuaFunctionParam] object luaf)
 		{
 			if (Engaged())
 			{
 				Tastudio.QueryItemTextCallback = (index, name) =>
 				{
-					var result = luaf.Call(index, name);
+					var f = LuaTableHelper.ParseFunction(luaf);
+					var result = f.Invoke(index, name);
 					return result?[0]?.ToString();
 				};
 			}
@@ -506,13 +510,14 @@ namespace BizHawk.Client.EmuHawk
 
 		[LuaMethodExample("tastudio.onqueryitemicon( function( currentindex, itemname )\r\n\tconsole.log( \"called during the icon draw event of the tastudio listview. luaf must be a function that takes 2 params: index, column.  The first is the integer row index of the listview, and the 2nd is the string column name. luaf should return a value that can be parsed into a .NET Color object (string color name, or integer value)\" );\r\nend );")]
 		[LuaMethod("onqueryitemicon", "called during the icon draw event of the tastudio listview. luaf must be a function that takes 2 params: index, column.  The first is the integer row index of the listview, and the 2nd is the string column name. luaf should return a value that can be parsed into a .NET Color object (string color name, or integer value)")]
-		public void OnQueryItemIcon(LuaFunction luaf)
+		public void OnQueryItemIcon([LuaFunctionParam] object luaf)
 		{
 			if (Engaged())
 			{
 				Tastudio.QueryItemIconCallback = (index, name) =>
 				{
-					var result = luaf.Call(index, name);
+					var f = LuaTableHelper.ParseFunction(luaf);
+					var result = f.Invoke(index, name);
 					if (result?[0] != null)
 					{
 						string path = result[0].ToString();
@@ -527,52 +532,56 @@ namespace BizHawk.Client.EmuHawk
 
 		[LuaMethodExample("tastudio.ongreenzoneinvalidated( function( currentindex, itemname )\r\n\tconsole.log( \"called whenever the greenzone is invalidated and returns the first frame that was invalidated\" );\r\nend );")]
 		[LuaMethod("ongreenzoneinvalidated", "called whenever the greenzone is invalidated and returns the first frame that was invalidated")]
-		public void OnGreenzoneInvalidated(LuaFunction luaf)
+		public void OnGreenzoneInvalidated([LuaFunctionParam] object luaf)
 		{
 			if (Engaged())
 			{
+				var f = LuaTableHelper.ParseFunction(luaf);
 				Tastudio.GreenzoneInvalidatedCallback = index =>
 				{
-					luaf.Call(index);
+					f.Invoke(index);
 				};
 			}
 		}
 
 		[LuaMethodExample("tastudio.ongreenzoneinvalidated( function( currentindex, itemname )\r\n\tconsole.log( \"called whenever the greenzone is invalidated and returns the first frame that was invalidated\" );\r\nend );")]
 		[LuaMethod("onbranchload", "called whenever a branch is loaded. luaf must be a function that takes the integer branch index as a parameter")]
-		public void OnBranchLoad(LuaFunction luaf)
+		public void OnBranchLoad([LuaFunctionParam] object luaf)
 		{
 			if (Engaged())
 			{
+				var f = LuaTableHelper.ParseFunction(luaf);
 				Tastudio.BranchLoadedCallback = index =>
 				{
-					luaf.Call(index);
+					f.Invoke(index);
 				};
 			}
 		}
 
 		[LuaMethodExample("")]
 		[LuaMethod("onbranchsave", "called whenever a branch is created or updated. luaf must be a function that takes the integer branch index as a parameter")]
-		public void OnBranchSave(LuaFunction luaf)
+		public void OnBranchSave([LuaFunctionParam] object luaf)
 		{
 			if (Engaged())
 			{
+				var f = LuaTableHelper.ParseFunction(luaf);
 				Tastudio.BranchSavedCallback = index =>
 				{
-					luaf.Call(index);
+					f.Invoke(index);
 				};
 			}
 		}
 
 		[LuaMethodExample("")]
 		[LuaMethod("onbranchremove", "called whenever a branch is removed. luaf must be a function that takes the integer branch index as a parameter")]
-		public void OnBranchRemove(LuaFunction luaf)
+		public void OnBranchRemove([LuaFunctionParam] object luaf)
 		{
 			if (Engaged())
 			{
+				var f = LuaTableHelper.ParseFunction(luaf);
 				Tastudio.BranchRemovedCallback = index =>
 				{
-					luaf.Call(index);
+					f.Invoke(index);
 				};
 			}
 		}

@@ -7,8 +7,6 @@ using System.IO;
 using BizHawk.Client.Common;
 using BizHawk.Common.PathExtensions;
 
-using NLua;
-
 // ReSharper disable UnusedMember.Global
 namespace BizHawk.Client.EmuHawk
 {
@@ -17,7 +15,7 @@ namespace BizHawk.Client.EmuHawk
 	{
 		private readonly EmulationLuaLibrary _emuLib;
 
-		private readonly NLuaTableHelper _th;
+		private readonly LuaTableHelper _th;
 
 		private readonly Action<string> LogOutputCallback;
 
@@ -29,7 +27,7 @@ namespace BizHawk.Client.EmuHawk
 			int height,
 			int? x,
 			int? y,
-			NLuaTableHelper tableHelper,
+			LuaTableHelper tableHelper,
 			Action<string> logOutputCallback)
 		{
 			_emuLib = emuLib;
@@ -155,7 +153,7 @@ namespace BizHawk.Client.EmuHawk
 		[LuaMethod(
 			"DrawBezier",
 			"Draws a Bezier curve using the table of coordinates provided in the given color")]
-		public void DrawBezier(LuaTable points, [LuaColorParam] object color)
+		public void DrawBezier([LuaTableParam] object points, [LuaColorParam] object color)
 		{
 			try
 			{
@@ -366,7 +364,7 @@ namespace BizHawk.Client.EmuHawk
 			"DrawPolygon",
 			"Draws a polygon using the table of coordinates specified in points. This should be a table of tables(each of size 2). Line is the color of the polygon. Background is the optional fill color")]
 		public void DrawPolygon(
-			LuaTable points,
+			[LuaTableParam] object points,
 			int? x = null,
 			int? y = null,
 			[LuaColorParam] object line = null,

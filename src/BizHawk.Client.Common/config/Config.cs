@@ -150,6 +150,8 @@ namespace BizHawk.Client.Common
 		/// </summary>
 		public int FlushSaveRamFrames { get; set; }
 
+		public ELuaEngine LuaEngine { get; set; } = ELuaEngine.NLuaPlusKeraLuaPlusLua;
+
 		public bool TurboSeek { get; set; }
 
 		public ClientProfile SelectedProfile { get; set; } = ClientProfile.Unknown;
