@@ -1,6 +1,7 @@
-﻿Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.28729.10
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.33530.505
 MinimumVisualStudioVersion = 16.0.28729.10
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BizHawk.Client.Common", "src\BizHawk.Client.Common\BizHawk.Client.Common.csproj", "{24A0AA3C-B25F-4197-B23D-476D6462DBA0}"
 EndProject
@@ -22,9 +23,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BizHawk.Emulation.Cores", "
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BizHawk.Bizware.BizwareGL", "src\BizHawk.Bizware.BizwareGL\BizHawk.Bizware.BizwareGL.csproj", "{9F84A0B2-861E-4EF4-B89B-5E2A3F38A465}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BizHawk.Bizware.DirectX", "src\BizHawk.Bizware.DirectX\BizHawk.Bizware.DirectX.csproj", "{A914D063-9E4B-4086-B156-7B3F39E33DB2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BizHawk.Bizware.DirectX", "src\BizHawk.Bizware.DirectX\BizHawk.Bizware.DirectX.csproj", "{A914D063-9E4B-4086-B156-7B3F39E33DB2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BizHawk.Bizware.OpenTK3", "src\BizHawk.Bizware.OpenTK3\BizHawk.Bizware.OpenTK3.csproj", "{1FF433CC-96E1-4F14-B673-CDA7190169C9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BizHawk.Bizware.OpenTK3", "src\BizHawk.Bizware.OpenTK3\BizHawk.Bizware.OpenTK3.csproj", "{1FF433CC-96E1-4F14-B673-CDA7190169C9}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BizHawk.Bizware.Veldrid", "src\BizHawk.Bizware.Veldrid\BizHawk.Bizware.Veldrid.csproj", "{31C93BF8-1C2C-480F-AAA5-4B348CEDA7D2}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BizHawk.BizInvoke", "src\BizHawk.BizInvoke\BizHawk.BizInvoke.csproj", "{E5D76DC1-84A8-47AF-BE25-E76F06D2FBBC}"
 EndProject
@@ -80,6 +83,10 @@ Global
 		{1FF433CC-96E1-4F14-B673-CDA7190169C9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1FF433CC-96E1-4F14-B673-CDA7190169C9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1FF433CC-96E1-4F14-B673-CDA7190169C9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{31C93BF8-1C2C-480F-AAA5-4B348CEDA7D2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{31C93BF8-1C2C-480F-AAA5-4B348CEDA7D2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{31C93BF8-1C2C-480F-AAA5-4B348CEDA7D2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{31C93BF8-1C2C-480F-AAA5-4B348CEDA7D2}.Release|Any CPU.Build.0 = Release|Any CPU
 		{E5D76DC1-84A8-47AF-BE25-E76F06D2FBBC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{E5D76DC1-84A8-47AF-BE25-E76F06D2FBBC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E5D76DC1-84A8-47AF-BE25-E76F06D2FBBC}.Release|Any CPU.ActiveCfg = Release|Any CPU

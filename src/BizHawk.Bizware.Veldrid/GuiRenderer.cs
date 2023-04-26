@@ -3,13 +3,14 @@
 //why this stupid assert on the blendstate. just set one by default, geeze.
 
 using System;
+using System.Drawing;
+#if DEBUG
 using System.Diagnostics;
+#endif
 
 using BizHawk.Bizware.BizwareGL;
 
-using sd = System.Drawing;
-
-namespace BizHawk.Bizware.OpenTK3
+namespace BizHawk.Bizware.Veldrid
 {
 	/// <summary>
 	/// A simple renderer useful for rendering GUI stuff.
@@ -29,24 +30,11 @@ namespace BizHawk.Bizware.OpenTK3
 			VertexLayout.DefineVertexAttribute("aColor", 2, 4, VertexAttribPointerType.Float, AttribUsage.Texcoord1, false, 32, 16);
 			VertexLayout.Close();
 
-			_Projection = new MatrixStack();
-			_Modelview = new MatrixStack();
+			_Projection = new();
+			_Modelview = new();
 
-			string psProgram, vsProgram;
-
-			if (owner.API == "D3D9")
-			{
-				vsProgram = DefaultShader_d3d9;
-				psProgram = DefaultShader_d3d9;
-			}
-			else
-			{
-				vsProgram = DefaultVertexShader_gl;
-				psProgram = DefaultPixelShader_gl;
-			}
-
-			var vs = Owner.CreateVertexShader(vsProgram, "vsmain", true);
-			var ps = Owner.CreateFragmentShader(psProgram, "psmain", true);
+			var vs = Owner.CreateVertexShader(DefaultVertexShader, "vsmain", true);
+			var ps = Owner.CreateFragmentShader(DefaultPixelShader, "psmain", true);
 			CurrPipeline = DefaultPipeline = Owner.CreatePipeline(VertexLayout, vs, ps, true, "xgui");
 		}
 
@@ -93,10 +81,10 @@ namespace BizHawk.Bizware.OpenTK3
 
 		public void SetModulateColorWhite()
 		{
-			SetModulateColor(sd.Color.White);
+			SetModulateColor(Color.White);
 		}
 
-		public void SetModulateColor(sd.Color color)
+		public void SetModulateColor(Color color)
 		{
 			Flush();
 			CurrPipeline["uModulateColor"].Set(new Vector4(color.R / 255.0f, color.G / 255.0f, color.B / 255.0f, color.A / 255.0f));
@@ -131,7 +119,7 @@ namespace BizHawk.Bizware.OpenTK3
 			}
 		}
 
-		public void Begin(sd.Size size) { Begin(size.Width, size.Height); }
+		public void Begin(Size size) { Begin(size.Width, size.Height); }
 
 		public void Begin(int width, int height)
 		{
@@ -349,60 +337,10 @@ namespace BizHawk.Bizware.OpenTK3
 		private bool BlendStateSet;
 #endif
 
-//shaders are hand-coded for each platform to make sure they stay as fast as possible
-
-		public readonly string DefaultShader_d3d9 = @"
-//vertex shader uniforms
-float4x4 um44Modelview, um44Projection;
-float4 uModulateColor;
-
-//pixel shader uniforms
-bool uSamplerEnable;
-texture2D texture0, texture1;
-sampler uSampler0 = sampler_state { Texture = (texture0); };
-
-struct VS_INPUT
-{
-	float2 aPosition : POSITION;
-	float2 aTexcoord : TEXCOORD0;
-	float4 aColor : TEXCOORD1;
-};
-
-struct VS_OUTPUT
-{
-	float4 vPosition : POSITION;
-	float2 vTexcoord0 : TEXCOORD0;
-	float4 vCornerColor : COLOR0;
-};
-
-struct PS_INPUT
-{
-	float2 vTexcoord0 : TEXCOORD0;
-	float4 vCornerColor : COLOR0;
-};
-
-VS_OUTPUT vsmain(VS_INPUT src)
-{
-	VS_OUTPUT dst;
-	float4 temp = float4(src.aPosition,0,1);
-	dst.vPosition = mul(um44Projection,mul(um44Modelview,temp));
-	dst.vTexcoord0 = src.aTexcoord;
-	dst.vCornerColor = src.aColor * uModulateColor;
-	return dst;
-}
-
-float4 psmain(PS_INPUT src) : COLOR
-{
-	float4 temp = src.vCornerColor;
-	if(uSamplerEnable) temp *= tex2D(uSampler0,src.vTexcoord0);
-	return temp;
-}
-";
-
-		public readonly string DefaultVertexShader_gl = @"
-#version 110 //opengl 2.0 ~ 2004
-uniform mat4 um44Modelview, um44Projection;
-uniform vec4 uModulateColor;
+		public const string DefaultVertexShader = @"
+#version 140 //opengl 3.1 ~ 2004
+//uniform mat4 um44Modelview, um44Projection;
+//uniform vec4 uModulateColor;
 
 //attribute vec2 aPosition : gl_Vertex;
 //attribute vec2 aTexcoord : gl_MultiTexCoord0;
@@ -411,31 +349,30 @@ uniform vec4 uModulateColor;
 #define aTexcoord vec2(gl_MultiTexCoord0.xy)
 #define aColor gl_Color
 
-varying vec2 vTexcoord0;
-varying vec4 vCornerColor;
+//varying vec2 vTexcoord0;
+//varying vec4 vCornerColor;
 
 void main()
 {
-	vec4 temp = vec4(aPosition,0,1);
-	gl_Position = um44Projection * (um44Modelview * temp);
-	vTexcoord0 = aTexcoord;
-	vCornerColor = aColor * uModulateColor;
+	//vec4 temp = vec4(aPosition,0,1);
+	//gl_Position = um44Projection * (um44Modelview * temp);
+	//vTexcoord0 = aTexcoord;
+	//vCornerColor = aColor * uModulateColor;
 }";
 
-		public readonly string DefaultPixelShader_gl = @"
-#version 110 //opengl 2.0 ~ 2004
-uniform bool uSamplerEnable;
-uniform sampler2D uSampler0;
+		public const string DefaultPixelShader = @"
+#version 140 //opengl 3.1
+//uniform bool uSamplerEnable;
+//uniform sampler2D uSampler0;
 
-varying vec2 vTexcoord0;
-varying vec4 vCornerColor;
+//varying vec2 vTexcoord0;
+//varying vec4 vCornerColor;
 
 void main()
 {
-	vec4 temp = vCornerColor;
-	if(uSamplerEnable) temp *= texture2D(uSampler0,vTexcoord0);
-	gl_FragColor = temp;
+	//vec4 temp = vCornerColor;
+	//if(uSamplerEnable) temp *= texture2D(uSampler0,vTexcoord0);
+	//gl_FragColor = temp;
 }";
-
 	}
 }

@@ -70,14 +70,6 @@ namespace BizHawk.Client.EmuHawk
 				if (_getIsSecondaryThrottlingDisabled())
 					vsync = false;
 
-				//for now, it's assumed that the presentation panel is the main window, but that may not always be true
-				if (vsync && GlobalConfig.DispAlternateVsync && GlobalConfig.VSyncThrottle && _gl.DispMethodEnum is EDispMethod.SlimDX9)
-				{
-					alternateVsync = true;
-					//unset normal vsync if we've chosen the alternate vsync
-					vsync = false;
-				}
-
 				//TODO - whats so hard about triple buffering anyway? just enable it always, and change api to SetVsync(enable,throttle)
 				//maybe even SetVsync(enable,throttlemethod) or just SetVsync(enable,throttle,advanced)
 
@@ -117,14 +109,8 @@ namespace BizHawk.Client.EmuHawk
 
 			Debug.Assert(inFinalTarget);
 
-			// wait for vsync to begin
-			if (alternateVsync) ((dynamic) _gl).AlternateVsyncPass(0);
-
 			// present and conclude drawing
 			_graphicsControl.SwapBuffers();
-
-			// wait for vsync to end
-			if (alternateVsync) ((dynamic) _gl).AlternateVsyncPass(1);
 
 			// nope. don't do this. workaround for slow context switching on intel GPUs. just switch to another context when necessary before doing anything
 			// presentationPanel.GraphicsControl.End();

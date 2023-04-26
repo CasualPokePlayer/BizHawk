@@ -86,7 +86,7 @@ namespace BizHawk.Client.Common
 				LoadCustomFont(fceux);
 			}
 
-			if (dispMethod == EDispMethod.OpenGL || dispMethod == EDispMethod.SlimDX9)
+			if (dispMethod is not EDispMethod.GdiPlus)
 			{
 				var fiHq2x = new FileInfo(Path.Combine(PathUtils.ExeDirectoryPath, "Shaders/BizHawk/hq2x.cgp"));
 				if (fiHq2x.Exists)
@@ -100,7 +100,7 @@ namespace BizHawk.Client.Common
 					using var stream = fiScanlines.OpenRead();
 					_shaderChainScanlines = new RetroShaderChain(_gl, new RetroShaderPreset(stream), Path.Combine(PathUtils.ExeDirectoryPath, "Shaders/BizHawk"));
 				}
-				var bicubicPath = dispMethod == EDispMethod.SlimDX9 ? "Shaders/BizHawk/bicubic-normal.cgp" : "Shaders/BizHawk/bicubic-fast.cgp";
+				const string bicubicPath = "Shaders/BizHawk/bicubic-fast.cgp";
 				var fiBicubic = new FileInfo(Path.Combine(PathUtils.ExeDirectoryPath, bicubicPath));
 				if (fiBicubic.Exists)
 				{
@@ -773,8 +773,6 @@ namespace BizHawk.Client.Common
 			//no drawing actually happens. it's important not to begin drawing on a control
 			if (!job.Simulate && !job.Offscreen)
 			{
-				ActivateGLContext();
-
 				if (job.ChainOutsize.Width == 0 || job.ChainOutsize.Height == 0)
 				{
 					// this has to be a NOP, because lots of stuff will malfunction on a 0-sized viewport
@@ -929,7 +927,6 @@ namespace BizHawk.Client.Common
 
 		public void Blank()
 		{
-			ActivateGLContext();
 			_gl.BeginScene();
 			_gl.BindRenderTarget(null);
 			_gl.SetClearColor(Color.Black);

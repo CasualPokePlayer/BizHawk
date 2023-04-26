@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net48</TargetFramework>
+	</PropertyGroup>
+	<Import Project="../MainSlnCommon.props" />
+	<PropertyGroup>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<Nullable>disable</Nullable>
+	</PropertyGroup>
+	<ItemGroup>
+		<Reference Include="System.Windows.Forms" />
+		<PackageReference Include="Veldrid" Version="4.9.0" PrivateAssets="all" />
+		<PackageReference Include="Veldrid.SDL2" Version="4.9.0" PrivateAssets="all" />
+		<PackageReference Include="Veldrid.SPIRV" Version="1.0.15" PrivateAssets="all" />
+		<PackageReference Include="Veldrid.StartupUtilities" Version="4.9.0" PrivateAssets="all" />
+		<PackageReference Include="Veldrid.Utilities" Version="4.9.0" PrivateAssets="all" />
+		<ProjectReference Include="$(ProjectDir)../BizHawk.Client.Common/BizHawk.Client.Common.csproj" />
+		<ProjectReference Include="$(ProjectDir)../BizHawk.WinForms.Controls/BizHawk.WinForms.Controls.csproj" />
+	</ItemGroup>
+</Project>

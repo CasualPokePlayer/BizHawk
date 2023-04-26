@@ -1,0 +1,739 @@
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Text;
+
+using Veldrid;
+using Veldrid.Sdl2;
+using Veldrid.SPIRV;
+using Veldrid.StartupUtilities;
+using Veldrid.Utilities;
+
+using BizHawk.Common;
+using BizHawk.Bizware.BizwareGL;
+
+using BizPipeline = BizHawk.Bizware.BizwareGL.Pipeline;
+using BizShader = BizHawk.Bizware.BizwareGL.Shader;
+using VeldridPipeline = Veldrid.Pipeline;
+using VeldridShader = Veldrid.Shader;
+
+namespace BizHawk.Bizware.Veldrid
+{
+	/// <summary>
+	/// Veldrid implementation of the BizwareGL.IGL interface
+	/// </summary>
+	public class IGL_Veldrid : IGL
+	{
+		public EDispMethod DispMethodEnum { get; }
+
+		// an SDL2 window derived from a Control backs the graphics device
+		private readonly Sdl2Window _sdl2Window;
+		private readonly VeldridControlWrapper _graphicsControl;
+
+		internal readonly GraphicsDevice _device;
+		private readonly DisposeCollectorResourceFactory _resources;
+
+		private CommandList _commandList;
+
+		//rendering state
+		private BizPipeline _currPipeline;
+		private RenderTarget _currRenderTarget;
+
+		public string API => "VELDRID";
+
+		public int Version
+			=> _device.ApiVersion.Major * 100
+				+ _device.ApiVersion.Minor * 10
+				+ _device.ApiVersion.Subminor;
+
+		[DllImport("msvcrt.dll", CallingConvention = CallingConvention.Cdecl)]
+		private static extern int _snprintf(byte[] buffer, nint size, string format, __arglist);
+
+		public IGL_Veldrid(EDispMethod dispMethod)
+		{
+			var preferredBackend = dispMethod switch
+			{
+				EDispMethod.Direct3D11 => GraphicsBackend.Direct3D11,
+				EDispMethod.Vulkan => GraphicsBackend.Vulkan,
+				EDispMethod.OpenGL => GraphicsBackend.OpenGL,
+				EDispMethod.Metal => GraphicsBackend.Metal,
+				EDispMethod.OpenGLES => GraphicsBackend.OpenGLES,
+				EDispMethod.GdiPlus => throw new NotSupportedException(),
+				_ => throw new InvalidOperationException()
+			};
+
+			preferredBackend = GraphicsBackend.Vulkan;
+
+			_graphicsControl = new(this,
+				(width, height) =>
+				{
+					_device!.ResizeMainWindow((uint)width, (uint)height);
+				},
+				vsyncState =>
+				{
+					_device!.SyncToVerticalBlank = vsyncState;
+				},
+				() =>
+				{
+					_device!.SwapBuffers();
+				});
+
+			_graphicsControl.CreateControl();
+
+			/*if (!OSTailoredCode.IsUnixHost)
+			{
+				// required for OpenGL on Windows
+				// see https://wiki.libsdl.org/SDL2/SDL_HINT_VIDEO_WINDOW_SHARE_PIXEL_FORMAT
+				var dummyWindow = Sdl2Native.SDL_CreateWindow("", 0, 0, 0, 0, SDL_WindowFlags.OpenGL | SDL_WindowFlags.Hidden);
+				var bufSz = _snprintf(null, 0, "%p", __arglist(dummyWindow.NativePointer)) + 1;
+				var buf = new byte[bufSz]; // for some reason, stackalloc crashes?
+				_ = _snprintf(buf, bufSz, "%p", __arglist(dummyWindow.NativePointer));
+				Sdl2Native.SDL_SetHint("SDL_VIDEO_WINDOW_SHARE_PIXEL_FORMAT", Encoding.ASCII.GetString(buf, 0, buf.Length - 1));
+				_sdl2Window = new(_graphicsControl.Handle, false);
+				Sdl2Native.SDL_DestroyWindow(dummyWindow);
+			}
+			else
+			{
+				_sdl2Window = new(_graphicsControl.Handle, false);
+			}*/
+			_sdl2Window = VeldridStartup.CreateWindow(new(0, 0, 1, 1, WindowState.Hidden, ""));
+
+			if (!GraphicsDevice.IsBackendSupported(preferredBackend))
+			{
+				preferredBackend = VeldridStartup.GetPlatformDefaultBackend();
+			}
+
+			var gdo = new GraphicsDeviceOptions(false, null, false)
+			{
+				PreferStandardClipSpaceYDirection = preferredBackend is GraphicsBackend.Vulkan
+			};
+
+			try
+			{
+				_device = VeldridStartup.CreateGraphicsDevice(_sdl2Window, gdo, preferredBackend);
+			}
+			catch
+			{
+				preferredBackend = VeldridStartup.GetPlatformDefaultBackend();
+				gdo.PreferStandardClipSpaceYDirection = preferredBackend is GraphicsBackend.Vulkan;
+				_device = VeldridStartup.CreateGraphicsDevice(_sdl2Window, gdo, preferredBackend);
+			}
+
+			_resources = new(_device.ResourceFactory);
+
+			DispMethodEnum = preferredBackend switch
+			{
+				GraphicsBackend.Direct3D11 => EDispMethod.Direct3D11,
+				GraphicsBackend.Vulkan => EDispMethod.Vulkan,
+				GraphicsBackend.OpenGL => EDispMethod.OpenGL,
+				GraphicsBackend.Metal => EDispMethod.Metal,
+				GraphicsBackend.OpenGLES => EDispMethod.OpenGLES,
+				_ => throw new InvalidOperationException()
+			};
+
+			CreateRenderStates();
+		}
+
+		public void BeginScene()
+		{
+			_commandList = _resources.CreateCommandList();
+			_commandList.Begin();
+		}
+
+		public void EndScene()
+		{
+			_commandList.End();
+			_device.SubmitCommands(_commandList);
+			_device.WaitForIdle();
+			_commandList.Dispose();
+			_resources.DisposeCollector.Remove(_commandList);
+			_commandList = null;
+		}
+
+		public void Dispose()
+		{
+			
+		}
+
+		private RgbaFloat _clearColor;
+
+		public void Clear(ClearBufferMask mask)
+		{
+			if (mask.HasFlag(ClearBufferMask.ColorBufferBit))
+				_commandList.ClearColorTarget(0, _clearColor);
+			if (mask.HasFlag(ClearBufferMask.DepthBufferBit))
+				_commandList.ClearDepthStencil(0);
+
+			// other flags unsupported (we only use ColorBufferBit anyways)
+		}
+
+		public void SetClearColor(Color color)
+		{
+			_clearColor = new(color.R / 255.0f, color.G / 255.0f, color.B / 255.0f, color.A / 255.0f);
+		}
+
+		public IGraphicsControl Internal_CreateGraphicsControl()
+		{
+			return _graphicsControl;
+		}
+
+		public void FreeTexture(Texture2d tex)
+		{
+			var texture = (Texture)tex.Opaque;
+			texture.Dispose();
+			_resources.DisposeCollector.Remove(texture);
+		}
+
+		private class ShaderWrapper
+		{
+			public byte[] SpirvBytecode;
+			public string Entrypoint;
+			public VeldridShader NativeShader;
+			public PipelineInfo PipelineInfo;
+			public string Errors;
+		}
+
+		private static ShaderWrapper CreateShader(ShaderStages stage, string source, string entry, bool required) 
+		{
+			try
+			{
+				var shader = SpirvCompilation.CompileGlslToSpirv(source, null, stage, GlslCompileOptions.Default);
+				return new() { SpirvBytecode = shader.SpirvBytes, Entrypoint = entry };
+			}
+			catch (SpirvCompilationException e) when (!required)
+			{
+				return new() { Errors = e.Message };
+			}
+		}
+
+		public BizShader CreateVertexShader(string source, string entry, bool required)
+		{
+			var shader = CreateShader(ShaderStages.Vertex, source, entry, required);
+			return new(this, shader, shader.Errors is null);
+		}
+
+		public BizShader CreateFragmentShader(string source, string entry, bool required)
+		{
+			var shader = CreateShader(ShaderStages.Fragment, source, entry, required);
+			return new(this, shader, shader.Errors is null);
+		}
+
+		public IBlendState CreateBlendState(
+			BlendingFactorSrc colorSource,
+			BlendEquationMode colorEquation,
+			BlendingFactorDest colorDest,
+			BlendingFactorSrc alphaSource,
+			BlendEquationMode alphaEquation,
+			BlendingFactorDest alphaDest)
+		{
+			return new CacheBlendState(true, colorSource, colorEquation, colorDest, alphaSource, alphaEquation, alphaDest);
+		}
+
+		private BlendStateDescription _blendState;
+
+		public void SetBlendState(IBlendState rsBlend)
+		{
+			var mybs = (CacheBlendState)rsBlend;
+			_blendState = new(RgbaFloat.White, mybs.Description);
+		}
+
+		public IBlendState BlendNoneCopy => _rsBlendNoneVerbatim;
+		
+		public IBlendState BlendNoneOpaque => _rsBlendNoneOpaque;
+
+		public IBlendState BlendNormal => _rsBlendNormal;
+
+		private class PipelineInfo
+		{
+			public SpirvReflection SpirvReflection;
+			public ShaderSetDescription ShaderSet;
+			public ResourceLayout[] ResourceLayouts;
+			public OutputDescription Outputs;
+			public ResourceSet[] ResourceSets;
+			public List<DeviceBuffer> VertexBuffers;
+			public List<UniformInfo> Uniforms;
+		}
+
+		private class PipelineWrapper
+		{
+			public VeldridPipeline Pipeline;
+			public BizShader FragmentShader, VertexShader;
+			public PipelineInfo PipelineInfo;
+		}
+
+		private CrossCompileTarget GetCrossCompileTarget()
+			=> _device.BackendType switch
+			{
+				GraphicsBackend.Direct3D11 => CrossCompileTarget.HLSL,
+				GraphicsBackend.OpenGL => CrossCompileTarget.GLSL,
+				GraphicsBackend.Metal => CrossCompileTarget.MSL,
+				GraphicsBackend.OpenGLES => CrossCompileTarget.ESSL,
+				GraphicsBackend.Vulkan => throw new NotSupportedException(),
+				_ => throw new InvalidOperationException()
+			};
+
+		private byte[] GetShaderBytes(string code)
+			=> _device.BackendType switch
+			{
+				GraphicsBackend.Direct3D11 or GraphicsBackend.OpenGL or GraphicsBackend.OpenGLES => Encoding.ASCII.GetBytes(code),
+				GraphicsBackend.Metal => Encoding.UTF8.GetBytes(code),
+				GraphicsBackend.Vulkan => throw new NotSupportedException(),
+				_ => throw new InvalidOperationException()
+			};
+
+		private PipelineInfo GetPipelineInfo(ShaderWrapper vertexShader, ShaderWrapper fragmentShader)
+		{
+			if (vertexShader.PipelineInfo is not null && fragmentShader.PipelineInfo is not null
+				&& ReferenceEquals(vertexShader.PipelineInfo, fragmentShader.PipelineInfo))
+			{
+				return vertexShader.PipelineInfo;
+			}
+
+			var ret = new PipelineInfo();
+
+			// kinda dumb, we need to cross compile in order to obtain reflection info
+			// Vulkan directly takes in bytecode, so the cross compile step doesn't mean anything
+			if (_device.BackendType is GraphicsBackend.Vulkan)
+			{
+				var result = SpirvCompilation.CompileVertexFragment(vertexShader.SpirvBytecode, fragmentShader.SpirvBytecode,
+					CrossCompileTarget.HLSL, new(false, false, true));
+				vertexShader.NativeShader = _resources.CreateShader(new(ShaderStages.Vertex,
+					vertexShader.SpirvBytecode, vertexShader.Entrypoint));
+				fragmentShader.NativeShader = _resources.CreateShader(new(ShaderStages.Fragment,
+					fragmentShader.SpirvBytecode, fragmentShader.Entrypoint));
+				ret.SpirvReflection = result.Reflection;
+			}
+			else
+			{
+				var result = SpirvCompilation.CompileVertexFragment(vertexShader.SpirvBytecode, fragmentShader.SpirvBytecode,
+					GetCrossCompileTarget(), new(false, false, true));
+				vertexShader.NativeShader = _resources.CreateShader(new(ShaderStages.Vertex,
+					GetShaderBytes(result.VertexShader), vertexShader.Entrypoint));
+				fragmentShader.NativeShader = _resources.CreateShader(new(ShaderStages.Fragment,
+					GetShaderBytes(result.VertexShader), fragmentShader.Entrypoint));
+				ret.SpirvReflection = result.Reflection;
+			}
+
+			ret.ShaderSet = new(new[] { new VertexLayoutDescription(ret.SpirvReflection.VertexElements) },
+				new[] { vertexShader.NativeShader, fragmentShader.NativeShader });
+
+			ret.ResourceLayouts = new ResourceLayout[ret.SpirvReflection.ResourceLayouts.Length];
+			for (var i = 0; i < ret.ResourceLayouts.Length; i++)
+			{
+				ret.ResourceLayouts[i] = _resources.CreateResourceLayout(ref ret.SpirvReflection.ResourceLayouts[i]);
+			}
+
+			ret.Outputs = new(null); // ???
+			ret.Uniforms = new();
+
+			ret.ResourceSets = new ResourceSet[ret.ResourceLayouts.Length];
+			for (var i = 0; i < ret.ResourceSets.Length; i++)
+			{
+				var rleds = ret.SpirvReflection.ResourceLayouts[i].Elements;
+				var br = new BindableResource[rleds.Length];
+				for (var j = 0; j < br.Length; j++)
+				{
+					var rled = rleds[i];
+					if (rled.Stages is ShaderStages.Vertex && rled.Kind is ResourceKind.UniformBuffer)
+					{
+						//br[i] = _resources.CreateBuffer(rled.Options)
+					}
+					else
+					{
+						
+					}
+				}
+				var rsd = new ResourceSetDescription(ret.ResourceLayouts[i], br);
+				ret.ResourceSets[i] = _resources.CreateResourceSet(ref rsd);
+			}
+
+			return ret;
+		}
+
+		/// <exception cref="InvalidOperationException">
+		/// <paramref name="required"/> is <see langword="true"/> and either <paramref name="vertexShader"/> or <paramref name="fragmentShader"/> is unavailable (their <see cref="BizShader.Available"/> property is <see langword="false"/>), or
+		/// <c>glLinkProgram</c> call did not produce expected result
+		/// </exception>
+		public BizPipeline CreatePipeline(VertexLayout vertexLayout, BizShader vertexShader, BizShader fragmentShader, bool required, string memo)
+		{
+			if (!vertexShader.Available || !fragmentShader.Available)
+			{
+				var errors = $"Vertex Shader:\r\n {vertexShader.Errors} \r\n-------\r\nFragment Shader:\r\n{fragmentShader.Errors}";
+				if (required)
+				{
+					throw new InvalidOperationException($"Couldn't build required GL pipeline:\r\n{errors}");
+				} 
+
+				return new(this, null, false, null, null, null) { Errors = errors };
+			}
+
+			var vsw = (ShaderWrapper)vertexShader.Opaque;
+			var fsw = (ShaderWrapper)fragmentShader.Opaque;
+
+			var pipelineInfo = GetPipelineInfo(vsw, fsw);
+
+			var gpd = new GraphicsPipelineDescription(
+				_blendState,
+				DepthStencilStateDescription.Disabled, // ???
+				RasterizerStateDescription.Default, // ???
+				PrimitiveTopology.TriangleStrip, // FIXME: IGL API normally expects this set AFTER making the pipeline, Veldrid wants it BEFORE
+				pipelineInfo.ShaderSet,
+				pipelineInfo.ResourceLayouts,
+				pipelineInfo.Outputs);
+
+			var pipeline = _resources.CreateGraphicsPipeline(ref gpd);
+
+			var pw = new PipelineWrapper { Pipeline = pipeline, VertexShader = vertexShader, FragmentShader = fragmentShader, PipelineInfo = pipelineInfo };
+			return new(this, pw, true, vertexLayout, pipelineInfo.Uniforms, memo);
+		}
+
+		public void FreePipeline(BizPipeline pipeline)
+		{
+			// unavailable pipelines will have no opaque
+			if (pipeline.Opaque is not PipelineWrapper pw)
+			{
+				return;
+			}
+
+			pw.Pipeline.Dispose();
+			_resources.DisposeCollector.Remove(pw.Pipeline);
+			pw.FragmentShader.Release();
+			pw.VertexShader.Release();
+		}
+
+		public void Internal_FreeShader(BizShader shader)
+		{
+			var sw = (ShaderWrapper)shader.Opaque;
+			sw.NativeShader.Dispose();
+			_resources.DisposeCollector.Remove(sw.NativeShader);
+			sw.NativeShader = null;
+			sw.PipelineInfo = null;
+		}
+
+		/// <exception cref="InvalidOperationException"><paramref name="pipeline"/>.<see cref="BizPipeline.Available"/> is <see langword="false"/></exception>
+		public void BindPipeline(BizPipeline pipeline)
+		{
+			_currPipeline = pipeline;
+
+			if (pipeline == null)
+			{
+				//sStatePendingVertexLayout = null;
+				return;
+			}
+
+			if (!pipeline.Available)
+			{
+				throw new InvalidOperationException("Attempt to bind unavailable pipeline");
+			}
+
+			//sStatePendingVertexLayout = pipeline.VertexLayout;
+
+			var pw = (PipelineWrapper)pipeline.Opaque;
+			_commandList.SetPipeline(pw.Pipeline);
+		}
+
+		public VertexLayout CreateVertexLayout()
+			=> new(this, null);
+
+		public void SetTextureWrapMode(Texture2d tex, bool clamp)
+		{
+			var mode = clamp ? SamplerAddressMode.Clamp : SamplerAddressMode.Wrap;
+			var texture = (Texture)tex.Opaque;
+			// TODO
+		}
+
+		public void BindArrayData(IntPtr pData)
+		{
+			// TODO
+		}
+
+		public void DrawArrays(PrimitiveType mode, int first, int count)
+		{
+			_commandList.Draw((uint)count, 1, (uint)first, 0);
+		}
+
+		public void SetPipelineUniform(PipelineUniform uniform, bool value)
+		{
+			var buffer = (DeviceBuffer)uniform.Sole.Opaque;
+			_device.UpdateBuffer(buffer, 0, value);
+		}
+
+		public void SetPipelineUniformMatrix(PipelineUniform uniform, Matrix4 mat, bool transpose)
+		{
+			SetPipelineUniformMatrix(uniform, ref mat, transpose);
+		}
+
+		public void SetPipelineUniformMatrix(PipelineUniform uniform, ref Matrix4 mat, bool transpose)
+		{
+			// TODO: handle transpose
+			var buffer = (DeviceBuffer)uniform.Sole.Opaque;
+			// TODO: does this map correctly?
+			_device.UpdateBuffer(buffer, 0, ref mat);
+		}
+
+		public void SetPipelineUniform(PipelineUniform uniform, Vector4 value)
+		{
+			var buffer = (DeviceBuffer)uniform.Sole.Opaque;
+			// TODO: does this map correctly?
+			_device.UpdateBuffer(buffer, 0, ref value);
+		}
+
+		public void SetPipelineUniform(PipelineUniform uniform, Vector2 value)
+		{
+			var buffer = (DeviceBuffer)uniform.Sole.Opaque;
+			// TODO: does this map correctly?
+			_device.UpdateBuffer(buffer, 0, ref value);
+		}
+
+		public void SetPipelineUniform(PipelineUniform uniform, float value)
+		{
+			var buffer = (DeviceBuffer)uniform.Sole.Opaque;
+			// TODO: does this map correctly?
+			_device.UpdateBuffer(buffer, 0, ref value);
+		}
+
+		public void SetPipelineUniform(PipelineUniform uniform, Vector4[] values)
+		{
+			var buffer = (DeviceBuffer)uniform.Sole.Opaque;
+			// TODO: does this map correctly?
+			_device.UpdateBuffer(buffer, 0, values);
+		}
+
+		public void SetPipelineUniformSampler(PipelineUniform uniform, Texture2d tex)
+		{
+			// TODO
+		}
+
+		public void SetMinFilter(Texture2d texture, TextureMinFilter minFilter)
+		{
+			// TODO
+		}
+
+		public void SetMagFilter(Texture2d texture, TextureMagFilter magFilter)
+		{
+			// TODO
+		}
+
+		public Texture2d LoadTexture(Bitmap bitmap)
+		{
+			using var bmp = new BitmapBuffer(bitmap, new());
+			return LoadTexture(bmp);
+		}
+
+		public Texture2d LoadTexture(Stream stream)
+		{
+			using var bmp = new BitmapBuffer(stream, new());
+			return LoadTexture(bmp);
+		}
+
+		public Texture2d CreateTexture(int width, int height)
+		{
+			var texDescription = new TextureDescription((uint)width, (uint)height, 0, 0, 0,
+				PixelFormat.B8_G8_R8_A8_UNorm_SRgb, TextureUsage.RenderTarget | TextureUsage.Staging, TextureType.Texture2D);
+			var tex = _resources.CreateTexture(ref texDescription);
+			return new(this, tex, width, height);
+		}
+
+		public Texture2d WrapGLTexture2d(IntPtr glTexId, int width, int height)
+		{
+			var texDescription = new TextureDescription((uint)width, (uint)height, 0, 0, 0,
+				PixelFormat.B8_G8_R8_A8_UNorm_SRgb, TextureUsage.RenderTarget | TextureUsage.Staging, TextureType.Texture2D);
+			var tex = _resources.CreateTexture((ulong)glTexId, ref texDescription);
+			return new(this, tex, width, height);
+		}
+
+		public void LoadTextureData(Texture2d tex, BitmapBuffer bmp)
+		{
+			var bmpData = bmp.LockBits();
+			try
+			{
+				var texture = (Texture)tex.Opaque;
+				_device.UpdateTexture(texture, bmpData.Scan0, (uint)(bmp.Width * bmp.Height * 4), 0, 0, 0, (uint)bmpData.Width, (uint)bmpData.Height, 1, 0, 0);
+			}
+			finally
+			{
+				bmp.UnlockBits(bmpData);
+			}
+		}
+
+		public void FreeRenderTarget(RenderTarget rt)
+		{
+			rt.Texture2d.Dispose();
+			if (rt.Opaque is Framebuffer fb)
+			{
+				fb.Dispose();
+				_resources.DisposeCollector.Remove(fb);
+			}
+		}
+
+		/// <exception cref="InvalidOperationException">framebuffer creation unsuccessful</exception>
+		public RenderTarget CreateRenderTarget(int w, int h)
+		{
+			// create a texture for it
+			var tex = CreateTexture(w, h);
+			tex.SetMagFilter(TextureMagFilter.Nearest);
+			tex.SetMinFilter(TextureMinFilter.Nearest);
+
+			// create the FBO
+			var fb = _resources.CreateFramebuffer(new(null, (Texture)tex.Opaque));
+
+			return new(this, fb, tex);
+		}
+
+		public void BindRenderTarget(RenderTarget rt)
+		{
+			_currRenderTarget = rt;
+			if (rt.Opaque is Framebuffer fb)
+			{
+				_commandList.SetFramebuffer(fb);
+			}
+		}
+
+		public Texture2d LoadTexture(BitmapBuffer bmp)
+		{
+			Texture2d ret = null;
+			try
+			{
+				ret = CreateTexture(bmp.Width, bmp.Height);
+				LoadTextureData(ret, bmp);
+			}
+			catch
+			{
+				if (ret is not null)
+				{
+					ret.Dispose();
+					_resources.DisposeCollector.Remove(ret);
+				}
+
+				throw;
+			}
+
+			//set default filtering.. its safest to do this always
+			ret.SetFilterNearest();
+
+			return ret;
+		}
+
+		public unsafe BitmapBuffer ResolveTexture2d(Texture2d tex)
+		{
+			var texture = (Texture)tex.Opaque;
+			var bb = new BitmapBuffer(tex.IntWidth, tex.IntHeight);
+			var bmpdata = bb.LockBits();
+			var mappedResource = _device.Map(texture, MapMode.Read);
+			try
+			{
+				var src = new ReadOnlySpan<byte>(mappedResource.Data.ToPointer(), (int)mappedResource.SizeInBytes);
+				var dst = new Span<byte>(bmpdata.Scan0.ToPointer(), bmpdata.Height * bmpdata.Stride);
+				if (mappedResource.RowPitch == bmpdata.Stride)
+				{
+					// can direct copy entire thing in this case
+					src.CopyTo(dst);
+				}
+				else
+				{
+					var rowLen = bmpdata.Width * 4;
+					for (var i = 0; i < bmpdata.Height; i++)
+					{
+						var srcStart = i * (int)mappedResource.RowPitch;
+						var dstStart = i * bmpdata.Stride;
+						src.Slice(srcStart, rowLen).CopyTo(dst.Slice(dstStart, rowLen));
+					}
+				}
+
+				return bb;
+			}
+			finally
+			{
+				_device.Unmap(texture);
+				bb.UnlockBits(bmpdata);
+			}
+		}
+
+		public Texture2d LoadTexture(string path)
+		{
+			using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+			return LoadTexture(fs);
+		}
+
+		public Matrix4 CreateGuiProjectionMatrix(int w, int h)
+		{
+			return CreateGuiProjectionMatrix(new(w, h));
+		}
+
+		public Matrix4 CreateGuiViewMatrix(int w, int h, bool autoflip)
+		{
+			return CreateGuiViewMatrix(new(w, h), autoflip);
+		}
+
+		public Matrix4 CreateGuiProjectionMatrix(Size dims)
+		{
+			var ret = Matrix4.Identity;
+			ret.Row0.X = 2.0f / dims.Width;
+			ret.Row1.Y = 2.0f / dims.Height;
+			return ret;
+		}
+
+		public Matrix4 CreateGuiViewMatrix(Size dims, bool autoflip)
+		{
+			var ret = Matrix4.Identity;
+			ret.Row1.Y = -1.0f;
+			ret.Row3.X = -dims.Width * 0.5f;
+			ret.Row3.Y = dims.Height * 0.5f;
+			if (autoflip && _currRenderTarget is not null) // flip as long as we're not a final render target
+			{
+				ret.Row1.Y = 1.0f;
+				ret.Row3.Y *= -1;
+			}
+			return ret;
+		}
+
+		public void SetViewport(int x, int y, int width, int height)
+		{
+			var vp = new Viewport(x, y, width, height, 0, 1);
+			_commandList.SetViewport(0, ref vp);
+			_commandList.SetScissorRect(0, (uint)x, (uint)y, (uint)width, (uint)height); //hack for mupen[rice]+intel: at least the rice plugin leaves the scissor rectangle scrambled, and we're trying to run it in the main graphics context for intel
+			//BUT ALSO: new specifications.. viewport+scissor make sense together
+		}
+
+		public void SetViewport(int width, int height)
+		{
+			SetViewport(0, 0, width, height);
+		}
+
+		public void SetViewport(Size size)
+		{
+			SetViewport(size.Width, size.Height);
+		}
+
+#if false // see IGL comment
+		public void SetViewport(System.Windows.Forms.Control control)
+		{
+			var r = control.ClientRectangle;
+			SetViewport(r.Left, r.Top, r.Width, r.Height);
+		}
+#endif
+
+		private void CreateRenderStates()
+		{
+			_rsBlendNoneVerbatim = new(
+				false,
+				BlendingFactorSrc.One, BlendEquationMode.FuncAdd, BlendingFactorDest.Zero,
+				BlendingFactorSrc.One, BlendEquationMode.FuncAdd, BlendingFactorDest.Zero);
+
+			// TODO
+			_rsBlendNoneOpaque = new(
+				false,
+				BlendingFactorSrc.One, BlendEquationMode.FuncAdd, BlendingFactorDest.Zero,
+				/*BlendingFactorSrc.ConstantAlpha*/ BlendingFactorSrc.ConstantColor, BlendEquationMode.FuncAdd, BlendingFactorDest.Zero);
+
+			_rsBlendNormal = new(
+				true,
+				BlendingFactorSrc.SrcAlpha, BlendEquationMode.FuncAdd, BlendingFactorDest.OneMinusSrcAlpha,
+				BlendingFactorSrc.One, BlendEquationMode.FuncAdd, BlendingFactorDest.Zero);
+		}
+
+		private CacheBlendState _rsBlendNoneVerbatim, _rsBlendNoneOpaque, _rsBlendNormal;
+	}
+}

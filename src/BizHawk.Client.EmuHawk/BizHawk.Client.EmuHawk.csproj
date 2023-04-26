@@ -21,6 +21,7 @@
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="$(ProjectDir)../BizHawk.Bizware.DirectX/BizHawk.Bizware.DirectX.csproj" />
+		<ProjectReference Include="$(ProjectDir)../BizHawk.Bizware.Veldrid/BizHawk.Bizware.Veldrid.csproj" />
 		<ProjectReference Include="$(ProjectDir)../BizHawk.WinForms.Controls/BizHawk.WinForms.Controls.csproj" />
 		<Compile Remove="Properties/Settings.Designer.cs" />
 		<Content Include="images/logo.ico" />
@@ -259,9 +260,7 @@
 		<Compile Update="CustomControls/TransparentTrackbar.cs" SubType="Component" />
 		<Compile Update="CustomControls/ViewportPanel.cs" SubType="Component" />
 		<Compile Update="GraphicsImplementations/GLControlWrapper_GdiPlus.cs" SubType="Component" />
-		<Compile Update="GraphicsImplementations/GLControlWrapper_SlimDX9.cs" SubType="Component" />
 		<Compile Update="GraphicsImplementations/GraphicsControl.cs" SubType="UserControl" />
-		<Compile Update="GraphicsImplementations/GraphicsControl_TK.cs" SubType="UserControl" />
 		<Compile Update="GraphicsImplementations/RetainedGraphicsControl.cs" SubType="UserControl" />
 		<Compile Update="LogWindow.cs" SubType="Form" />
 		<Compile Update="LogWindow.Designer.cs" DependentUpon="LogWindow.cs" />

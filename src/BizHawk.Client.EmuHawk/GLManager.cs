@@ -1,7 +1,6 @@
 using System;
 using BizHawk.Bizware.BizwareGL;
-using BizHawk.Bizware.DirectX;
-using BizHawk.Bizware.OpenTK3;
+using BizHawk.Bizware.Veldrid;
 
 namespace BizHawk.Client.EmuHawk
 {
@@ -30,7 +29,9 @@ namespace BizHawk.Client.EmuHawk
 
 		public ContextRef CreateGLContext(int majorVersion, int minorVersion, bool forwardCompatible)
 		{
-			var gl = new IGL_TK(majorVersion, minorVersion, forwardCompatible);
+			var gl = new IGL_Veldrid(EDispMethod.OpenGL);
+			if (gl.DispMethodEnum is not EDispMethod.OpenGL or EDispMethod.OpenGLES)
+				throw new InvalidOperationException("Did not create OpenGL context");
 			var ret = new ContextRef { GL = gl };
 			return ret;
 		}
@@ -56,7 +57,7 @@ namespace BizHawk.Client.EmuHawk
 			bool begun = false;
 
 			//this needs a begin signal to set the swap chain to the next backbuffer
-			if (cr.GL.DispMethodEnum is EDispMethod.SlimDX9)
+			if (cr.GL.DispMethodEnum is not EDispMethod.GdiPlus)
 			{
 				cr.Gc.Begin();
 				begun = true;
@@ -74,13 +75,6 @@ namespace BizHawk.Client.EmuHawk
 				if (!begun)
 				{
 					cr.Gc.Begin();
-				}
-			}
-			else
-			{
-				if (cr.GL is IGL_TK tk)
-				{
-					tk.MakeDefaultCurrent();
 				}
 			}
 		}

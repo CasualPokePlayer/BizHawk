@@ -10,6 +10,7 @@ using System.Windows.Forms;
 using BizHawk.Bizware.BizwareGL;
 using BizHawk.Bizware.DirectX;
 using BizHawk.Bizware.OpenTK3;
+using BizHawk.Bizware.Veldrid;
 using BizHawk.Common;
 using BizHawk.Common.PathExtensions;
 using BizHawk.Client.Common;
@@ -117,6 +118,7 @@ namespace BizHawk.Client.EmuHawk
 				Bizware.BizwareGL.ReflectionCache.AsmVersion,
 				Bizware.DirectX.ReflectionCache.AsmVersion,
 				Bizware.OpenTK3.ReflectionCache.AsmVersion,
+				Bizware.Veldrid.ReflectionCache.AsmVersion,
 				Client.Common.ReflectionCache.AsmVersion,
 				Common.ReflectionCache.AsmVersion,
 				Emulation.Common.ReflectionCache.AsmVersion,
@@ -195,30 +197,13 @@ namespace BizHawk.Client.EmuHawk
 				}
 				switch (dispMethod)
 				{
-					case EDispMethod.SlimDX9:
-						if (OSTC.CurrentOS != OSTC.DistinctOS.Windows)
-						{
-							// possibly sharing config w/ Windows, assume the user wants the not-slow method (but don't change the config)
-							return TryInitIGL(EDispMethod.OpenGL);
-						}
-						try
-						{
-							return CheckRenderer(IndirectX.CreateD3DGLImpl());
-						}
-						catch (Exception ex)
-						{
-							new ExceptionBox(new Exception("Initialization of Direct3d 9 Display Method failed; falling back to GDI+", ex)).ShowDialog();
-							return TryInitIGL(initialConfig.DispMethod = EDispMethod.GdiPlus);
-						}
+					case EDispMethod.Direct3D11:
+					case EDispMethod.Vulkan:
 					case EDispMethod.OpenGL:
-						var glOpenTK = new IGL_TK(2, 0, false);
-						if (glOpenTK.Version < 200)
-						{
-							// too old to use, GDI+ will be better
-							((IDisposable) glOpenTK).Dispose();
-							return TryInitIGL(initialConfig.DispMethod = EDispMethod.GdiPlus);
-						}
-						return CheckRenderer(glOpenTK);
+					case EDispMethod.Metal:
+					case EDispMethod.OpenGLES:
+						var veldrid = new IGL_Veldrid(dispMethod);
+						return CheckRenderer(veldrid);
 					default:
 					case EDispMethod.GdiPlus:
 						static GLControlWrapper_GdiPlus CreateGLControlWrapper(IGL_GdiPlus self) => new(self); // inlining as lambda causes crash, don't wanna know why --yoshi

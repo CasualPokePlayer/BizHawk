@@ -11,9 +11,6 @@ namespace BizHawk.Bizware.DirectX
 	/// <summary>An indirection, so that types from the SlimDX assembly don't need to be resolved if DirectX/XAudio2 features are never used.</summary>
 	public static class IndirectX
 	{
-		public static IGL CreateD3DGLImpl()
-			=> new IGL_SlimDX9();
-
 		public static ISoundOutput CreateDSSoundOutput(IHostAudioManager sound, IntPtr mainWindowHandle, string chosenDeviceName)
 			=> new DirectSoundSoundOutput(sound, mainWindowHandle, chosenDeviceName);
 

@@ -214,7 +214,7 @@ namespace BizHawk.Client.Common
 
 		public int DispPrescale { get; set; } = 1;
 
-		public EDispMethod DispMethod { get; set; } = HostCapabilityDetector.HasDirectX ? EDispMethod.SlimDX9 : EDispMethod.OpenGL;
+		public EDispMethod DispMethod { get; set; } = OSTailoredCode.IsUnixHost ? EDispMethod.OpenGL : EDispMethod.Direct3D11;
 
 		public int DispChromeFrameWindowed { get; set; } = 2;
 		public bool DispChromeStatusBarWindowed { get; set; } = true;
