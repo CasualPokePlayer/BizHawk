@@ -211,6 +211,8 @@ namespace BizHawk.Client.Common.FilterManager
 							SurfaceFormat = iosi.SurfaceFormat,
 							SurfaceDisposition = iosi.SurfaceDisposition
 						};
+
+						Program.Add(new ProgramStep(ProgramStepType.NewTarget, currState.SurfaceFormat.Size));
 					}
 					else
 					{

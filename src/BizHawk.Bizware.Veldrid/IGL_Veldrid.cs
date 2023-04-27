@@ -64,7 +64,7 @@ namespace BizHawk.Bizware.Veldrid
 				_ => throw new InvalidOperationException()
 			};
 
-			preferredBackend = GraphicsBackend.Vulkan;
+			//preferredBackend = GraphicsBackend.Vulkan;
 
 			_graphicsControl = new(this,
 				(width, height) =>
@@ -298,7 +298,7 @@ namespace BizHawk.Bizware.Veldrid
 			if (_device.BackendType is GraphicsBackend.Vulkan)
 			{
 				var result = SpirvCompilation.CompileVertexFragment(vertexShader.SpirvBytecode, fragmentShader.SpirvBytecode,
-					CrossCompileTarget.HLSL, new(false, false, true));
+					CrossCompileTarget.GLSL, new(false, false, true));
 				vertexShader.NativeShader = _resources.CreateShader(new(ShaderStages.Vertex,
 					vertexShader.SpirvBytecode, vertexShader.Entrypoint));
 				fragmentShader.NativeShader = _resources.CreateShader(new(ShaderStages.Fragment,
@@ -312,7 +312,7 @@ namespace BizHawk.Bizware.Veldrid
 				vertexShader.NativeShader = _resources.CreateShader(new(ShaderStages.Vertex,
 					GetShaderBytes(result.VertexShader), vertexShader.Entrypoint));
 				fragmentShader.NativeShader = _resources.CreateShader(new(ShaderStages.Fragment,
-					GetShaderBytes(result.VertexShader), fragmentShader.Entrypoint));
+					GetShaderBytes(result.FragmentShader), fragmentShader.Entrypoint));
 				ret.SpirvReflection = result.Reflection;
 			}
 
@@ -325,7 +325,7 @@ namespace BizHawk.Bizware.Veldrid
 				ret.ResourceLayouts[i] = _resources.CreateResourceLayout(ref ret.SpirvReflection.ResourceLayouts[i]);
 			}
 
-			ret.Outputs = new(null); // ???
+			ret.Outputs = new(null, new OutputAttachmentDescription(PixelFormat.B8_G8_R8_A8_UNorm_SRgb)); // ???
 			ret.Uniforms = new();
 
 			ret.ResourceSets = new ResourceSet[ret.ResourceLayouts.Length];
@@ -336,13 +336,13 @@ namespace BizHawk.Bizware.Veldrid
 				for (var j = 0; j < br.Length; j++)
 				{
 					var rled = rleds[i];
-					if (rled.Stages is ShaderStages.Vertex && rled.Kind is ResourceKind.UniformBuffer)
+					if (rled.Kind is ResourceKind.UniformBuffer)
 					{
-						//br[i] = _resources.CreateBuffer(rled.Options)
+						br[j] = _resources.CreateBuffer(new(1024, BufferUsage.UniformBuffer));
 					}
 					else
 					{
-						
+						throw new NotSupportedException();
 					}
 				}
 				var rsd = new ResourceSetDescription(ret.ResourceLayouts[i], br);
@@ -432,6 +432,10 @@ namespace BizHawk.Bizware.Veldrid
 
 			var pw = (PipelineWrapper)pipeline.Opaque;
 			_commandList.SetPipeline(pw.Pipeline);
+			for (var i = 0; i < pw.PipelineInfo.ResourceSets.Length; i++)
+			{
+				_commandList.SetGraphicsResourceSet((uint)i, pw.PipelineInfo.ResourceSets[i]);
+			}
 		}
 
 		public VertexLayout CreateVertexLayout()
@@ -530,16 +534,16 @@ namespace BizHawk.Bizware.Veldrid
 
 		public Texture2d CreateTexture(int width, int height)
 		{
-			var texDescription = new TextureDescription((uint)width, (uint)height, 0, 0, 0,
-				PixelFormat.B8_G8_R8_A8_UNorm_SRgb, TextureUsage.RenderTarget | TextureUsage.Staging, TextureType.Texture2D);
+			var texDescription = new TextureDescription((uint)width, (uint)height, 1, 1, 1,
+				PixelFormat.B8_G8_R8_A8_UNorm_SRgb, TextureUsage.Staging, TextureType.Texture2D);
 			var tex = _resources.CreateTexture(ref texDescription);
 			return new(this, tex, width, height);
 		}
 
 		public Texture2d WrapGLTexture2d(IntPtr glTexId, int width, int height)
 		{
-			var texDescription = new TextureDescription((uint)width, (uint)height, 0, 0, 0,
-				PixelFormat.B8_G8_R8_A8_UNorm_SRgb, TextureUsage.RenderTarget | TextureUsage.Staging, TextureType.Texture2D);
+			var texDescription = new TextureDescription((uint)width, (uint)height, 0, 1, 1,
+				PixelFormat.B8_G8_R8_A8_UNorm_SRgb, TextureUsage.Staging, TextureType.Texture2D);
 			var tex = _resources.CreateTexture((ulong)glTexId, ref texDescription);
 			return new(this, tex, width, height);
 		}
@@ -568,11 +572,19 @@ namespace BizHawk.Bizware.Veldrid
 			}
 		}
 
+		private Texture2d CreateRenderTargetTexture(int width, int height)
+		{
+			var texDescription = new TextureDescription((uint)width, (uint)height, 1, 1, 1,
+				PixelFormat.B8_G8_R8_A8_UNorm_SRgb, TextureUsage.RenderTarget, TextureType.Texture2D);
+			var tex = _resources.CreateTexture(ref texDescription);
+			return new(this, tex, width, height);
+		}
+
 		/// <exception cref="InvalidOperationException">framebuffer creation unsuccessful</exception>
 		public RenderTarget CreateRenderTarget(int w, int h)
 		{
 			// create a texture for it
-			var tex = CreateTexture(w, h);
+			var tex = CreateRenderTargetTexture(w, h);
 			tex.SetMagFilter(TextureMagFilter.Nearest);
 			tex.SetMinFilter(TextureMinFilter.Nearest);
 
@@ -585,7 +597,7 @@ namespace BizHawk.Bizware.Veldrid
 		public void BindRenderTarget(RenderTarget rt)
 		{
 			_currRenderTarget = rt;
-			if (rt.Opaque is Framebuffer fb)
+			if (rt?.Opaque is Framebuffer fb)
 			{
 				_commandList.SetFramebuffer(fb);
 			}
@@ -601,12 +613,7 @@ namespace BizHawk.Bizware.Veldrid
 			}
 			catch
 			{
-				if (ret is not null)
-				{
-					ret.Dispose();
-					_resources.DisposeCollector.Remove(ret);
-				}
-
+				ret?.Dispose();
 				throw;
 			}
 

@@ -32,6 +32,9 @@ namespace BizHawk.Bizware.Veldrid
 
 			_Projection = new();
 			_Modelview = new();
+	
+			// TODO
+			SetBlendState(Owner.BlendNoneOpaque);
 
 			var vs = Owner.CreateVertexShader(DefaultVertexShader, "vsmain", true);
 			var ps = Owner.CreateFragmentShader(DefaultPixelShader, "psmain", true);
@@ -338,41 +341,45 @@ namespace BizHawk.Bizware.Veldrid
 #endif
 
 		public const string DefaultVertexShader = @"
-#version 140 //opengl 3.1 ~ 2004
-//uniform mat4 um44Modelview, um44Projection;
-//uniform vec4 uModulateColor;
+#version 420 //opengl 4.2 ~ 2011
+layout(binding = 0) uniform vUniforms {
+	mat4 um44Modelview, um44Projection;
+	vec4 uModulateColor;
+};
 
-//attribute vec2 aPosition : gl_Vertex;
-//attribute vec2 aTexcoord : gl_MultiTexCoord0;
-//attribute vec4 aColor : gl_Color;
-#define aPosition vec2(gl_Vertex.xy)
-#define aTexcoord vec2(gl_MultiTexCoord0.xy)
-#define aColor gl_Color
+layout(location = 0) out vec2 vTexcoord0;
+layout(location = 1) out vec4 vCornerColor;
 
-//varying vec2 vTexcoord0;
-//varying vec4 vCornerColor;
+layout(location = 0) in vec2 aPosition;
+layout(location = 1) in vec2 aTexcoord;
+layout(location = 2) in vec4 aColor;
 
 void main()
 {
-	//vec4 temp = vec4(aPosition,0,1);
-	//gl_Position = um44Projection * (um44Modelview * temp);
-	//vTexcoord0 = aTexcoord;
-	//vCornerColor = aColor * uModulateColor;
+	vec4 temp = vec4(aPosition,0,1);
+	gl_Position = um44Projection * (um44Modelview * temp);
+	vTexcoord0 = aTexcoord;
+	vCornerColor = aColor * uModulateColor;
 }";
 
 		public const string DefaultPixelShader = @"
-#version 140 //opengl 3.1
-//uniform bool uSamplerEnable;
-//uniform sampler2D uSampler0;
+#version 420 //opengl 4.2 ~ 2011
+layout(binding = 1) uniform pUniforms {
+	bool uSamplerEnable;
+};
 
-//varying vec2 vTexcoord0;
-//varying vec4 vCornerColor;
+layout(binding = 2) uniform sampler2D uSampler0;
+
+layout(location = 0) in vec2 vTexcoord0;
+layout(location = 1) in vec4 vCornerColor;
+
+layout(location = 0) out vec4 pFragColor;
 
 void main()
 {
-	//vec4 temp = vCornerColor;
-	//if(uSamplerEnable) temp *= texture2D(uSampler0,vTexcoord0);
-	//gl_FragColor = temp;
+	vec4 temp = vCornerColor;
+	if(uSamplerEnable) temp *= texture(uSampler0,vTexcoord0);
+	pFragColor = temp;
 }";
 	}
 }
