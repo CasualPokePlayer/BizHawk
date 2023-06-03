@@ -63,7 +63,7 @@ namespace BizHawk.Bizware.Veldrid
 				_ => throw new InvalidOperationException()
 			};
 
-			//preferredBackend = GraphicsBackend.Vulkan;
+			preferredBackend = GraphicsBackend.OpenGLES;
 
 			_graphicsControl = new(this,
 				(width, height) =>
@@ -144,13 +144,24 @@ namespace BizHawk.Bizware.Veldrid
 
 		public void Dispose()
 		{
+			_device.WaitForIdle();
 			_resources.DisposeCollector.DisposeAll();
+			_device.Dispose();
+			_sdl2Window.Close();
+			_graphicsControl.Dispose();
+			if (_dummySdl2WinGlWindow != IntPtr.Zero)
+			{
+				Sdl2Native.SDL_DestroyWindow(_dummySdl2WinGlWindow);
+			}
 		}
 
 		private RgbaFloat _clearColor;
 
 		public void Clear(ClearBufferMask mask)
 		{
+			// if the render target is null, you can't clear it?
+			if (_currRenderTarget is null) return;
+
 			if (mask.HasFlag(ClearBufferMask.ColorBufferBit))
 				_commandList.ClearColorTarget(0, _clearColor);
 			if (mask.HasFlag(ClearBufferMask.DepthBufferBit))
@@ -242,7 +253,7 @@ namespace BizHawk.Bizware.Veldrid
 			public ResourceLayout[] ResourceLayouts;
 			public OutputDescription Outputs;
 			public ResourceSet[] ResourceSets;
-			public List<DeviceBuffer> VertexBuffers;
+			public DeviceBuffer VertexBuffer;
 			public List<UniformInfo> Uniforms;
 		}
 
@@ -316,6 +327,8 @@ namespace BizHawk.Bizware.Veldrid
 			}
 
 			ret.Outputs = new(null, new OutputAttachmentDescription(PixelFormat.B8_G8_R8_A8_UNorm_SRgb)); // ???
+
+			ret.VertexBuffer = _resources.CreateBuffer(new(ret.ShaderSet.VertexLayouts[0].Stride, BufferUsage.VertexBuffer));
 			ret.Uniforms = new();
 
 			ret.ResourceSets = new ResourceSet[ret.ResourceLayouts.Length];
@@ -329,6 +342,13 @@ namespace BizHawk.Bizware.Veldrid
 					if (rled.Kind is ResourceKind.UniformBuffer)
 					{
 						br[j] = _resources.CreateBuffer(new(1024, BufferUsage.UniformBuffer));
+						ret.Uniforms.Add(new()
+						{
+							Opaque = br[j],
+							Name = rled.Name,
+							SamplerIndex = j,
+							IsSampler = false,
+						});
 					}
 					else
 					{
@@ -409,7 +429,6 @@ namespace BizHawk.Bizware.Veldrid
 
 			if (pipeline == null)
 			{
-				//sStatePendingVertexLayout = null;
 				return;
 			}
 
@@ -417,8 +436,6 @@ namespace BizHawk.Bizware.Veldrid
 			{
 				throw new InvalidOperationException("Attempt to bind unavailable pipeline");
 			}
-
-			//sStatePendingVertexLayout = pipeline.VertexLayout;
 
 			var pw = (PipelineWrapper)pipeline.Opaque;
 			_commandList.SetPipeline(pw.Pipeline);
@@ -440,7 +457,12 @@ namespace BizHawk.Bizware.Veldrid
 
 		public void BindArrayData(IntPtr pData)
 		{
-			// TODO
+			if (_currPipeline?.Opaque is PipelineWrapper pipeline)
+			{
+				var buffer = pipeline.PipelineInfo.VertexBuffer;
+				_device.UpdateBuffer(buffer, 0, pData, buffer.SizeInBytes);
+				_commandList.SetVertexBuffer(0, buffer);
+			}
 		}
 
 		public void DrawArrays(PrimitiveType mode, int first, int count)
@@ -497,17 +519,30 @@ namespace BizHawk.Bizware.Veldrid
 
 		public void SetPipelineUniformSampler(PipelineUniform uniform, Texture2d tex)
 		{
-			// TODO
+			var sampler = (Sampler)uniform.Sole.Opaque;
+			
+			// TODO: does this map correctly?
+			//_device.UpdateBuffer(buffer, 0, (Texture)tex.Opaque);
 		}
 
 		public void SetMinFilter(Texture2d texture, TextureMinFilter minFilter)
 		{
-			// TODO
+			if (texture?.Opaque is Texture tex)
+			{
+				// todo
+				// if (minFilter.HasFlag(TextureMinFilter.Nearest))
+				// if (minFilter.HasFlag(TextureMinFilter.Linear))
+			}
 		}
 
 		public void SetMagFilter(Texture2d texture, TextureMagFilter magFilter)
 		{
-			// TODO
+			if (texture?.Opaque is Texture tex)
+			{
+				// todo
+				// if (magFilter.HasFlag(TextureMinFilter.Nearest))
+				// if (magFilter.HasFlag(TextureMinFilter.Linear))
+			}
 		}
 
 		public Texture2d LoadTexture(Bitmap bitmap)
@@ -525,7 +560,7 @@ namespace BizHawk.Bizware.Veldrid
 		public Texture2d CreateTexture(int width, int height)
 		{
 			var texDescription = new TextureDescription((uint)width, (uint)height, 1, 1, 1,
-				PixelFormat.B8_G8_R8_A8_UNorm_SRgb, TextureUsage.Staging, TextureType.Texture2D);
+				PixelFormat.B8_G8_R8_A8_UNorm_SRgb, TextureUsage.Storage, TextureType.Texture2D);
 			var tex = _resources.CreateTexture(ref texDescription);
 			return new(this, tex, width, height);
 		}
@@ -533,7 +568,7 @@ namespace BizHawk.Bizware.Veldrid
 		public Texture2d WrapGLTexture2d(IntPtr glTexId, int width, int height)
 		{
 			var texDescription = new TextureDescription((uint)width, (uint)height, 0, 1, 1,
-				PixelFormat.B8_G8_R8_A8_UNorm_SRgb, TextureUsage.Staging, TextureType.Texture2D);
+				PixelFormat.B8_G8_R8_A8_UNorm_SRgb, TextureUsage.Storage, TextureType.Texture2D);
 			var tex = _resources.CreateTexture((ulong)glTexId, ref texDescription);
 			return new(this, tex, width, height);
 		}
@@ -613,12 +648,34 @@ namespace BizHawk.Bizware.Veldrid
 			return ret;
 		}
 
+		private Texture2d CreateStagingTexture(int width, int height)
+		{
+			var texDescription = new TextureDescription((uint)width, (uint)height, 1, 1, 1,
+				PixelFormat.B8_G8_R8_A8_UNorm_SRgb, TextureUsage.Staging, TextureType.Texture2D);
+			var tex = _resources.CreateTexture(ref texDescription);
+			return new(this, tex, width, height);
+		}
+
 		public unsafe BitmapBuffer ResolveTexture2d(Texture2d tex)
 		{
 			var texture = (Texture)tex.Opaque;
+
+			// have to create a staging texture, copy tex to it, then map that
+			var stagingTex = CreateStagingTexture((int)texture.Width, (int)texture.Height);
+			var stagingTexture = (Texture)stagingTex.Opaque;
+
+			var cl = _resources.CreateCommandList();
+			cl.Begin();
+			cl.CopyTexture(texture, stagingTexture);
+			cl.End();
+			_device.SubmitCommands(cl);
+			cl.Dispose();
+			_resources.DisposeCollector.Remove(cl);
+			_device.WaitForIdle();
+
 			var bb = new BitmapBuffer(tex.IntWidth, tex.IntHeight);
 			var bmpdata = bb.LockBits();
-			var mappedResource = _device.Map(texture, MapMode.Read);
+			var mappedResource = _device.Map(stagingTexture, MapMode.Read);
 			try
 			{
 				var src = new ReadOnlySpan<byte>(mappedResource.Data.ToPointer(), (int)mappedResource.SizeInBytes);
@@ -643,7 +700,7 @@ namespace BizHawk.Bizware.Veldrid
 			}
 			finally
 			{
-				_device.Unmap(texture);
+				_device.Unmap(stagingTexture);
 				bb.UnlockBits(bmpdata);
 			}
 		}

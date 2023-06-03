@@ -773,6 +773,8 @@ namespace BizHawk.Client.Common
 			//no drawing actually happens. it's important not to begin drawing on a control
 			if (!job.Simulate && !job.Offscreen)
 			{
+				ActivateGLContext();
+
 				if (job.ChainOutsize.Width == 0 || job.ChainOutsize.Height == 0)
 				{
 					// this has to be a NOP, because lots of stuff will malfunction on a 0-sized viewport
@@ -927,6 +929,7 @@ namespace BizHawk.Client.Common
 
 		public void Blank()
 		{
+			ActivateGLContext();
 			_gl.BeginScene();
 			_gl.BindRenderTarget(null);
 			_gl.SetClearColor(Color.Black);
