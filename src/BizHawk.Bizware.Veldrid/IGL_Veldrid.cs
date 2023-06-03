@@ -47,9 +47,6 @@ namespace BizHawk.Bizware.Veldrid
 				+ _device.ApiVersion.Minor * 10
 				+ _device.ApiVersion.Subminor;
 
-		// this needs to stay alive as long _sdl2Window is alive when using OpenGL + Windows
-		private readonly SDL_Window _dummySdl2WinGlWindow;
-
 		public IGL_Veldrid(EDispMethod dispMethod)
 		{
 			var preferredBackend = dispMethod switch
@@ -63,7 +60,7 @@ namespace BizHawk.Bizware.Veldrid
 				_ => throw new InvalidOperationException()
 			};
 
-			preferredBackend = GraphicsBackend.OpenGLES;
+			preferredBackend = GraphicsBackend.OpenGL;
 
 			_graphicsControl = new(this,
 				(width, height) =>
@@ -81,18 +78,12 @@ namespace BizHawk.Bizware.Veldrid
 
 			_graphicsControl.CreateControl();
 
-			if (!OSTailoredCode.IsUnixHost)
-			{
-				// required for OpenGL on Windows
-				// see https://wiki.libsdl.org/SDL2/SDL_HINT_VIDEO_WINDOW_SHARE_PIXEL_FORMAT
-				_dummySdl2WinGlWindow = Sdl2Native.SDL_CreateWindow("", 0, 0, 0, 0, SDL_WindowFlags.OpenGL | SDL_WindowFlags.Hidden);
-				Sdl2Native.SDL_SetHint("SDL_VIDEO_WINDOW_SHARE_PIXEL_FORMAT", $"{(ulong)_dummySdl2WinGlWindow.NativePointer:X16}");
-				_sdl2Window = new(_graphicsControl.Handle, false);
-			}
-			else
-			{
-				_sdl2Window = new(_graphicsControl.Handle, false);
-			}
+			// SDL_CreateWindowFrom doesn't implicitly init video, so do it here 
+			Sdl2Native.SDL_Init(SDLInitFlags.Video);
+			// signal to SDL that this window can use OpenGL
+			Sdl2Native.SDL_SetHint("SDL_VIDEO_FOREIGN_WINDOW_OPENGL", "1");
+
+			_sdl2Window = new(_graphicsControl.Handle, false);
 
 			if (!GraphicsDevice.IsBackendSupported(preferredBackend))
 			{
@@ -131,6 +122,12 @@ namespace BizHawk.Bizware.Veldrid
 			CreateRenderStates();
 		}
 
+		private void DisposeCollectableResource(IDisposable resource)
+		{
+			resource.Dispose();
+			_resources.DisposeCollector.Remove(resource);
+		}
+
 		public void BeginScene()
 		{
 			_commandList.Begin();
@@ -149,10 +146,6 @@ namespace BizHawk.Bizware.Veldrid
 			_device.Dispose();
 			_sdl2Window.Close();
 			_graphicsControl.Dispose();
-			if (_dummySdl2WinGlWindow != IntPtr.Zero)
-			{
-				Sdl2Native.SDL_DestroyWindow(_dummySdl2WinGlWindow);
-			}
 		}
 
 		private RgbaFloat _clearColor;
@@ -183,8 +176,7 @@ namespace BizHawk.Bizware.Veldrid
 		public void FreeTexture(Texture2d tex)
 		{
 			var texture = (Texture)tex.Opaque;
-			texture.Dispose();
-			_resources.DisposeCollector.Remove(texture);
+			DisposeCollectableResource(texture);
 		}
 
 		private class ShaderWrapper
@@ -310,6 +302,12 @@ namespace BizHawk.Bizware.Veldrid
 			{
 				var result = SpirvCompilation.CompileVertexFragment(vertexShader.SpirvBytecode, fragmentShader.SpirvBytecode,
 					GetCrossCompileTarget(), new(false, false, true));
+				if (_device.BackendType is GraphicsBackend.Direct3D11)
+				{
+					// d3d11 changes entrypoint name to 'main' when cross-compiling
+					vertexShader.Entrypoint = "main";
+					fragmentShader.Entrypoint = "main";
+				}
 				vertexShader.NativeShader = _resources.CreateShader(new(ShaderStages.Vertex,
 					GetShaderBytes(result.VertexShader), vertexShader.Entrypoint));
 				fragmentShader.NativeShader = _resources.CreateShader(new(ShaderStages.Fragment,
@@ -407,8 +405,7 @@ namespace BizHawk.Bizware.Veldrid
 				return;
 			}
 
-			pw.Pipeline.Dispose();
-			_resources.DisposeCollector.Remove(pw.Pipeline);
+			DisposeCollectableResource(pw.Pipeline);
 			pw.FragmentShader.Release();
 			pw.VertexShader.Release();
 		}
@@ -416,8 +413,7 @@ namespace BizHawk.Bizware.Veldrid
 		public void Internal_FreeShader(BizShader shader)
 		{
 			var sw = (ShaderWrapper)shader.Opaque;
-			sw.NativeShader.Dispose();
-			_resources.DisposeCollector.Remove(sw.NativeShader);
+			DisposeCollectableResource(sw.NativeShader);
 			sw.NativeShader = null;
 			sw.PipelineInfo = null;
 		}
@@ -592,8 +588,7 @@ namespace BizHawk.Bizware.Veldrid
 			rt.Texture2d.Dispose();
 			if (rt.Opaque is Framebuffer fb)
 			{
-				fb.Dispose();
-				_resources.DisposeCollector.Remove(fb);
+				DisposeCollectableResource(fb);
 			}
 		}
 
@@ -669,8 +664,7 @@ namespace BizHawk.Bizware.Veldrid
 			cl.CopyTexture(texture, stagingTexture);
 			cl.End();
 			_device.SubmitCommands(cl);
-			cl.Dispose();
-			_resources.DisposeCollector.Remove(cl);
+			DisposeCollectableResource(cl);
 			_device.WaitForIdle();
 
 			var bb = new BitmapBuffer(tex.IntWidth, tex.IntHeight);

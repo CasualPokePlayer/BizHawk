@@ -26,6 +26,7 @@ namespace BizHawk.Bizware.Veldrid
 			_resizeCallback = resizeCallback;
 			_setVsyncCallback = setVsyncCallback;
 			_swapBuffersCallback = swapBuffersCallback;
+			ClientSize = new(1, 1);
 
 			Resize += (_, _) => _resizeCallback(ClientSize.Width, ClientSize.Height);
 		}
