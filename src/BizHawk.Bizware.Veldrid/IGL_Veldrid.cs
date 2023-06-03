@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Text;
 
 using Veldrid;
@@ -35,7 +34,7 @@ namespace BizHawk.Bizware.Veldrid
 		internal readonly GraphicsDevice _device;
 		private readonly DisposeCollectorResourceFactory _resources;
 
-		private CommandList _commandList;
+		private readonly CommandList _commandList;
 
 		//rendering state
 		private BizPipeline _currPipeline;
@@ -48,8 +47,8 @@ namespace BizHawk.Bizware.Veldrid
 				+ _device.ApiVersion.Minor * 10
 				+ _device.ApiVersion.Subminor;
 
-		[DllImport("msvcrt.dll", CallingConvention = CallingConvention.Cdecl)]
-		private static extern int _snprintf(byte[] buffer, nint size, string format, __arglist);
+		// this needs to stay alive as long _sdl2Window is alive when using OpenGL + Windows
+		private readonly SDL_Window _dummySdl2WinGlWindow;
 
 		public IGL_Veldrid(EDispMethod dispMethod)
 		{
@@ -82,23 +81,18 @@ namespace BizHawk.Bizware.Veldrid
 
 			_graphicsControl.CreateControl();
 
-			/*if (!OSTailoredCode.IsUnixHost)
+			if (!OSTailoredCode.IsUnixHost)
 			{
 				// required for OpenGL on Windows
 				// see https://wiki.libsdl.org/SDL2/SDL_HINT_VIDEO_WINDOW_SHARE_PIXEL_FORMAT
-				var dummyWindow = Sdl2Native.SDL_CreateWindow("", 0, 0, 0, 0, SDL_WindowFlags.OpenGL | SDL_WindowFlags.Hidden);
-				var bufSz = _snprintf(null, 0, "%p", __arglist(dummyWindow.NativePointer)) + 1;
-				var buf = new byte[bufSz]; // for some reason, stackalloc crashes?
-				_ = _snprintf(buf, bufSz, "%p", __arglist(dummyWindow.NativePointer));
-				Sdl2Native.SDL_SetHint("SDL_VIDEO_WINDOW_SHARE_PIXEL_FORMAT", Encoding.ASCII.GetString(buf, 0, buf.Length - 1));
+				_dummySdl2WinGlWindow = Sdl2Native.SDL_CreateWindow("", 0, 0, 0, 0, SDL_WindowFlags.OpenGL | SDL_WindowFlags.Hidden);
+				Sdl2Native.SDL_SetHint("SDL_VIDEO_WINDOW_SHARE_PIXEL_FORMAT", $"{(ulong)_dummySdl2WinGlWindow.NativePointer:X16}");
 				_sdl2Window = new(_graphicsControl.Handle, false);
-				Sdl2Native.SDL_DestroyWindow(dummyWindow);
 			}
 			else
 			{
 				_sdl2Window = new(_graphicsControl.Handle, false);
-			}*/
-			_sdl2Window = VeldridStartup.CreateWindow(new(0, 0, 1, 1, WindowState.Hidden, ""));
+			}
 
 			if (!GraphicsDevice.IsBackendSupported(preferredBackend))
 			{
@@ -122,6 +116,7 @@ namespace BizHawk.Bizware.Veldrid
 			}
 
 			_resources = new(_device.ResourceFactory);
+			_commandList = _resources.CreateCommandList();
 
 			DispMethodEnum = preferredBackend switch
 			{
@@ -138,7 +133,6 @@ namespace BizHawk.Bizware.Veldrid
 
 		public void BeginScene()
 		{
-			_commandList = _resources.CreateCommandList();
 			_commandList.Begin();
 		}
 
@@ -146,15 +140,11 @@ namespace BizHawk.Bizware.Veldrid
 		{
 			_commandList.End();
 			_device.SubmitCommands(_commandList);
-			_device.WaitForIdle();
-			_commandList.Dispose();
-			_resources.DisposeCollector.Remove(_commandList);
-			_commandList = null;
 		}
 
 		public void Dispose()
 		{
-			
+			_resources.DisposeCollector.DisposeAll();
 		}
 
 		private RgbaFloat _clearColor;
