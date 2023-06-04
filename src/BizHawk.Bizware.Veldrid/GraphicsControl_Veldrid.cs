@@ -4,6 +4,7 @@ using System;
 using System.Windows.Forms;
 
 using BizHawk.Bizware.BizwareGL;
+using Veldrid;
 
 namespace BizHawk.Bizware.Veldrid
 {
@@ -16,24 +17,20 @@ namespace BizHawk.Bizware.Veldrid
 		}
 
 		private readonly IGL _owner;
-		private readonly Action<int, int> _resizeCallback;
-		private readonly Action<bool> _setVsyncCallback;
-		private readonly Action _swapBuffersCallback;
+		private readonly Func<GraphicsDevice> _getDevice;
 
-		public VeldridControlWrapper(IGL owner, Action<int, int> resizeCallback, Action<bool> setVsyncCallback, Action swapBuffersCallback)
+		public VeldridControlWrapper(IGL owner, Func<GraphicsDevice> getDevice)
 		{
 			_owner = owner;
-			_resizeCallback = resizeCallback;
-			_setVsyncCallback = setVsyncCallback;
-			_swapBuffersCallback = swapBuffersCallback;
-			ClientSize = new(1, 1);
+			_getDevice = getDevice;
 
-			Resize += (_, _) => _resizeCallback(ClientSize.Width, ClientSize.Height);
+			ClientSize = new(1, 1); // must be at least 1x1 for Vulkan
+			Resize += (_, _) => _getDevice().ResizeMainWindow((uint)ClientSize.Width, (uint)ClientSize.Height);
 		}
 
 		public void SetVsync(bool state)
 		{
-			_setVsyncCallback(state);
+			_getDevice().SyncToVerticalBlank = state;
 		}
 
 		public void Begin()
@@ -48,7 +45,7 @@ namespace BizHawk.Bizware.Veldrid
 
 		public void SwapBuffers()
 		{
-			_swapBuffersCallback();
+			_getDevice().SwapBuffers();
 		}
 	}
 }

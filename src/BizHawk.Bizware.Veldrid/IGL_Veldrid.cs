@@ -47,6 +47,9 @@ namespace BizHawk.Bizware.Veldrid
 				+ _device.ApiVersion.Minor * 10
 				+ _device.ApiVersion.Subminor;
 
+		// must stay alive as long as _sdl2Window is alive
+		private readonly SDL_Window _dummySdl2WinGlWindow;
+
 		public IGL_Veldrid(EDispMethod dispMethod)
 		{
 			var preferredBackend = dispMethod switch
@@ -60,28 +63,28 @@ namespace BizHawk.Bizware.Veldrid
 				_ => throw new InvalidOperationException()
 			};
 
-			preferredBackend = GraphicsBackend.OpenGL;
+			// debugging...
+			preferredBackend = GraphicsBackend.Direct3D11;
 
-			_graphicsControl = new(this,
-				(width, height) =>
-				{
-					_device!.ResizeMainWindow((uint)width, (uint)height);
-				},
-				vsyncState =>
-				{
-					_device!.SyncToVerticalBlank = vsyncState;
-				},
-				() =>
-				{
-					_device!.SwapBuffers();
-				});
-
+			_graphicsControl = new(this, () => _device);
 			_graphicsControl.CreateControl();
 
-			// SDL_CreateWindowFrom doesn't implicitly init video, so do it here 
-			Sdl2Native.SDL_Init(SDLInitFlags.Video);
-			// signal to SDL that this window can use OpenGL
-			Sdl2Native.SDL_SetHint("SDL_VIDEO_FOREIGN_WINDOW_OPENGL", "1");
+			// Veldrid forces us to have SDL2 2.0.8 on Windows, so we can't use SDL_VIDEO_FOREIGN_WINDOW_OPENGL (introduced in 2.0.22)
+			// instead, we have to use the older SDL_VIDEO_WINDOW_SHARE_PIXEL_FORMAT (which also only works on Windows)
+			if (!OSTailoredCode.IsUnixHost)
+			{
+				// this implicitly inits video
+				_dummySdl2WinGlWindow = Sdl2Native.SDL_CreateWindow(null, 0, 0, 0, 0, SDL_WindowFlags.OpenGL | SDL_WindowFlags.Hidden);
+				// signals to SDL that foreign windows will share this window's pixel format and OpenGL capabilities
+				Sdl2Native.SDL_SetHint("SDL_VIDEO_WINDOW_SHARE_PIXEL_FORMAT", $"{(ulong)_dummySdl2WinGlWindow.NativePointer:X16}");
+			}
+			else
+			{
+				// SDL_CreateWindowFrom doesn't implicitly init video, so do it here
+				Sdl2Native.SDL_Init(SDLInitFlags.Video);
+				// signal to SDL that this window can use OpenGL
+				Sdl2Native.SDL_SetHint("SDL_VIDEO_FOREIGN_WINDOW_OPENGL", "1");
+			}
 
 			_sdl2Window = new(_graphicsControl.Handle, false);
 
@@ -146,15 +149,13 @@ namespace BizHawk.Bizware.Veldrid
 			_device.Dispose();
 			_sdl2Window.Close();
 			_graphicsControl.Dispose();
+			Sdl2Native.SDL_DestroyWindow(_dummySdl2WinGlWindow);
 		}
 
 		private RgbaFloat _clearColor;
 
 		public void Clear(ClearBufferMask mask)
 		{
-			// if the render target is null, you can't clear it?
-			if (_currRenderTarget is null) return;
-
 			if (mask.HasFlag(ClearBufferMask.ColorBufferBit))
 				_commandList.ClearColorTarget(0, _clearColor);
 			if (mask.HasFlag(ClearBufferMask.DepthBufferBit))
@@ -324,7 +325,7 @@ namespace BizHawk.Bizware.Veldrid
 				ret.ResourceLayouts[i] = _resources.CreateResourceLayout(ref ret.SpirvReflection.ResourceLayouts[i]);
 			}
 
-			ret.Outputs = new(null, new OutputAttachmentDescription(PixelFormat.B8_G8_R8_A8_UNorm_SRgb)); // ???
+			ret.Outputs = new(null, new OutputAttachmentDescription(PixelFormat.B8_G8_R8_A8_UNorm)); // ???
 
 			ret.VertexBuffer = _resources.CreateBuffer(new(ret.ShaderSet.VertexLayouts[0].Stride, BufferUsage.VertexBuffer));
 			ret.Uniforms = new();
@@ -556,7 +557,7 @@ namespace BizHawk.Bizware.Veldrid
 		public Texture2d CreateTexture(int width, int height)
 		{
 			var texDescription = new TextureDescription((uint)width, (uint)height, 1, 1, 1,
-				PixelFormat.B8_G8_R8_A8_UNorm_SRgb, TextureUsage.Storage, TextureType.Texture2D);
+				PixelFormat.B8_G8_R8_A8_UNorm, TextureUsage.Storage, TextureType.Texture2D);
 			var tex = _resources.CreateTexture(ref texDescription);
 			return new(this, tex, width, height);
 		}
@@ -564,7 +565,7 @@ namespace BizHawk.Bizware.Veldrid
 		public Texture2d WrapGLTexture2d(IntPtr glTexId, int width, int height)
 		{
 			var texDescription = new TextureDescription((uint)width, (uint)height, 0, 1, 1,
-				PixelFormat.B8_G8_R8_A8_UNorm_SRgb, TextureUsage.Storage, TextureType.Texture2D);
+				PixelFormat.B8_G8_R8_A8_UNorm, TextureUsage.Storage, TextureType.Texture2D);
 			var tex = _resources.CreateTexture((ulong)glTexId, ref texDescription);
 			return new(this, tex, width, height);
 		}
@@ -595,7 +596,7 @@ namespace BizHawk.Bizware.Veldrid
 		private Texture2d CreateRenderTargetTexture(int width, int height)
 		{
 			var texDescription = new TextureDescription((uint)width, (uint)height, 1, 1, 1,
-				PixelFormat.B8_G8_R8_A8_UNorm_SRgb, TextureUsage.RenderTarget, TextureType.Texture2D);
+				PixelFormat.B8_G8_R8_A8_UNorm, TextureUsage.RenderTarget, TextureType.Texture2D);
 			var tex = _resources.CreateTexture(ref texDescription);
 			return new(this, tex, width, height);
 		}
@@ -620,6 +621,10 @@ namespace BizHawk.Bizware.Veldrid
 			if (rt?.Opaque is Framebuffer fb)
 			{
 				_commandList.SetFramebuffer(fb);
+			}
+			else
+			{
+				_commandList.SetFramebuffer(_device.SwapchainFramebuffer);
 			}
 		}
 
@@ -646,7 +651,7 @@ namespace BizHawk.Bizware.Veldrid
 		private Texture2d CreateStagingTexture(int width, int height)
 		{
 			var texDescription = new TextureDescription((uint)width, (uint)height, 1, 1, 1,
-				PixelFormat.B8_G8_R8_A8_UNorm_SRgb, TextureUsage.Staging, TextureType.Texture2D);
+				PixelFormat.B8_G8_R8_A8_UNorm, TextureUsage.Staging, TextureType.Texture2D);
 			var tex = _resources.CreateTexture(ref texDescription);
 			return new(this, tex, width, height);
 		}
@@ -770,11 +775,10 @@ namespace BizHawk.Bizware.Veldrid
 				BlendingFactorSrc.One, BlendEquationMode.FuncAdd, BlendingFactorDest.Zero,
 				BlendingFactorSrc.One, BlendEquationMode.FuncAdd, BlendingFactorDest.Zero);
 
-			// TODO
 			_rsBlendNoneOpaque = new(
 				false,
 				BlendingFactorSrc.One, BlendEquationMode.FuncAdd, BlendingFactorDest.Zero,
-				/*BlendingFactorSrc.ConstantAlpha*/ BlendingFactorSrc.ConstantColor, BlendEquationMode.FuncAdd, BlendingFactorDest.Zero);
+				BlendingFactorSrc.ConstantColor, BlendEquationMode.FuncAdd, BlendingFactorDest.Zero);
 
 			_rsBlendNormal = new(
 				true,
