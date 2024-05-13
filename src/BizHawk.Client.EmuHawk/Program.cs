@@ -229,6 +229,22 @@ namespace BizHawk.Client.EmuHawk
 
 				switch (dispMethod)
 				{
+					case EDispMethod.D3D11:
+						if (OSTailoredCode.IsUnixHost || OSTailoredCode.IsWine)
+						{
+							// possibly sharing config w/ Windows, assume the user wants the not-slow method (but don't change the config)
+							return TryInitIGL(EDispMethod.OpenGL);
+						}
+						try
+						{
+							return CheckRenderer(new IGL_D3D11());
+						}
+						catch (Exception ex)
+						{
+							var (method, name) = ChooseFallback();
+							new ExceptionBox(new Exception($"Initialization of Direct3D11 Display Method failed; falling back to {name}", ex)).ShowDialog();
+							return TryInitIGL(initialConfig.DispMethod = method);
+						}
 					case EDispMethod.D3D9:
 						if (OSTailoredCode.IsUnixHost || OSTailoredCode.IsWine)
 						{
@@ -271,7 +287,9 @@ namespace BizHawk.Client.EmuHawk
 			{
 				initialConfig.DispMethod = EDispMethod.GdiPlus;
 			}
-
+			//Console.WriteLine("Waiting 20 seconds before initing IGL");
+			//System.Threading.Thread.Sleep(1000 * 20);
+			initialConfig.DispMethod = EDispMethod.D3D11;
 			var workingGL = TryInitIGL(initialConfig.DispMethod);
 
 			Sound globalSound = null;

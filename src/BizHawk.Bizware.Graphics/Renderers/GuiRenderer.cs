@@ -31,15 +31,20 @@ namespace BizHawk.Bizware.Graphics
 
 			string psProgram, vsProgram;
 
-			if (owner.API == "D3D9")
+			switch (owner.API)
 			{
-				vsProgram = DefaultShader_d3d9;
-				psProgram = DefaultShader_d3d9;
-			}
-			else
-			{
-				vsProgram = DefaultVertexShader_gl;
-				psProgram = DefaultPixelShader_gl;
+				case "D3D11":
+					vsProgram = DefaultShader_d3d11;
+					psProgram = DefaultShader_d3d11;
+					break;
+				case "D3D9":
+					vsProgram = DefaultShader_d3d9;
+					psProgram = DefaultShader_d3d9;
+					break;
+				default:
+					vsProgram = DefaultVertexShader_gl;
+					psProgram = DefaultPixelShader_gl;
+					break;
 			}
 
 			var vs = Owner.CreateVertexShader(vsProgram, "vsmain", true);
@@ -380,6 +385,54 @@ namespace BizHawk.Bizware.Graphics
 		private Texture2d sTexture;
 
 		// shaders are hand-coded for each platform to make sure they stay as fast as possible
+
+		public const string DefaultShader_d3d11 = @"
+//vertex shader uniforms
+float4x4 um44Modelview, um44Projection;
+float4 uModulateColor;
+
+//pixel shader uniforms
+bool uSamplerEnable;
+Texture2D texture0, texture1;
+SamplerState uSampler0 = sampler_state { Texture = (texture0); };
+
+struct VS_INPUT
+{
+	float2 aPosition : POSITION;
+	float2 aTexcoord : TEXCOORD0;
+	float4 aColor : TEXCOORD1;
+};
+
+struct VS_OUTPUT
+{
+	float4 vPosition : SV_POSITION;
+	float2 vTexcoord0 : TEXCOORD0;
+	float4 vCornerColor : COLOR0;
+};
+
+struct PS_INPUT
+{
+	float4 vPosition : POSITION;
+	float2 vTexcoord0 : TEXCOORD0;
+	float4 vCornerColor : COLOR0;
+};
+
+VS_OUTPUT vsmain(VS_INPUT src)
+{
+	VS_OUTPUT dst;
+	dst.vPosition = float4(src.aPosition,0,1);
+	dst.vTexcoord0 = src.aTexcoord;
+	dst.vCornerColor = src.aColor;
+	return dst;
+}
+
+float4 psmain(PS_INPUT src) : SV_TARGET
+{
+	float4 temp = src.vCornerColor;
+	temp *= texture0.Sample(uSampler0,src.vTexcoord0);
+	return temp;
+}
+";
 
 		public const string DefaultShader_d3d9 = @"
 //vertex shader uniforms
