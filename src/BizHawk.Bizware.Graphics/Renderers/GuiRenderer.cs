@@ -34,17 +34,19 @@ namespace BizHawk.Bizware.Graphics
 			switch (owner.API)
 			{
 				case "D3D11":
-					vsProgram = DefaultShader_d3d11;
-					psProgram = DefaultShader_d3d11;
+					vsProgram = DefaultShader_d3d9;
+					psProgram = DefaultShader_d3d9;
 					break;
 				case "D3D9":
 					vsProgram = DefaultShader_d3d9;
 					psProgram = DefaultShader_d3d9;
 					break;
-				default:
+				case "OPENGL":
 					vsProgram = DefaultVertexShader_gl;
 					psProgram = DefaultPixelShader_gl;
 					break;
+				default:
+					throw new InvalidOperationException();
 			}
 
 			var vs = Owner.CreateVertexShader(vsProgram, "vsmain", true);
@@ -181,7 +183,6 @@ namespace BizHawk.Bizware.Graphics
 			Projection.Clear();
 			SetModulateColorWhite();
 		}
-
 
 		public void Flush()
 		{
@@ -386,6 +387,7 @@ namespace BizHawk.Bizware.Graphics
 
 		// shaders are hand-coded for each platform to make sure they stay as fast as possible
 
+#if false // this doesn't work for reasons unknown
 		public const string DefaultShader_d3d11 = @"
 //vertex shader uniforms
 float4x4 um44Modelview, um44Projection;
@@ -412,7 +414,7 @@ struct VS_OUTPUT
 
 struct PS_INPUT
 {
-	float4 vPosition : POSITION;
+	float4 vPosition : SV_POSITION;
 	float2 vTexcoord0 : TEXCOORD0;
 	float4 vCornerColor : COLOR0;
 };
@@ -433,6 +435,7 @@ float4 psmain(PS_INPUT src) : SV_TARGET
 	return temp;
 }
 ";
+#endif
 
 		public const string DefaultShader_d3d9 = @"
 //vertex shader uniforms
@@ -460,6 +463,7 @@ struct VS_OUTPUT
 
 struct PS_INPUT
 {
+	float4 vPosition : POSITION;
 	float2 vTexcoord0 : TEXCOORD0;
 	float4 vCornerColor : COLOR0;
 };

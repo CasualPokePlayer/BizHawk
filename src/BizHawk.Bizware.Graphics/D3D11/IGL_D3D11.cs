@@ -1,4 +1,3 @@
-// this is a mess, get back to it later
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -9,6 +8,7 @@ using System.Numerics;
 
 using BizHawk.Bizware.BizwareGL;
 using BizHawk.Common;
+using BizHawk.Common.StringExtensions;
 
 using Vortice.D3DCompiler;
 using Vortice.Direct3D;
@@ -33,9 +33,11 @@ namespace BizHawk.Bizware.Graphics
 			public ID3D11DeviceContext Context;
 			public ID3D11BlendState BlendEnableState;
 			public ID3D11BlendState BlendDisableState;
-			public ID3D11RasterizerState RasterizerState;
 			public ID3D11SamplerState PointSamplerState;
 			public ID3D11SamplerState LinearSamplerState;
+			public ID3D11RasterizerState RasterizerState;
+
+			public FeatureLevel DeviceFeatureLevel;
 
 			public void CreateResources()
 			{
@@ -43,7 +45,7 @@ namespace BizHawk.Bizware.Graphics
 				{
 					// we need IDXGIFactory2 for CreateSwapChainForHwnd
 					Factory = DXGI.CreateDXGIFactory1<IDXGIFactory2>();
-#if true
+#if false
 					// use this to debug D3D11 calls
 					// note debug layer requires extra steps to use: https://learn.microsoft.com/en-us/windows/win32/direct3d11/overviews-direct3d-11-devices-layers#debug-layer
 					// also debug output will only be present with a "native debugger" attached (pure managed debugger can't see this output)
@@ -56,9 +58,12 @@ namespace BizHawk.Bizware.Graphics
 						adapter: null,
 						DriverType.Hardware,
 						creationFlags,
-						featureLevels: null!,
+						null!, // this is safe to be null
 						out Device,
 						out Context).CheckError();
+
+					using var dxgiDevice = Device.QueryInterface<IDXGIDevice1>();
+					dxgiDevice.MaximumFrameLatency = 1;
 
 					var bd = default(BlendDescription);
 					bd.AlphaToCoverageEnable = false;
@@ -78,17 +83,22 @@ namespace BizHawk.Bizware.Graphics
 					bd.RenderTarget[0].DestinationBlend = Blend.Zero;
 					BlendDisableState = Device.CreateBlendState(bd);
 
-					var rd = new RasterizerDescription()
+					PointSamplerState = Device.CreateSamplerState(SamplerDescription.PointClamp);
+					LinearSamplerState = Device.CreateSamplerState(SamplerDescription.LinearClamp);
+
+					DeviceFeatureLevel = Device.FeatureLevel;
+
+					var rd = new RasterizerDescription
 					{
 						CullMode = CullMode.None,
 						FillMode = FillMode.Solid,
 						ScissorEnable = true,
+						DepthClipEnable = DeviceFeatureLevel is FeatureLevel.Level_9_1 or FeatureLevel.Level_9_2 or FeatureLevel.Level_9_3,
 					};
 
 					RasterizerState = Device.CreateRasterizerState(rd);
 
-					PointSamplerState = Device.CreateSamplerState(SamplerDescription.PointClamp);
-					LinearSamplerState = Device.CreateSamplerState(SamplerDescription.LinearClamp);
+					Context.IASetPrimitiveTopology(PrimitiveTopology.TriangleStrip);
 				}
 				catch
 				{
@@ -131,9 +141,11 @@ namespace BizHawk.Bizware.Graphics
 		private ID3D11DeviceContext Context => _resources.Context;
 		private ID3D11BlendState BlendEnableState => _resources.BlendEnableState;
 		private ID3D11BlendState BlendDisableState => _resources.BlendDisableState;
-		private ID3D11RasterizerState RasterizerState => _resources.RasterizerState;
 		private ID3D11SamplerState PointSamplerState => _resources.PointSamplerState;
 		private ID3D11SamplerState LinearSamplerState => _resources.LinearSamplerState;
+		private ID3D11RasterizerState RasterizerState => _resources.RasterizerState;
+
+		private FeatureLevel DeviceFeatureLevel => _resources.DeviceFeatureLevel;
 
 		// rendering state
 		private Pipeline _curPipeline;
@@ -142,6 +154,10 @@ namespace BizHawk.Bizware.Graphics
 
 		// misc state
 		private readonly HashSet<RenderTarget> _renderTargets = new();
+		private readonly HashSet<Texture2d> _shaderTextures = new();
+		private readonly HashSet<Shader> _vertexShaders = new();
+		private readonly HashSet<Shader> _pixelShaders = new();
+		private readonly HashSet<Pipeline> _pipelines = new();
 
 		public string API => "D3D11";
 
@@ -155,38 +171,174 @@ namespace BizHawk.Bizware.Graphics
 			_resources.CreateResources();
 		}
 
-		private static SwapChainDescription1 CreateSwapChainDescription(D3D11SwapChain.ControlParameters cp)
+		private IDXGISwapChain1 CreateDXGISwapChain(D3D11SwapChain.ControlParameters cp)
 		{
-			return new(
+			// this is the optimal swapchain model
+			// note however it requires windows 10+
+			// a less optimal model will end up being used in case this fails
+			var sd = new SwapChainDescription1(
 				width: cp.Width,
 				height: cp.Height,
 				format: Format.B8G8R8A8_UNorm,
 				stereo: false,
-				swapEffect: SwapEffect.FlipSequential,
+				swapEffect: SwapEffect.FlipDiscard,
 				bufferUsage: Usage.RenderTargetOutput,
 				bufferCount: 2,
 				scaling: Scaling.Stretch,
 				alphaMode: AlphaMode.Ignore,
 				flags: SwapChainFlags.AllowTearing);
+
+			IDXGISwapChain1 ret;
+			try
+			{
+				ret = Factory.CreateSwapChainForHwnd(Device, cp.Handle, sd);
+			}
+			catch
+			{
+				sd.SwapEffect = SwapEffect.Discard;
+				sd.Flags = SwapChainFlags.None;
+				ret = Factory.CreateSwapChainForHwnd(Device, cp.Handle, sd);
+			}
+
+			// don't allow DXGI to snoop alt+enter and such
+			using var parentFactory = ret.GetParent<IDXGIFactory2>();
+			parentFactory.MakeWindowAssociation(cp.Handle, WindowAssociationFlags.IgnoreAll);
+			return ret;
 		}
 
 		private void ResetDevice(D3D11SwapChain.ControlParameters cp)
 		{
-			SuspendRenderTargets();
 			_controlSwapChain.Dispose();
+			Context.Flush(); // important to properly dispose of the swapchain
 
-			ResumeRenderTargets();
+			foreach (var pipeline in _pipelines)
+			{
+				var pw = (PipelineWrapper)pipeline.Opaque;
 
-			var sd = CreateSwapChainDescription(cp);
-			var swapChain = Factory.CreateSwapChainForHwnd(Device, cp.Handle, sd);
+				for (var i = 0; i < ID3D11DeviceContext.CommonShaderConstantBufferSlotCount; i++)
+				{
+					pw.VSConstantBuffers[i]?.Dispose();
+					pw.VSConstantBuffers[i] = null;
+					pw.PSConstantBuffers[i]?.Dispose();
+					pw.PSConstantBuffers[i] = null;
+				}
+
+				var vlw = (VertexLayoutWrapper)pipeline.VertexLayout.Opaque;
+				vlw.VertexInputLayout.Dispose();
+				vlw.VertexInputLayout = null;
+				vlw.VertexBuffer.Dispose();
+				vlw.VertexBuffer = null;
+				vlw.VertexBufferCount = 0;
+			}
+
+			foreach (var sw in _vertexShaders.Select(vertexShader => (ShaderWrapper)vertexShader.Opaque))
+			{
+				sw.VS.Dispose();
+				sw.VS = null;
+			}
+
+			foreach (var sw in _pixelShaders.Select(pixelShader => (ShaderWrapper)pixelShader.Opaque))
+			{
+				sw.PS.Dispose();
+				sw.PS = null;
+			}
+
+			foreach (var rt in _renderTargets)
+			{
+				var rw = (RenderTargetWrapper)rt.Opaque;
+				rw.RTV.Dispose();
+				rw.RTV = null;
+
+				var tw = (TextureWrapper)rt.Texture2d.Opaque;
+				tw.SRV.Dispose();
+				tw.SRV = null;
+				tw.Texture.Dispose();
+				tw.Texture = null;
+			}
+
+			foreach (var tw in _shaderTextures.Select(tex2d => (TextureWrapper)tex2d.Opaque))
+			{
+				tw.SRV.Dispose();
+				tw.SRV = null;
+				tw.Texture.Dispose();
+				tw.Texture = null;
+			}
+
+			_resources.Dispose();
+			_resources.CreateResources();
+
+			foreach (var tex2d in _shaderTextures)
+			{
+				var tw = (TextureWrapper)tex2d.Opaque;
+				tw.Texture = CreateTextureForShader(tex2d.IntWidth, tex2d.IntHeight);
+
+				var srvd = new ShaderResourceViewDescription(ShaderResourceViewDimension.Texture2D, Format.B8G8R8A8_UNorm, mostDetailedMip: 0, mipLevels: 1);
+				tw.SRV = Device.CreateShaderResourceView(tw.Texture, srvd);
+			}
+
+			foreach (var rt in _renderTargets)
+			{
+				var tw = (TextureWrapper)rt.Texture2d.Opaque;
+				tw.Texture = CreateTextureForRenderTarget(rt.Texture2d.IntWidth, rt.Texture2d.IntHeight);
+
+				var srvd = new ShaderResourceViewDescription(ShaderResourceViewDimension.Texture2D, Format.B8G8R8A8_UNorm, mostDetailedMip: 0, mipLevels: 1);
+				tw.SRV = Device.CreateShaderResourceView(tw.Texture, srvd);
+
+				var rw = (RenderTargetWrapper)rt.Opaque;
+				var rtvd = new RenderTargetViewDescription(RenderTargetViewDimension.Texture2D, Format.B8G8R8A8_UNorm);
+				rw.RTV = Device.CreateRenderTargetView(tw.Texture, rtvd);
+			}
+
+			foreach (var sw in _vertexShaders.Select(vertexShader => (ShaderWrapper)vertexShader.Opaque))
+			{
+				sw.VS = Device.CreateVertexShader(sw.Bytecode.Span);
+			}
+
+			foreach (var sw in _pixelShaders.Select(pixelShader => (ShaderWrapper)pixelShader.Opaque))
+			{
+				sw.PS = Device.CreatePixelShader(sw.Bytecode.Span);
+			}
+
+			foreach (var pipeline in _pipelines)
+			{
+				var pw = (PipelineWrapper)pipeline.Opaque;
+				for (var i = 0; i < ID3D11DeviceContext.CommonShaderConstantBufferSlotCount; i++)
+				{
+					var cbw = pw.PendingBuffers[i];
+					if (cbw == null)
+					{
+						break;
+					}
+
+					if (cbw.VSBufferSize > 0)
+					{
+						var bd = new BufferDescription(cbw.VSBufferSize, BindFlags.ConstantBuffer, ResourceUsage.Dynamic, CpuAccessFlags.Write);
+						pw.VSConstantBuffers[i] = Device.CreateBuffer(bd);
+						cbw.VSBufferDirty = true;
+					}
+
+					if (cbw.PSBufferSize > 0)
+					{
+						var bd = new BufferDescription(cbw.PSBufferSize, BindFlags.ConstantBuffer, ResourceUsage.Dynamic, CpuAccessFlags.Write);
+						pw.PSConstantBuffers[i] = Device.CreateBuffer(bd);
+						cbw.PSBufferDirty = true;
+					}
+				}
+
+				CreateInputLayout(pipeline.VertexLayout, pw.VertexShader);
+			}
+
+			var swapChain = CreateDXGISwapChain(cp);
 			var bbTex = swapChain.GetBuffer<ID3D11Texture2D>(0);
-			var rtv = Device.CreateRenderTargetView(bbTex);
+			var bbRtvd = new RenderTargetViewDescription(RenderTargetViewDimension.Texture2D, Format.B8G8R8A8_UNorm);
+			var rtv = Device.CreateRenderTargetView(bbTex, bbRtvd);
 
 			_controlSwapChain.Device = Device;
 			_controlSwapChain.Context = Context;
 			_controlSwapChain.BackBufferTexture = bbTex;
 			_controlSwapChain.RTV = rtv;
 			_controlSwapChain.SwapChain = swapChain;
+			_controlSwapChain.AllowsTearing = (swapChain.Description1.Flags & SwapChainFlags.AllowTearing) != 0;
 		}
 
 		public D3D11SwapChain CreateSwapChain(D3D11SwapChain.ControlParameters cp)
@@ -196,10 +348,10 @@ namespace BizHawk.Bizware.Graphics
 				throw new InvalidOperationException($"{nameof(IGL_D3D11)} can only have 1 control swap chain");
 			}
 
-			var sd = CreateSwapChainDescription(cp);
-			var swapChain = Factory.CreateSwapChainForHwnd(Device, cp.Handle, sd);
+			var swapChain = CreateDXGISwapChain(cp);
 			var bbTex = swapChain.GetBuffer<ID3D11Texture2D>(0);
-			var rtv = Device.CreateRenderTargetView(bbTex);
+			var rtvd = new RenderTargetViewDescription(RenderTargetViewDimension.Texture2D, Format.B8G8R8A8_UNorm);
+			var rtv = Device.CreateRenderTargetView(bbTex, rtvd);
 
 			_controlSwapChain = new D3D11SwapChain.SwapChainResources
 			{
@@ -207,7 +359,8 @@ namespace BizHawk.Bizware.Graphics
 				Context = Context,
 				BackBufferTexture = bbTex,
 				RTV = rtv,
-				SwapChain = swapChain
+				SwapChain = swapChain,
+				AllowsTearing = (swapChain.Description1.Flags & SwapChainFlags.AllowTearing) != 0,
 			};
 
 			return new(_controlSwapChain, ResetDevice);
@@ -216,6 +369,7 @@ namespace BizHawk.Bizware.Graphics
 		public void Dispose()
 		{
 			_controlSwapChain.Dispose();
+			Context.Flush();
 			_resources.Dispose();
 		}
 
@@ -235,8 +389,9 @@ namespace BizHawk.Bizware.Graphics
 		public void FreeTexture(Texture2d tex)
 		{
 			var tw = (TextureWrapper)tex.Opaque;
-			tw.Texture.Dispose();
 			tw.SRV.Dispose();
+			tw.Texture.Dispose();
+			_shaderTextures.Remove(tex);
 		}
 
 		private class ShaderWrapper // Disposable fields cleaned up by Internal_FreeShader
@@ -249,26 +404,35 @@ namespace BizHawk.Bizware.Graphics
 		}
 
 		/// <exception cref="InvalidOperationException"><paramref name="required"/> is <see langword="true"/> and compilation error occurred</exception>
-		public Shader CreateFragmentShader(string source, string entry, bool required)
+		public Shader CreateVertexShader(string source, string entry, bool required)
 		{
 			try
 			{
 				var sw = new ShaderWrapper();
 
-				// ShaderFlags.EnableBackwardsCompatibility - used this once upon a time (please leave a note about why)
+				var profile = DeviceFeatureLevel switch
+				{
+					FeatureLevel.Level_9_1 or FeatureLevel.Level_9_2 => "vs_4_0_level_9_1",
+					FeatureLevel.Level_9_3 => "vs_4_0_level_9_3",
+					_ => "vs_4_0",
+				};
+
+				// note: we use D3D9-like shaders for legacy reasons, so we need the backwards compat flag
+				// TODO: remove D3D9 syntax from shaders
 				var result = Compiler.Compile(
 					shaderSource: source,
 					entryPoint: entry,
 					sourceName: null!, // this is safe to be null
-					profile: "ps_4_0_level_9_1",
-					shaderFlags: ShaderFlags.OptimizationLevel3);
+					profile: profile,
+					shaderFlags: ShaderFlags.OptimizationLevel3 | ShaderFlags.EnableBackwardsCompatibility);
 
-				sw.PS = Device.CreatePixelShader(result.Span);
+				sw.VS = Device.CreateVertexShader(result.Span);
 				sw.Reflection = Compiler.Reflect<ID3D11ShaderReflection>(result.Span);
 				sw.Bytecode = result;
 
 				var s = new Shader(this, sw, true);
 				sw.IGLShader = s;
+				_vertexShaders.Add(s);
 
 				return s;
 			}
@@ -284,25 +448,35 @@ namespace BizHawk.Bizware.Graphics
 		}
 
 		/// <exception cref="InvalidOperationException"><paramref name="required"/> is <see langword="true"/> and compilation error occurred</exception>
-		public Shader CreateVertexShader(string source, string entry, bool required)
+		public Shader CreateFragmentShader(string source, string entry, bool required)
 		{
 			try
 			{
 				var sw = new ShaderWrapper();
 
+				var profile = DeviceFeatureLevel switch
+				{
+					FeatureLevel.Level_9_1 or FeatureLevel.Level_9_2 => "ps_4_0_level_9_1",
+					FeatureLevel.Level_9_3 => "ps_4_0_level_9_3",
+					_ => "ps_4_0",
+				};
+
+				// note: we use D3D9-like shaders for legacy reasons, so we need the backwards compat flag
+				// TODO: remove D3D9 syntax from shaders
 				var result = Compiler.Compile(
 					shaderSource: source,
 					entryPoint: entry,
 					sourceName: null!, // this is safe to be null
-					profile: "vs_4_0_level_9_1",
-					shaderFlags: ShaderFlags.OptimizationLevel3);
+					profile: profile,
+					shaderFlags: ShaderFlags.OptimizationLevel3 | ShaderFlags.EnableBackwardsCompatibility);
 
-				sw.VS = Device.CreateVertexShader(result.Span);
+				sw.PS = Device.CreatePixelShader(result.Span);
 				sw.Reflection = Compiler.Reflect<ID3D11ShaderReflection>(result.Span);
 				sw.Bytecode = result;
 
 				var s = new Shader(this, sw, true);
 				sw.IGLShader = s;
+				_pixelShaders.Add(s);
 
 				return s;
 			}
@@ -323,23 +497,8 @@ namespace BizHawk.Bizware.Graphics
 		public void DisableBlending()
 			=> Context.OMSetBlendState(BlendDisableState);
 
-		/// <exception cref="InvalidOperationException">
-		/// <paramref name="required"/> is <see langword="true"/> and either <paramref name="vertexShader"/> or <paramref name="fragmentShader"/> is unavailable (their <see cref="Shader.Available"/> property is <see langword="false"/>), or
-		/// one of <paramref name="vertexLayout"/>'s items has an unsupported value in <see cref="VertexLayout.LayoutItem.AttribType"/>, <see cref="VertexLayout.LayoutItem.Components"/>, or <see cref="VertexLayout.LayoutItem.Usage"/>
-		/// </exception>
-		public Pipeline CreatePipeline(VertexLayout vertexLayout, Shader vertexShader, Shader fragmentShader, bool required, string memo)
+		private void CreateInputLayout(VertexLayout vertexLayout, ShaderWrapper vertexShader)
 		{
-			if (!vertexShader.Available || !fragmentShader.Available)
-			{
-				var errors = $"Vertex Shader:\r\n {vertexShader.Errors} \r\n-------\r\nFragment Shader:\r\n{fragmentShader.Errors}";
-				if (required)
-				{
-					throw new InvalidOperationException($"Couldn't build required GL pipeline:\r\n{errors}");
-				}
-
-				return new(this, null, false, null, null, null) { Errors = errors };
-			}
-
 			var ves = new InputElementDescription[vertexLayout.Items.Count];
 			var stride = 0;
 			foreach (var (i, item) in vertexLayout.Items)
@@ -370,16 +529,36 @@ namespace BizHawk.Bizware.Graphics
 				stride += 4 * item.Components;
 			}
 
-			var bc = ((ShaderWrapper)vertexShader.Opaque).Bytecode.Span;
 			var vlw = (VertexLayoutWrapper)vertexLayout.Opaque;
-			vlw.VertexDeclaration = Device.CreateInputLayout(ves, bc);
+			var bc = vertexShader.Bytecode.Span;
+			vlw.VertexInputLayout = Device.CreateInputLayout(ves, bc);
 			vlw.VertexStride = stride;
+		}
+
+		/// <exception cref="InvalidOperationException">
+		/// <paramref name="required"/> is <see langword="true"/> and either <paramref name="vertexShader"/> or <paramref name="fragmentShader"/> is unavailable (their <see cref="Shader.Available"/> property is <see langword="false"/>), or
+		/// one of <paramref name="vertexLayout"/>'s items has an unsupported value in <see cref="VertexLayout.LayoutItem.AttribType"/>, <see cref="VertexLayout.LayoutItem.Components"/>, or <see cref="VertexLayout.LayoutItem.Usage"/>
+		/// </exception>
+		public Pipeline CreatePipeline(VertexLayout vertexLayout, Shader vertexShader, Shader fragmentShader, bool required, string memo)
+		{
+			if (!vertexShader.Available || !fragmentShader.Available)
+			{
+				var errors = $"Vertex Shader:\r\n {vertexShader.Errors} \r\n-------\r\nFragment Shader:\r\n{fragmentShader.Errors}";
+				if (required)
+				{
+					throw new InvalidOperationException($"Couldn't build required D3D11 pipeline:\r\n{errors}");
+				}
+
+				return new(this, null, false, null, null, null) { Errors = errors };
+			}
 
 			var pw = new PipelineWrapper
 			{
 				VertexShader = (ShaderWrapper)vertexShader.Opaque,
 				FragmentShader = (ShaderWrapper)fragmentShader.Opaque,
 			};
+
+			CreateInputLayout(vertexLayout, pw.VertexShader);
 
 			// scan uniforms from reflection
 			var uniforms = new List<UniformInfo>();
@@ -388,40 +567,73 @@ namespace BizHawk.Bizware.Graphics
 			foreach (var refl in new[] { vsrefl, psrefl })
 			{
 				var isVs = refl == vsrefl;
-				var reflCb = refl.ConstantBuffers.SingleOrDefault();
-				if (reflCb != null)
+				var reflCbs = refl.ConstantBuffers;
+				var todo = new Queue<(string, PendingBufferWrapper, string, int, ID3D11ShaderReflectionType)>();
+				for (var i = 0; i < reflCbs.Length; i++)
 				{
-					var cbDesc = reflCb.Description;
-					var cbSize = (cbDesc.Size + 15) & ~15; // must be aligned to 16 bytes
-					var bd = new BufferDescription(cbSize, BindFlags.ConstantBuffer, ResourceUsage.Dynamic, CpuAccessFlags.Write);
+					var cbDesc = reflCbs[i].Description;
+					var bd = new BufferDescription((cbDesc.Size + 15) & ~15, BindFlags.ConstantBuffer, ResourceUsage.Dynamic, CpuAccessFlags.Write);
 					var constantBuffer = Device.CreateBuffer(bd);
-					var pendingBuffer = Marshal.AllocCoTaskMem(cbSize);
+					var pendingBuffer = Marshal.AllocCoTaskMem(cbDesc.Size);
+					pw.PendingBuffers[i] ??= new();
 					if (isVs)
 					{
-						pw.VSConstantBuffer = constantBuffer;
-						pw.VSPendingBuffer = pendingBuffer;
-						pw.VSConstantBufferSize = cbDesc.Size;
+						pw.VSConstantBuffers[i] = constantBuffer;
+						pw.PendingBuffers[i].VSPendingBuffer = pendingBuffer;
+						pw.PendingBuffers[i].VSBufferSize = cbDesc.Size;
 					}
 					else
 					{
-						pw.PSConstantBuffer = constantBuffer;
-						pw.PSPendingBuffer = pendingBuffer;
-						pw.PSConstantBufferSize = cbDesc.Size;
+						pw.PSConstantBuffers[i] = constantBuffer;
+						pw.PendingBuffers[i].PSPendingBuffer = pendingBuffer;
+						pw.PendingBuffers[i].PSBufferSize = cbDesc.Size;
 					}
 
-					uniforms.AddRange(reflCb.Variables
-						.Select(reflCbVari => reflCbVari.Description)
-						.Select(cbVariDesc => new UniformInfo
+					var prefix = cbDesc.Name.RemovePrefix('$');
+					prefix = prefix is "Params" or "Globals" ? "" : $"{prefix}.";
+					foreach (var reflVari in reflCbs[i].Variables)
+					{
+						var reflVariDesc = reflVari.Description;
+						todo.Enqueue((prefix, pw.PendingBuffers[i], reflVariDesc.Name, reflVariDesc.StartOffset, reflVari.VariableType));
+					}
+				}
+
+				while (todo.Count != 0)
+				{
+					var (prefix, pbw, reflVariName, reflVariOffset, reflVariType) = todo.Dequeue();
+					var reflVariTypeDesc = reflVariType.Description;
+					if (reflVariTypeDesc.MemberCount > 0)
+					{
+						prefix = $"{prefix}{reflVariName}.";
+						for (var i = 0; i < reflVariTypeDesc.MemberCount; i++)
 						{
-							Name = cbVariDesc.Name,
-							Opaque = new UniformWrapper
-							{
-								PendingBuffer = pendingBuffer,
-								VariableStartOffset = cbVariDesc.StartOffset,
-								VariableSize = cbVariDesc.Size,
-								VS = isVs
-							}
-						}));
+							var memberName = reflVariType.GetMemberTypeName(i);
+							var memberType = reflVariType.GetMemberTypeByIndex(i);
+							var memberOffset = memberType.Description.Offset;
+							todo.Enqueue((prefix, pbw, memberName, reflVariOffset + memberOffset, memberType));
+						}
+
+						continue;
+					}
+
+					if (reflVariTypeDesc.Type is not (ShaderVariableType.Bool or ShaderVariableType.Float))
+					{
+						// unsupported type
+						continue;
+					}
+
+					var reflVariSize = 4 * reflVariTypeDesc.ColumnCount * reflVariTypeDesc.RowCount;
+					uniforms.Add(new()
+					{
+						Name = $"{prefix}{reflVariName}",
+						Opaque = new UniformWrapper
+						{
+							PBW = pbw,
+							VariableStartOffset = reflVariOffset,
+							VariableSize = reflVariSize,
+							VS = isVs
+						}
+					});
 				}
 
 				uniforms.AddRange(refl.BoundResources
@@ -429,13 +641,15 @@ namespace BizHawk.Bizware.Graphics
 					.Select(resource => new UniformInfo
 					{
 						IsSampler = true,
-						Name = resource.Name,
+						Name = resource.Name.RemovePrefix('$'),
 						Opaque = new UniformWrapper { VS = isVs },
 						SamplerIndex = resource.BindPoint
 					}));
 			}
 
-			return new(this, pw, true, vertexLayout, uniforms, memo);
+			var ret = new Pipeline(this, pw, true, vertexLayout, uniforms, memo);
+			_pipelines.Add(ret);
+			return ret;
 		}
 
 		public void FreePipeline(Pipeline pipeline)
@@ -446,36 +660,68 @@ namespace BizHawk.Bizware.Graphics
 				return;
 			}
 
-			Marshal.FreeCoTaskMem(pw.VSPendingBuffer);
-			Marshal.FreeCoTaskMem(pw.PSPendingBuffer);
-			pw.VSConstantBuffer?.Dispose();
-			pw.PSConstantBuffer?.Dispose();
-			pw.FragmentShader.IGLShader.Release();
+			for (var i = 0; i < ID3D11DeviceContext.CommonShaderConstantBufferSlotCount; i++)
+			{
+				if (pw.PendingBuffers[i] != null)
+				{
+					Marshal.FreeCoTaskMem(pw.PendingBuffers[i].VSPendingBuffer);
+					Marshal.FreeCoTaskMem(pw.PendingBuffers[i].PSPendingBuffer);
+					pw.PendingBuffers[i] = null;
+				}
+
+				pw.VSConstantBuffers[i]?.Dispose();
+				pw.VSConstantBuffers[i] = null;
+				pw.PSConstantBuffers[i]?.Dispose();
+				pw.PSConstantBuffers[i] = null;
+			}
+
 			pw.VertexShader.IGLShader.Release();
+			pw.FragmentShader.IGLShader.Release();
+
+			_pipelines.Remove(pipeline);
 		}
 
 		public void Internal_FreeShader(Shader shader)
 		{
 			var sw = (ShaderWrapper)shader.Opaque;
 			sw.Reflection?.Dispose();
-			sw.PS?.Dispose();
-			sw.VS?.Dispose();
+			sw.Reflection = null;
+
+			if (sw.VS != null)
+			{
+				sw.VS.Dispose();
+				sw.VS = null;
+				_vertexShaders.Remove(shader);
+			}
+
+			if (sw.PS != null)
+			{
+				sw.PS.Dispose();
+				sw.PS = null;
+				_pixelShaders.Remove(shader);
+			}
 		}
 
 		private class UniformWrapper
 		{
-			public IntPtr PendingBuffer;
+			public PendingBufferWrapper PBW;
 			public int VariableStartOffset;
 			public int VariableSize;
 			public bool VS;
 		}
 
-		private class PipelineWrapper // Disposable fields cleaned up by FreePipeline
+		private class PendingBufferWrapper
 		{
 			public IntPtr VSPendingBuffer, PSPendingBuffer;
-			public int VSConstantBufferSize, PSConstantBufferSize;
-			public ID3D11Buffer VSConstantBuffer, PSConstantBuffer;
+			public int VSBufferSize, PSBufferSize;
+			public bool VSBufferDirty, PSBufferDirty; 
+		}
 
+		private class PipelineWrapper // Disposable fields cleaned up by FreePipeline
+		{
+			public readonly PendingBufferWrapper[] PendingBuffers = new PendingBufferWrapper[ID3D11DeviceContext.CommonShaderConstantBufferSlotCount];
+			public readonly ID3D11Buffer[] VSConstantBuffers = new ID3D11Buffer[ID3D11DeviceContext.CommonShaderConstantBufferSlotCount];
+			public readonly ID3D11Buffer[] PSConstantBuffers = new ID3D11Buffer[ID3D11DeviceContext.CommonShaderConstantBufferSlotCount];
 			public ShaderWrapper VertexShader, FragmentShader;
 		}
 
@@ -493,7 +739,7 @@ namespace BizHawk.Bizware.Graphics
 
 		private class VertexLayoutWrapper
 		{
-			public ID3D11InputLayout VertexDeclaration;
+			public ID3D11InputLayout VertexInputLayout;
 			public int VertexStride;
 
 			public ID3D11Buffer VertexBuffer;
@@ -506,8 +752,10 @@ namespace BizHawk.Bizware.Graphics
 		public void Internal_FreeVertexLayout(VertexLayout layout)
 		{
 			var vlw = (VertexLayoutWrapper)layout.Opaque;
-			vlw.VertexDeclaration?.Dispose();
+			vlw.VertexInputLayout?.Dispose();
+			vlw.VertexInputLayout = null;
 			vlw.VertexBuffer?.Dispose();
+			vlw.VertexBuffer = null;
 		}
 
 		public void BindPipeline(Pipeline pipeline)
@@ -521,12 +769,18 @@ namespace BizHawk.Bizware.Graphics
 			}
 
 			var pw = (PipelineWrapper)pipeline.Opaque;
-			Context.PSSetShader(pw.FragmentShader.PS);
 			Context.VSSetShader(pw.VertexShader.VS);
+			Context.PSSetShader(pw.FragmentShader.PS);
+
+			Context.VSSetConstantBuffers(0, pw.VSConstantBuffers);
+			Context.PSSetConstantBuffers(0, pw.PSConstantBuffers);
 
 			var vlw = (VertexLayoutWrapper)pipeline.VertexLayout.Opaque;
-			Context.IASetInputLayout(vlw.VertexDeclaration);
+			Context.IASetInputLayout(vlw.VertexInputLayout);
+			Context.IASetVertexBuffer(0, vlw.VertexBuffer, vlw.VertexStride);
 
+			// not sure if this applies to the current pipeline or all pipelines
+			// just set it every time to be safe
 			Context.RSSetState(RasterizerState);
 		}
 
@@ -535,12 +789,22 @@ namespace BizHawk.Bizware.Graphics
 			foreach (var ui in uniform.UniformInfos)
 			{
 				var uw = (UniformWrapper)ui.Opaque;
+				var pendingBuffer = uw.VS ? uw.PBW.VSPendingBuffer : uw.PBW.PSPendingBuffer;
 				unsafe
 				{
 					// note: HLSL bool is 4 bytes large
 					var b = value ? 1 : 0;
-					var variablePtr = (void*)(uw.PendingBuffer + uw.VariableStartOffset);
+					var variablePtr = (void*)(pendingBuffer + uw.VariableStartOffset);
 					Buffer.MemoryCopy(&b, variablePtr, uw.VariableSize, sizeof(int));
+				}
+
+				if (uw.VS)
+				{
+					uw.PBW.VSBufferDirty = true;
+				}
+				else
+				{
+					uw.PBW.PSBufferDirty = true;
 				}
 			}
 		}
@@ -553,12 +817,22 @@ namespace BizHawk.Bizware.Graphics
 			foreach (var ui in uniform.UniformInfos)
 			{
 				var uw = (UniformWrapper)ui.Opaque;
+				var pendingBuffer = uw.VS ? uw.PBW.VSPendingBuffer : uw.PBW.PSPendingBuffer;
 				unsafe
 				{
 					// transpose logic is inversed
-					var m = transpose ? mat : Matrix4x4.Transpose(mat);
-					var variablePtr = (void*)(uw.PendingBuffer + uw.VariableStartOffset);
+					var m = transpose ? Matrix4x4.Transpose(mat) : mat;
+					var variablePtr = (void*)(pendingBuffer + uw.VariableStartOffset);
 					Buffer.MemoryCopy(&m, variablePtr, uw.VariableSize, sizeof(Matrix4x4));
+				}
+
+				if (uw.VS)
+				{
+					uw.PBW.VSBufferDirty = true;
+				}
+				else
+				{
+					uw.PBW.PSBufferDirty = true;
 				}
 			}
 		}
@@ -568,10 +842,20 @@ namespace BizHawk.Bizware.Graphics
 			foreach (var ui in uniform.UniformInfos)
 			{
 				var uw = (UniformWrapper)ui.Opaque;
+				var pendingBuffer = uw.VS ? uw.PBW.VSPendingBuffer : uw.PBW.PSPendingBuffer;
 				unsafe
 				{
-					var variablePtr = (void*)(uw.PendingBuffer + uw.VariableStartOffset);
+					var variablePtr = (void*)(pendingBuffer + uw.VariableStartOffset);
 					Buffer.MemoryCopy(&value, variablePtr, uw.VariableSize, sizeof(Vector4));
+				}
+
+				if (uw.VS)
+				{
+					uw.PBW.VSBufferDirty = true;
+				}
+				else
+				{
+					uw.PBW.PSBufferDirty = true;
 				}
 			}
 		}
@@ -581,10 +865,20 @@ namespace BizHawk.Bizware.Graphics
 			foreach (var ui in uniform.UniformInfos)
 			{
 				var uw = (UniformWrapper)ui.Opaque;
+				var pendingBuffer = uw.VS ? uw.PBW.VSPendingBuffer : uw.PBW.PSPendingBuffer;
 				unsafe
 				{
-					var variablePtr = (void*)(uw.PendingBuffer + uw.VariableStartOffset);
+					var variablePtr = (void*)(pendingBuffer + uw.VariableStartOffset);
 					Buffer.MemoryCopy(&value, variablePtr, uw.VariableSize, sizeof(Vector2));
+				}
+
+				if (uw.VS)
+				{
+					uw.PBW.VSBufferDirty = true;
+				}
+				else
+				{
+					uw.PBW.PSBufferDirty = true;
 				}
 			}
 		}
@@ -594,10 +888,20 @@ namespace BizHawk.Bizware.Graphics
 			foreach (var ui in uniform.UniformInfos)
 			{
 				var uw = (UniformWrapper)ui.Opaque;
+				var pendingBuffer = uw.VS ? uw.PBW.VSPendingBuffer : uw.PBW.PSPendingBuffer;
 				unsafe
 				{
-					var variablePtr = (void*)(uw.PendingBuffer + uw.VariableStartOffset);
+					var variablePtr = (void*)(pendingBuffer + uw.VariableStartOffset);
 					Buffer.MemoryCopy(&value, variablePtr, uw.VariableSize, sizeof(float));
+				}
+
+				if (uw.VS)
+				{
+					uw.PBW.VSBufferDirty = true;
+				}
+				else
+				{
+					uw.PBW.PSBufferDirty = true;
 				}
 			}
 		}
@@ -607,13 +911,23 @@ namespace BizHawk.Bizware.Graphics
 			foreach (var ui in uniform.UniformInfos)
 			{
 				var uw = (UniformWrapper)ui.Opaque;
+				var pendingBuffer = uw.VS ? uw.PBW.VSPendingBuffer : uw.PBW.PSPendingBuffer;
 				unsafe
 				{
 					fixed (Vector4* v = values)
 					{
-						var variablePtr = (void*)(uw.PendingBuffer + uw.VariableStartOffset);
+						var variablePtr = (void*)(pendingBuffer + uw.VariableStartOffset);
 						Buffer.MemoryCopy(v, variablePtr, uw.VariableSize, values.Length * sizeof(Vector4));
 					}
+				}
+
+				if (uw.VS)
+				{
+					uw.PBW.VSBufferDirty = true;
+				}
+				else
+				{
+					uw.PBW.PSBufferDirty = true;
 				}
 			}
 		}
@@ -638,6 +952,11 @@ namespace BizHawk.Bizware.Graphics
 				var uw = (UniformWrapper)ui.Opaque;
 				if (uw.VS)
 				{
+					if (DeviceFeatureLevel == FeatureLevel.Level_9_1)
+					{
+						throw new InvalidOperationException("Feature level 9.1 does not support setting a shader resource in a vertex shader");
+					}
+
 					Context.VSSetShaderResource(ui.SamplerIndex, tw.SRV);
 					Context.VSSetSampler(ui.SamplerIndex, sampler);
 				}
@@ -649,6 +968,7 @@ namespace BizHawk.Bizware.Graphics
 			}
 		}
 
+		// TODO: Remove this, we only use clamp ever anyways
 		public void SetTextureWrapMode(Texture2d tex, bool clamp)
 		{
 		}
@@ -678,9 +998,9 @@ namespace BizHawk.Bizware.Graphics
 			return LoadTexture(bmp);
 		}
 
-		public Texture2d CreateTexture(int width, int height)
+		private ID3D11Texture2D CreateTextureForShader(int width, int height)
 		{
-			var tex = Device.CreateTexture2D(
+			return Device.CreateTexture2D(
 				Format.B8G8R8A8_UNorm,
 				width,
 				height,
@@ -688,10 +1008,17 @@ namespace BizHawk.Bizware.Graphics
 				bindFlags: BindFlags.ShaderResource,
 				usage: ResourceUsage.Dynamic,
 				cpuAccessFlags: CpuAccessFlags.Write);
-			var srvd = new ShaderResourceViewDescription(ShaderResourceViewDimension.Texture2D, Format.B8G8R8A8_UNorm, mipLevels: 1, mostDetailedMip: 0);
+		}
+
+		public Texture2d CreateTexture(int width, int height)
+		{
+			var tex = CreateTextureForShader(width, height);
+			var srvd = new ShaderResourceViewDescription(ShaderResourceViewDimension.Texture2D, Format.B8G8R8A8_UNorm, mostDetailedMip: 0, mipLevels: 1);
 			var srv = Device.CreateShaderResourceView(tex, srvd);
 			var tw = new TextureWrapper { Texture = tex, SRV = srv };
-			return new(this, tw, width, height);
+			var ret = new Texture2d(this, tw, width, height);
+			_shaderTextures.Add(ret);
+			return ret;
 		}
 
 		public Texture2d WrapGLTexture2d(IntPtr glTexId, int width, int height)
@@ -703,6 +1030,11 @@ namespace BizHawk.Bizware.Graphics
 		/// <exception cref="InvalidOperationException">GDI+ call returned unexpected data</exception>
 		public unsafe void LoadTextureData(Texture2d tex, BitmapBuffer bmp)
 		{
+			if (bmp.Width != tex.IntWidth || bmp.Height != tex.IntHeight)
+			{
+				throw new InvalidOperationException();
+			}
+
 			var tw = (TextureWrapper)tex.Opaque;
 			var bmpData = bmp.LockBits();
 
@@ -711,13 +1043,24 @@ namespace BizHawk.Bizware.Graphics
 				var srcSpan = new ReadOnlySpan<byte>(bmpData.Scan0.ToPointer(), bmpData.Stride * bmp.Height);
 				var mappedTex = Context.Map<byte>(tw.Texture, 0, 0, MapMode.WriteDiscard);
 
-				// TODO - do we need to handle odd sizes, weird pitches here?
-				if (bmp.Width != tex.IntWidth || bmp.Height != tex.IntHeight || srcSpan.Length != mappedTex.Length)
+				if (srcSpan.Length == mappedTex.Length)
 				{
-					throw new InvalidOperationException();
+					srcSpan.CopyTo(mappedTex);
 				}
-
-				srcSpan.CopyTo(mappedTex);
+				else
+				{
+					// D3D11 sometimes has weird pitches (seen with 3DS)
+					int srcStart = 0, dstStart = 0;
+					int srcStride = bmpData.Stride, dstStride = mappedTex.Length / bmp.Height;
+					var height = bmp.Height;
+					for (var i = 0; i < height; i++)
+					{
+						srcSpan.Slice(srcStart, srcStride)
+							.CopyTo(mappedTex.Slice(dstStart, dstStride));
+						srcStart += srcStride;
+						dstStart += dstStride;
+					}
+				}
 			}
 			finally
 			{
@@ -740,6 +1083,7 @@ namespace BizHawk.Bizware.Graphics
 				Format.B8G8R8A8_UNorm,
 				tex.IntWidth,
 				tex.IntHeight,
+				mipLevels: 1,
 				bindFlags: BindFlags.None,
 				usage: ResourceUsage.Staging,
 				cpuAccessFlags: CpuAccessFlags.Read);
@@ -753,12 +1097,24 @@ namespace BizHawk.Bizware.Graphics
 				var pixels = new int[tex.IntWidth * tex.IntHeight];
 				var dstSpan = MemoryMarshal.AsBytes(pixels.AsSpan());
 
-				if (srcSpan.Length != dstSpan.Length)
+				if (srcSpan.Length == dstSpan.Length)
 				{
-					throw new InvalidOperationException();
+					srcSpan.CopyTo(dstSpan);
+				}
+				else
+				{
+					int srcStart = 0, dstStart = 0;
+					int srcStride = srcSpan.Length / tex.IntHeight, dstStride = tex.IntWidth * sizeof(int);
+					var height = tex.IntHeight;
+					for (var i = 0; i < height; i++)
+					{
+						srcSpan.Slice(srcStart, dstStride)
+							.CopyTo(dstSpan.Slice(dstStart, dstStride));
+						srcStart += srcStride;
+						dstStart += dstStride;
+					}
 				}
 
-				srcSpan.CopyTo(dstSpan);
 				return new(tex.IntWidth, tex.IntHeight, pixels);
 			}
 			finally
@@ -791,8 +1147,8 @@ namespace BizHawk.Bizware.Graphics
 		{
 			var ret = Matrix4x4.Identity;
 			ret.M22 = -1.0f;
-			ret.M41 = -dims.Width * 0.5f - 0.5f;
-			ret.M42 = dims.Height * 0.5f + 0.5f;
+			ret.M41 = -dims.Width * 0.5f;
+			ret.M42 = dims.Height * 0.5f;
 
 			// auto-flipping isn't needed on D3D
 			return ret;
@@ -812,50 +1168,39 @@ namespace BizHawk.Bizware.Graphics
 
 		public void FreeRenderTarget(RenderTarget rt)
 		{
-			var tw = (TextureWrapper)rt.Texture2d.Opaque;
-			tw.Texture.Dispose();
-			tw.Texture = null;
+			var rw = (RenderTargetWrapper)rt.Opaque;
+			rw.RTV.Dispose();
 			_renderTargets.Remove(rt);
+			var tw = (TextureWrapper)rt.Texture2d.Opaque;
+			tw.SRV.Dispose();
+			tw.Texture.Dispose();
 		}
 
-		public RenderTarget CreateRenderTarget(int w, int h)
-		{
-			var tw = new TextureWrapper { Texture = CreateRenderTargetTexture(w, h) };
-			var tex = new Texture2d(this, tw, w, h);
-			var rtvd = new RenderTargetViewDescription(RenderTargetViewDimension.Texture2D, Format.B8G8R8A8_UNorm);
-			var rw = new RenderTargetWrapper { RTV = Device.CreateRenderTargetView(tw.Texture, rtvd) };
-			var rt = new RenderTarget(this, rw, tex);
-			_renderTargets.Add(rt);
-			return rt;
-		}
-
-		private ID3D11Texture2D CreateRenderTargetTexture(int width, int height)
+		private ID3D11Texture2D CreateTextureForRenderTarget(int width, int height)
 		{
 			return Device.CreateTexture2D(
 				Format.B8G8R8A8_UNorm,
 				width,
 				height,
-				bindFlags: BindFlags.RenderTarget,
+				mipLevels: 1,
+				bindFlags: BindFlags.RenderTarget | BindFlags.ShaderResource, // ack! need to also let this be bound to shaders
 				usage: ResourceUsage.Default,
 				cpuAccessFlags: CpuAccessFlags.None);
 		}
 
-		private void SuspendRenderTargets()
+		public RenderTarget CreateRenderTarget(int w, int h)
 		{
-			foreach (var tw in _renderTargets.Select(rt => (TextureWrapper)rt.Texture2d.Opaque))
-			{
-				tw.Texture.Dispose();
-				tw.Texture = null;
-			}
-		}
+			var tex = CreateTextureForRenderTarget(w, h);
+			var srvd = new ShaderResourceViewDescription(ShaderResourceViewDimension.Texture2D, Format.B8G8R8A8_UNorm, mostDetailedMip: 0, mipLevels: 1);
+			var srv = Device.CreateShaderResourceView(tex, srvd);
+			var tw = new TextureWrapper { Texture = tex, SRV = srv };
+			var tex2d = new Texture2d(this, tw, w, h);
 
-		private void ResumeRenderTargets()
-		{
-			foreach (var rt in _renderTargets)
-			{
-				var tw = (TextureWrapper)rt.Texture2d.Opaque;
-				tw.Texture = CreateRenderTargetTexture(rt.Texture2d.IntWidth, rt.Texture2d.IntHeight);
-			}
+			var rtvd = new RenderTargetViewDescription(RenderTargetViewDimension.Texture2D, Format.B8G8R8A8_UNorm);
+			var rw = new RenderTargetWrapper { RTV = Device.CreateRenderTargetView(tw.Texture, rtvd) };
+			var rt = new RenderTarget(this, rw, tex2d);
+			_renderTargets.Add(rt);
+			return rt;
 		}
 
 		public void BindRenderTarget(RenderTarget rt)
@@ -874,8 +1219,6 @@ namespace BizHawk.Bizware.Graphics
 
 		public void Draw(IntPtr data, int count)
 		{
-			Context.IASetPrimitiveTopology(PrimitiveTopology.TriangleStrip);
-
 			var vlw = (VertexLayoutWrapper)_curPipeline.VertexLayout.Opaque;
 			var stride = vlw.VertexStride;
 
@@ -902,30 +1245,36 @@ namespace BizHawk.Bizware.Graphics
 				}
 			}
 
-			Context.IASetVertexBuffer(0, vlw.VertexBuffer, stride);
-
 			unsafe
 			{
 				var pw = (PipelineWrapper)_curPipeline.Opaque;
-
-				if (pw.VSConstantBuffer != null)
+				for (var i = 0; i < ID3D11DeviceContext.CommonShaderConstantBufferSlotCount; i++)
 				{
-					var vsCb = Context.Map(pw.VSConstantBuffer, MapMode.WriteDiscard);
-					Buffer.MemoryCopy((void*)pw.VSPendingBuffer, (void*)vsCb.DataPointer, pw.VSConstantBufferSize, pw.VSConstantBufferSize);
-					Context.Unmap(pw.VSConstantBuffer);
-					Context.VSSetConstantBuffer(0, pw.VSConstantBuffer);
-				}
+					var pbw = pw.PendingBuffers[i];
+					if (pbw == null)
+					{
+						break;
+					}
 
-				if (pw.PSConstantBuffer != null)
-				{
-					var psCb = Context.Map(pw.PSConstantBuffer, MapMode.WriteDiscard);
-					Buffer.MemoryCopy((void*)pw.PSPendingBuffer, (void*)psCb.DataPointer, pw.PSConstantBufferSize, pw.PSConstantBufferSize);
-					Context.Unmap(pw.PSConstantBuffer);
-					Context.PSSetConstantBuffer(0, pw.PSConstantBuffer);
+					if (pbw.VSBufferDirty)
+					{
+						var vsCb = Context.Map(pw.VSConstantBuffers[i], MapMode.WriteDiscard);
+						Buffer.MemoryCopy((void*)pbw.VSPendingBuffer, (void*)vsCb.DataPointer, pbw.VSBufferSize, pbw.VSBufferSize);
+						Context.Unmap(pw.VSConstantBuffers[i]);
+						pbw.VSBufferDirty = false;
+					}
+
+					if (pbw.PSBufferDirty)
+					{
+						var psCb = Context.Map(pw.PSConstantBuffers[i], MapMode.WriteDiscard);
+						Buffer.MemoryCopy((void*)pbw.PSPendingBuffer, (void*)psCb.DataPointer, pbw.PSBufferSize, pbw.PSBufferSize);
+						Context.Unmap(pw.PSConstantBuffers[i]);
+						pbw.PSBufferDirty = false;
+					}
 				}
 			}
 
-			Context.Draw(count - 2, 0);
+			Context.Draw(count, 0);
 		}
 
 		public void BeginScene()

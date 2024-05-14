@@ -7,9 +7,9 @@ namespace BizHawk.Bizware.Graphics.Controls
 	{
 		private readonly Func<D3D11SwapChain.ControlParameters, D3D11SwapChain> _createSwapChain;
 		private D3D11SwapChain _swapChain;
-		private bool Vsync;
+		private bool Vsync, AllowsTearing;
 
-		private D3D11SwapChain.ControlParameters ControlParameters => new(Handle, Width, Height, Vsync);
+		private D3D11SwapChain.ControlParameters ControlParameters => new(Handle, Width, Height, Vsync, AllowsTearing);
 
 		public D3D11Control(Func<D3D11SwapChain.ControlParameters, D3D11SwapChain> createSwapChain)
 		{
@@ -41,14 +41,11 @@ namespace BizHawk.Bizware.Graphics.Controls
 			_swapChain.Refresh(ControlParameters);
 		}
 
+		public override void AllowTearing(bool state)
+			=> AllowsTearing = state;
+
 		public override void SetVsync(bool state)
-		{
-			if (Vsync != state)
-			{
-				Vsync = state;
-				_swapChain.Refresh(ControlParameters);
-			}
-		}
+			=> Vsync = state;
 
 		public override void Begin()
 			=> _swapChain.SetBackBuffer();
