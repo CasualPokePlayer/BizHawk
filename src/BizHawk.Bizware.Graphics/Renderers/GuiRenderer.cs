@@ -37,10 +37,6 @@ namespace BizHawk.Bizware.Graphics
 					vsProgram = DefaultShader_d3d9;
 					psProgram = DefaultShader_d3d9;
 					break;
-				case "D3D9":
-					vsProgram = DefaultShader_d3d9;
-					psProgram = DefaultShader_d3d9;
-					break;
 				case "OPENGL":
 					vsProgram = DefaultVertexShader_gl;
 					psProgram = DefaultPixelShader_gl;
@@ -387,7 +383,7 @@ namespace BizHawk.Bizware.Graphics
 
 		// shaders are hand-coded for each platform to make sure they stay as fast as possible
 
-#if false // this doesn't work for reasons unknown
+#if false // this doesn't work for reasons unknown (TODO make this work)
 		public const string DefaultShader_d3d11 = @"
 //vertex shader uniforms
 float4x4 um44Modelview, um44Projection;
