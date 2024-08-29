@@ -29,7 +29,7 @@ namespace BizHawk.Bizware.Graphics.Controls
 			return new(graphics, ClientRectangle with
 			{
 				Width = Math.Max(ClientRectangle.Width, 1),
-				Height = Math.Max(ClientRectangle.Height, 1),
+				Height = Math.Max(ClientRectangle.Height, 1)
 			});
 		}
 
@@ -77,8 +77,6 @@ namespace BizHawk.Bizware.Graphics.Controls
 			}
 
 			using var graphics = CreateGraphics();
-			graphics.InterpolationMode = InterpolationMode.NearestNeighbor;
-			graphics.PixelOffsetMode = PixelOffsetMode.Half;
 			graphics.CompositingMode = CompositingMode.SourceCopy;
 			graphics.CompositingQuality = CompositingQuality.HighSpeed;
 			_renderTarget.BufferedGraphics.Render(graphics);
