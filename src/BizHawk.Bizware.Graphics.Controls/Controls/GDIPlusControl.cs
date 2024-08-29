@@ -1,7 +1,7 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
-
+using BizHawk.Common;
 using SDGraphics = System.Drawing.Graphics;
 
 namespace BizHawk.Bizware.Graphics.Controls
@@ -19,8 +19,9 @@ namespace BizHawk.Bizware.Graphics.Controls
 
 			SetStyle(ControlStyles.UserPaint, true);
 			SetStyle(ControlStyles.Opaque, true);
+			SetStyle(ControlStyles.AllPaintingInWmPaint, true);
 			SetStyle(ControlStyles.UserMouse, true);
-			DoubleBuffered = true;
+			DoubleBuffered = false;
 		}
 
 		private (SDGraphics Graphics, Rectangle Rectangle) GetControlRenderContext()
@@ -69,6 +70,17 @@ namespace BizHawk.Bizware.Graphics.Controls
 		}
 
 		public override void SwapBuffers()
-			=> _renderTarget.BufferedGraphics?.Render(_renderTarget.ControlGraphics);
+		{
+			if (_renderTarget.BufferedGraphics != null)
+			{
+				if (OSTailoredCode.IsUnixHost)
+				{
+					_renderTarget.ControlGraphics?.Dispose();
+					_renderTarget.ControlGraphics = CreateGraphics();
+				}
+
+				_renderTarget.BufferedGraphics.Render(_renderTarget.ControlGraphics);	
+			}
+		}
 	}
 }
