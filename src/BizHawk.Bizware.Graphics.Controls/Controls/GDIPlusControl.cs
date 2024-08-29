@@ -1,8 +1,5 @@
-using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
-using BizHawk.Common;
-using SDGraphics = System.Drawing.Graphics;
 
 namespace BizHawk.Bizware.Graphics.Controls
 {
@@ -13,7 +10,7 @@ namespace BizHawk.Bizware.Graphics.Controls
 		/// </summary>
 		private readonly GDIPlusControlRenderTarget _renderTarget;
 
-		public GDIPlusControl(Func<Func<(SDGraphics Graphics, Rectangle Rectangle)>, GDIPlusControlRenderTarget> createControlRenderTarget)
+		public GDIPlusControl(Func<Func<GDIPlusControlRenderContext>, GDIPlusControlRenderTarget> createControlRenderTarget)
 		{
 			_renderTarget = createControlRenderTarget(GetControlRenderContext);
 
@@ -24,13 +21,16 @@ namespace BizHawk.Bizware.Graphics.Controls
 			DoubleBuffered = false;
 		}
 
-		private (SDGraphics Graphics, Rectangle Rectangle) GetControlRenderContext()
+		private GDIPlusControlRenderContext GetControlRenderContext()
 		{
 			var graphics = CreateGraphics();
 			graphics.CompositingMode = CompositingMode.SourceCopy;
 			graphics.CompositingQuality = CompositingQuality.HighSpeed;
-			Console.WriteLine($"ClientRectangle: {ClientRectangle}");
-			return (graphics, ClientRectangle);
+			return new(graphics, ClientRectangle with
+			{
+				Width = Math.Max(ClientRectangle.Width, 1),
+				Height = Math.Max(ClientRectangle.Height, 1),
+			});
 		}
 
 		public override void AllowTearing(bool state)
@@ -54,7 +54,7 @@ namespace BizHawk.Bizware.Graphics.Controls
 		protected override void OnHandleCreated(EventArgs e)
 		{
 			base.OnHandleCreated(e);
-			_renderTarget.CreateGraphics();
+			_renderTarget.CreateBufferedGraphics();
 		}
 
 		protected override void OnHandleDestroyed(EventArgs e)
@@ -66,20 +66,15 @@ namespace BizHawk.Bizware.Graphics.Controls
 		protected override void OnResize(EventArgs e)
 		{
 			base.OnResize(e);
-			_renderTarget.CreateGraphics();
+			_renderTarget.CreateBufferedGraphics();
 		}
 
 		public override void SwapBuffers()
 		{
 			if (_renderTarget.BufferedGraphics != null)
 			{
-				if (OSTailoredCode.IsUnixHost)
-				{
-					_renderTarget.ControlGraphics?.Dispose();
-					_renderTarget.ControlGraphics = CreateGraphics();
-				}
-
-				_renderTarget.BufferedGraphics.Render(_renderTarget.ControlGraphics);	
+				using var graphics = CreateGraphics();
+				_renderTarget.BufferedGraphics.Render(graphics);
 			}
 		}
 	}
