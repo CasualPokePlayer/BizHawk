@@ -77,9 +77,8 @@ namespace BizHawk.Bizware.Graphics.Controls
 			}
 
 			using var graphics = CreateGraphics();
-			var rtGraphics = _renderTarget.BufferedGraphics.Graphics;
-			graphics.InterpolationMode = rtGraphics.InterpolationMode;
-			graphics.PixelOffsetMode = rtGraphics.PixelOffsetMode;
+			graphics.InterpolationMode = InterpolationMode.NearestNeighbor;
+			graphics.PixelOffsetMode = PixelOffsetMode.Half;
 			graphics.CompositingMode = CompositingMode.SourceCopy;
 			graphics.CompositingQuality = CompositingQuality.HighSpeed;
 			_renderTarget.BufferedGraphics.Render(graphics);
