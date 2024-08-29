@@ -71,11 +71,18 @@ namespace BizHawk.Bizware.Graphics.Controls
 
 		public override void SwapBuffers()
 		{
-			if (_renderTarget.BufferedGraphics != null)
+			if (_renderTarget.BufferedGraphics is null)
 			{
-				using var graphics = CreateGraphics();
-				_renderTarget.BufferedGraphics.Render(graphics);
+				return;
 			}
+
+			using var graphics = CreateGraphics();
+			var rtGraphics = _renderTarget.BufferedGraphics.Graphics;
+			graphics.InterpolationMode = rtGraphics.InterpolationMode;
+			graphics.PixelOffsetMode = rtGraphics.PixelOffsetMode;
+			graphics.CompositingMode = CompositingMode.SourceCopy;
+			graphics.CompositingQuality = CompositingQuality.HighSpeed;
+			_renderTarget.BufferedGraphics.Render(graphics);
 		}
 	}
 }
