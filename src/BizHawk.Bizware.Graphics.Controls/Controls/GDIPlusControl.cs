@@ -28,6 +28,7 @@ namespace BizHawk.Bizware.Graphics.Controls
 			var graphics = CreateGraphics();
 			graphics.CompositingMode = CompositingMode.SourceCopy;
 			graphics.CompositingQuality = CompositingQuality.HighSpeed;
+			Console.WriteLine($"ClientRectangle: {ClientRectangle}");
 			return (graphics, ClientRectangle);
 		}
 

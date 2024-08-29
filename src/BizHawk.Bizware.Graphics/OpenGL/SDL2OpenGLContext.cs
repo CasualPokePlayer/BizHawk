@@ -47,7 +47,6 @@ namespace BizHawk.Bizware.Graphics
 					{
 						// check if we can actually create a desktop GL context
 						using var glContext = new SDL2OpenGLContext(3, 2, true);
-						Console.WriteLine("Successfully loaded EGL");
 					}
 					catch
 					{
@@ -58,7 +57,6 @@ namespace BizHawk.Bizware.Graphics
 
 				if (loadGlx)
 				{
-					Console.WriteLine("Failed to load EGL, falling back to GLX");
 					SDL_SetHint(SDL_HINT_VIDEO_X11_FORCE_EGL, "0");
 					if (SDL_GL_LoadLibrary(null) != 0)
 					{
