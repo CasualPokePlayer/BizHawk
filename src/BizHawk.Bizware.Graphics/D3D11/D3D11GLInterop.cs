@@ -147,6 +147,9 @@ namespace BizHawk.Bizware.Graphics
 								return;
 						}
 
+						Console.WriteLine($"VendorId: {vendorId:X04}");
+						Console.WriteLine($"DeviceId: {adapter.Description.DeviceId:X04}");
+
 						if (vendor == Vendor.Intel)
 						{
 							// avoid Broadwell gpus, these have been reported crashing with gl interop
